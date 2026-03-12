@@ -23,6 +23,15 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Invalid or expired session. Please sign out and sign in again.' });
+    }
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (!token || token.length < 10) {
+      return res.status(401).json({ error: 'Invalid or expired session. Please sign out and sign in again.' });
+    }
+
     await requireSupabaseAuth(req);
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});

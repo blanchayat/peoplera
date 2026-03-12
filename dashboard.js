@@ -121,6 +121,16 @@ function mapEmployeeRows(csvRows){
 
 async function apiFetch(path, { method='POST', body=null, accessToken=null } = {}){
   const headers = { 'content-type':'application/json' };
+
+  // Refresh session if needed
+  if (supabase && !accessToken) {
+    const { data } = await supabase.auth.getSession();
+    if (data?.session) {
+      accessToken = data.session.access_token;
+      session = data.session;
+    }
+  }
+
   if (accessToken) headers.authorization = 'Bearer ' + accessToken;
   const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
   const data = await readJsonSafe(res);
