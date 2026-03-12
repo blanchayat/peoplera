@@ -80,12 +80,13 @@
           <h1 id="pageTitle">Overview</h1>
           <div class="row">
             <span class="pill" id="statusPill">AI ready</span>
+            <span class="pill" id="supabaseStatus">Loading…</span>
           </div>
         </div>
 
         <section id="tab-overview" class="module on">
           <div class="grid3">
-            <div class="panel stat">
+            <div class="panel stat" onclick="document.querySelector('.nav-item[data-tab=hire]').click()">
               <div class="label">Total candidates</div>
               <div class="value" id="statCandidates">0</div>
             </div>
@@ -93,7 +94,7 @@
               <div class="label">Active employees</div>
               <div class="value" id="statEmployees">0</div>
             </div>
-            <div class="panel stat">
+            <div class="panel stat" onclick="document.querySelector('.nav-item[data-tab=pulse]').click()">
               <div class="label">At-risk employees</div>
               <div class="value" id="statAtRisk">0</div>
             </div>
@@ -104,6 +105,7 @@
               <div style="font-weight:900">Recent activity</div>
               <div id="feed"></div>
             </div>
+
             <div class="panel feed">
               <div style="font-weight:900">Getting started</div>
               <div class="small" style="color:var(--muted)">Try a complete flow:</div>

@@ -315,15 +315,34 @@ function renderHireTable(candidates){
 
 function renderHireDetail(candidates){
   const el = document.getElementById('hireDetail');
-  el.innerHTML = candidates.map(c=>{
+  el.innerHTML = candidates.map(c => {
+    const score = c.matchScore || 0;
+    const color = score >= 70 ? '#00e5a0' : score >= 50 ? '#FFD93D' : '#FF6B6B';
     const s = Array.isArray(c.strengths) ? c.strengths : [];
     const w = Array.isArray(c.weaknesses) ? c.weaknesses : [];
     return `
-      <div class="panel" style="padding:12px;border-radius:14px;margin-top:10px;background:rgba(255,255,255,.03)">
-        <div style="font-weight:1000">${escapeHtml(c.name || '')} — ${escapeHtml(c.matchScore)}/100</div>
-        <div class="small" style="margin-top:6px"><span style="color:var(--text);font-weight:900">Recommendation:</span> ${escapeHtml(c.recommendation || '')}</div>
-        <div class="small" style="margin-top:6px"><span style="color:var(--text);font-weight:900">Strengths:</span> ${escapeHtml(s.join(' • '))}</div>
-        <div class="small" style="margin-top:6px"><span style="color:var(--text);font-weight:900">Weaknesses:</span> ${escapeHtml(w.join(' • '))}</div>
+      <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-top:14px;border-left:3px solid ${color}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:10px">
+          <div style="font-weight:900;font-size:17px;font-family:'Syne',system-ui">${escapeHtml(c.name || '')}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);font-weight:700">MATCH SCORE</div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:36px;color:${color};line-height:1">${score}<span style="font-size:14px;opacity:0.5">/100</span></div>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:8px;height:8px;margin-bottom:14px;overflow:hidden">
+          <div style="height:100%;width:${score}%;background:linear-gradient(90deg,${color}88,${color});border-radius:8px;transition:width 1.2s ease"></div>
+        </div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.6);margin-bottom:12px;line-height:1.6"><span style="color:#fff;font-weight:800">Recommendation:</span> ${escapeHtml(c.recommendation || '')}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.15);border-radius:10px;padding:12px">
+            <div style="font-size:11px;font-weight:800;color:#00e5a0;margin-bottom:8px;letter-spacing:0.05em">✓ STRENGTHS</div>
+            ${s.map(i => `<div style="font-size:12px;color:rgba(255,255,255,0.7);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">${escapeHtml(i)}</div>`).join('')}
+          </div>
+          <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.15);border-radius:10px;padding:12px">
+            <div style="font-size:11px;font-weight:800;color:#FF6B6B;margin-bottom:8px;letter-spacing:0.05em">✗ WEAKNESSES</div>
+            ${w.map(i => `<div style="font-size:12px;color:rgba(255,255,255,0.7);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04)">${escapeHtml(i)}</div>`).join('')}
+          </div>
+        </div>
       </div>
     `;
   }).join('');
@@ -567,36 +586,107 @@ let pulseLast = null;
 function renderPulse(employees){
   const out = document.getElementById('pulseOut');
   const rows = employees.slice().sort((a,b)=>(b.burnoutScore||0)-(a.burnoutScore||0));
-
   const atRisk = rows.filter(e=>['high','critical'].includes(String(e.riskLevel||'').toLowerCase())).length;
-  document.getElementById('statAtRisk').textContent = String(atRisk);
+  const statEl = document.getElementById('statAtRisk');
+  if(statEl) statEl.textContent = String(atRisk);
+
+  const colorMap = { low:'#00e5a0', medium:'#FFD93D', high:'#FF6B6B', critical:'#ff3b3b' };
+  const fontMap = { low:'Syne', medium:'Syne', high:'Syne', critical:'Syne' };
 
   out.innerHTML = `
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Score</th>
-          <th>Level</th>
-          <th>Top factors</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${rows.map(e=>{
-          const factors = Array.isArray(e.riskFactors) ? e.riskFactors.slice(0,3).join('; ') : '';
-          const lvl = String(e.riskLevel || 'critical').toLowerCase();
-          return `
-            <tr>
-              <td>${escapeHtml(e.name || '')}</td>
-              <td>${escapeHtml(e.burnoutScore)}</td>
-              <td><span class="risk ${riskClass(lvl)}">${escapeHtml(lvl)}</span></td>
-              <td>${escapeHtml(factors)}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.08)">
+            <th style="text-align:left;padding:10px 12px;font-size:11px;font-weight:800;color:rgba(255,255,255,0.4);letter-spacing:0.08em">NAME</th>
+            <th style="text-align:center;padding:10px 12px;font-size:11px;font-weight:800;color:rgba(255,255,255,0.4);letter-spacing:0.08em">SCORE</th>
+            <th style="text-align:center;padding:10px 12px;font-size:11px;font-weight:800;color:rgba(255,255,255,0.4);letter-spacing:0.08em">LEVEL</th>
+            <th style="text-align:left;padding:10px 12px;font-size:11px;font-weight:800;color:rgba(255,255,255,0.4);letter-spacing:0.08em">TOP FACTORS</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map((e,idx) => {
+            const lvl = String(e.riskLevel||'medium').toLowerCase();
+            const color = colorMap[lvl] || '#FFD93D';
+            const score = e.burnoutScore || 0;
+            const factors = Array.isArray(e.riskFactors) ? e.riskFactors : [];
+            const recs = Array.isArray(e.recommendations) ? e.recommendations : [];
+            const dataAttr = `data-employee='${JSON.stringify(e).replace(/'/g,"&#39;")}'`;
+            return `
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.05);transition:background 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+                <td style="padding:14px 12px">
+                  <span ${dataAttr} onclick="showEmployeeCard(this)" style="font-weight:800;font-family:'Syne',system-ui;cursor:pointer;color:#fff;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);text-underline-offset:3px">${escapeHtml(e.name||'')}</span>
+                </td>
+                <td style="padding:14px 12px;text-align:center">
+                  <div style="display:inline-flex;flex-direction:column;align-items:center;gap:4px">
+                    <span style="font-family:'Syne',system-ui;font-weight:900;font-size:20px;color:${color}">${score}</span>
+                    <div style="width:48px;height:4px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden">
+                      <div style="height:100%;width:${score}%;background:${color};border-radius:4px"></div>
+                    </div>
+                  </div>
+                </td>
+                <td style="padding:14px 12px;text-align:center">
+                  <span style="background:${color}22;border:1px solid ${color}55;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:900;color:${color};font-family:'Syne',system-ui;text-transform:uppercase;letter-spacing:0.05em">${lvl}</span>
+                </td>
+                <td style="padding:14px 12px;color:rgba(255,255,255,0.55);line-height:1.5">${factors.slice(0,2).map(f=>escapeHtml(f)).join(' · ')}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Employee detail modal -->
+    <div id="employeeModal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);align-items:center;justify-content:center" onclick="if(event.target===this)closeEmployeeCard()">
+      <div id="employeeCard" style="background:#13151f;border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:28px;width:min(480px,92vw);position:relative;box-shadow:0 32px 80px rgba(0,0,0,0.5)">
+        <button onclick="closeEmployeeCard()" style="position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.08);border:none;border-radius:8px;width:30px;height:30px;color:#fff;font-size:16px;cursor:pointer">✕</button>
+        <div id="employeeCardContent"></div>
+      </div>
+    </div>
   `;
+}
+
+function showEmployeeCard(el){
+  const e = JSON.parse(el.getAttribute('data-employee').replace(/&#39;/g,"'"));
+  const lvl = String(e.riskLevel||'medium').toLowerCase();
+  const colorMap = { low:'#00e5a0', medium:'#FFD93D', high:'#FF6B6B', critical:'#ff3b3b' };
+  const color = colorMap[lvl] || '#FFD93D';
+  const score = e.burnoutScore || 0;
+  const factors = Array.isArray(e.riskFactors) ? e.riskFactors : [];
+  const recs = Array.isArray(e.recommendations) ? e.recommendations : [];
+
+  document.getElementById('employeeCardContent').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-family:'Syne',system-ui;font-weight:900;font-size:22px">${escapeHtml(e.name||'')}</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:2px">Employee Risk Profile</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-family:'Syne',system-ui;font-weight:900;font-size:42px;color:${color};line-height:1">${score}</div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.4)">/100</div>
+      </div>
+    </div>
+    <div style="background:rgba(255,255,255,0.06);border-radius:8px;height:8px;margin-bottom:16px;overflow:hidden">
+      <div style="height:100%;width:${score}%;background:linear-gradient(90deg,${color}66,${color});border-radius:8px"></div>
+    </div>
+    <div style="margin-bottom:16px">
+      <span style="background:${color}22;border:1px solid ${color}55;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:900;color:${color};font-family:'Syne',system-ui;text-transform:uppercase;letter-spacing:0.05em">${lvl} risk</span>
+    </div>
+    <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.12);border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">⚠ RISK FACTORS</div>
+      ${factors.map(f=>`<div style=\"font-size:13px;color:rgba(255,255,255,0.7);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05)\">${escapeHtml(f)}</div>`).join('')}
+    </div>
+    <div style="background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.12);border-radius:12px;padding:14px">
+      <div style="font-size:10px;font-weight:900;color:#00e5a0;letter-spacing:0.08em;margin-bottom:8px">→ RECOMMENDATIONS</div>
+      ${recs.map(r=>`<div style=\"font-size:13px;color:rgba(255,255,255,0.7);padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05)\">${escapeHtml(r)}</div>`).join('')}
+    </div>
+  `;
+  const modal = document.getElementById('employeeModal');
+  modal.style.display = 'flex';
+}
+
+function closeEmployeeCard(){
+  document.getElementById('employeeModal').style.display = 'none';
 }
 
 async function runPulse(){

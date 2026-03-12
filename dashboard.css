@@ -110,6 +110,8 @@ body {
 .topbar h1{margin:0;font-family:inherit;font-weight:800;font-size:22px;letter-spacing:-.2px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
 .stat{padding:14px}
+.stat[onclick]{cursor:pointer}
+.stat[onclick]:hover{background:rgba(255,255,255,.06)}
 .stat .label{color:var(--muted);font-weight:800;font-size:12px}
 .stat .value{font-family:inherit;font-weight:800;font-size:28px;margin-top:8px;transition:color .3s ease}
 .two-col{display:grid;grid-template-columns:1.1fr .9fr;gap:12px;margin-top:12px}
