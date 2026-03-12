@@ -46,15 +46,16 @@ function download(filename, content, type){
 }
 
 async function extractPdfText(file){
-  const { getDocument } = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs');
+  const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs';
+  
   const buf = await file.arrayBuffer();
-  const doc = await getDocument({ data: buf }).promise;
+  const doc = await pdfjsLib.getDocument({ data: buf }).promise;
   let out = '';
-  for (let p=1; p<=doc.numPages; p++){
+  for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
     const c = await page.getTextContent();
-    const line = c.items.map(i=>i.str).join(' ');
-    out += line + '\n';
+    out += c.items.map(i => i.str).join(' ') + '\n';
   }
   return out.trim();
 }
