@@ -347,3 +347,22 @@ body {
   font-family: "Syne", system-ui;
   color: var(--text);
 }
+
+body {
+  margin: 0;
+  font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(1200px 700px at 20% 15%, rgba(99,102,241,.22), transparent 55%),
+    radial-gradient(900px 600px at 75% 30%, rgba(0,229,160,.16), transparent 55%),
+    linear-gradient(180deg, #070A12, #0B1020);
+  color: #E9ECF4;
+  min-height: 100vh;
+}
+
+.dash {
+  background: transparent;
+}
+
+.main {
+  background: transparent;
+}
