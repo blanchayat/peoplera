@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peoplera Dashboard</title>
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="/dashboard.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs" type="module"></script>
+</head>
+<body>
+  <div id="gate" class="gate" hidden>
+    <div class="panel gate-card">
+      <div class="brand" style="gap:10px">
+        <div class="logo" aria-hidden="true"></div>
+        <span>Peoplera</span>
+      </div>
+      <h1 style="font-family:Syne;margin:14px 0 6px">Welcome back</h1>
+      <div class="small" style="margin-bottom:14px">Sign in with Google to access Hire, Board, and Pulse.</div>
+      <button class="btn btn-primary" id="btnLogin" style="width:100%">Continue with Google</button>
+      <div id="gateMsg" class="small" style="margin-top:10px;color:var(--muted)"></div>
+    </div>
+  </div>
+
+  <div id="app" class="dash" hidden>
+    <aside class="sidebar">
+      <div class="side-top">
+        <a class="brand" href="/">
+          <div class="logo" aria-hidden="true"></div>
+          <span>Peoplera</span>
+        </a>
+        <button class="btn" id="btnLogout">Log out</button>
+      </div>
+      <div class="pill" id="userPill">Signed in</div>
+
+      <div class="side-nav" style="margin-top:12px">
+        <button class="nav-item active" data-tab="overview">Overview</button>
+        <button class="nav-item" data-tab="hire">Hire</button>
+        <button class="nav-item" data-tab="board">Board</button>
+        <button class="nav-item" data-tab="pulse">Pulse</button>
+        <button class="nav-item" data-tab="settings">Settings</button>
+      </div>
+
+      <div class="panel" style="margin-top:14px;padding:12px;border-radius:16px;background:rgba(255,255,255,.04)">
+        <div style="font-weight:900">Quick actions</div>
+        <div class="small" style="margin-top:8px;display:grid;gap:10px">
+          <a class="btn" href="/pricing.html" style="display:inline-flex;justify-content:center">Manage plan</a>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="container">
+        <div class="topbar">
+          <h1 id="pageTitle">Overview</h1>
+          <div class="row">
+            <span class="pill" id="statusPill">AI ready</span>
+          </div>
+        </div>
+
+        <section id="tab-overview" class="module on">
+          <div class="grid3">
+            <div class="panel stat">
+              <div class="label">Total candidates</div>
+              <div class="value" id="statCandidates">0</div>
+            </div>
+            <div class="panel stat">
+              <div class="label">Active employees</div>
+              <div class="value" id="statEmployees">0</div>
+            </div>
+            <div class="panel stat">
+              <div class="label">At-risk employees</div>
+              <div class="value" id="statAtRisk">0</div>
+            </div>
+          </div>
+
+          <div class="two-col">
+            <div class="panel feed">
+              <div style="font-weight:900">Recent activity</div>
+              <div id="feed"></div>
+            </div>
+            <div class="panel feed">
+              <div style="font-weight:900">Getting started</div>
+              <div class="small" style="color:var(--muted)">Try a complete flow:</div>
+              <div class="small" style="display:grid;gap:8px">
+                <div>1) Paste a job description and upload 2-3 CVs in Hire.</div>
+                <div>2) Add a new employee and upload a handbook PDF in Board.</div>
+                <div>3) Upload employee metrics CSV in Pulse to generate weekly risk report.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-hire" class="module">
+          <div class="panel pad">
+            <div style="font-family:Syne;font-weight:800;font-size:18px">Peoplera Hire</div>
+            <div class="small" style="margin-top:6px">Analyze candidates against a job description and export rankings.</div>
+          </div>
+
+          <div class="two-col" style="margin-top:12px">
+            <div class="panel pad">
+              <div class="form-grid">
+                <div class="field">
+                  <label for="jobDesc">Job description</label>
+                  <textarea id="jobDesc" placeholder="Paste the role description, responsibilities, and must-haves"></textarea>
+                </div>
+
+                <div class="field">
+                  <label>CV upload (PDF/TXT)</label>
+                  <div class="drop" id="cvDrop">
+                    <div style="font-weight:900">Drag & drop CV files</div>
+                    <div class="small" style="margin-top:6px">Or choose files. PDF text is extracted locally in your browser.</div>
+                    <input class="input" id="cvFiles" type="file" accept=".pdf,.txt" multiple style="margin-top:10px" />
+                    <div class="small" id="cvList" style="margin-top:10px;color:var(--muted)"></div>
+                  </div>
+                </div>
+
+                <button class="btn btn-primary" id="btnHire">Analyze candidates</button>
+                <div id="hireMsg" class="small" style="color:var(--muted)"></div>
+              </div>
+            </div>
+
+            <div class="panel pad">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                <div style="font-weight:900">Ranked candidates</div>
+                <button class="btn" id="btnExportHire" disabled>Export CSV</button>
+              </div>
+              <div style="overflow:auto;margin-top:12px">
+                <table class="table" id="hireTable" hidden>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Score</th>
+                      <th>Recommendation</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div id="hireDetail" class="small" style="margin-top:10px;color:var(--muted)"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-board" class="module">
+          <div class="panel pad">
+            <div style="font-family:Syne;font-weight:800;font-size:18px">Peoplera Board</div>
+            <div class="small" style="margin-top:6px">Generate a personalized 30-60-90 plan from role + handbook.</div>
+          </div>
+
+          <div class="two-col" style="margin-top:12px">
+            <div class="panel pad">
+              <div class="form-grid">
+                <div class="row">
+                  <div style="flex:1" class="field">
+                    <label for="empName">Name</label>
+                    <input class="input" id="empName" placeholder="e.g. Sara Ahmed" />
+                  </div>
+                  <div style="flex:1" class="field">
+                    <label for="empRole">Role</label>
+                    <input class="input" id="empRole" placeholder="e.g. Product Designer" />
+                  </div>
+                </div>
+                <div class="row">
+                  <div style="flex:1" class="field">
+                    <label for="empDept">Department</label>
+                    <input class="input" id="empDept" placeholder="e.g. Product" />
+                  </div>
+                  <div style="flex:1" class="field">
+                    <label for="empStart">Start date</label>
+                    <input class="input" id="empStart" type="date" />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label>Company handbook / docs (PDF)</label>
+                  <input class="input" id="handbookFile" type="file" accept=".pdf" />
+                  <div class="small" id="handbookMsg" style="margin-top:8px;color:var(--muted)"></div>
+                </div>
+
+                <button class="btn btn-primary" id="btnBoard">Generate onboarding plan</button>
+                <div id="boardMsg" class="small" style="color:var(--muted)"></div>
+              </div>
+            </div>
+
+            <div class="panel pad">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                <div style="font-weight:900">Onboarding plan</div>
+                <button class="btn" id="btnDownloadBoard" disabled>Download PDF</button>
+              </div>
+              <div id="boardOut" class="small" style="margin-top:12px;color:var(--muted);line-height:1.6"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-pulse" class="module">
+          <div class="panel pad">
+            <div style="font-family:Syne;font-weight:800;font-size:18px">Peoplera Pulse</div>
+            <div class="small" style="margin-top:6px">Upload employee metrics and generate a weekly burnout risk report.</div>
+          </div>
+
+          <div class="two-col" style="margin-top:12px">
+            <div class="panel pad">
+              <div class="form-grid">
+                <div class="field">
+                  <label>Employee data CSV</label>
+                  <input class="input" id="pulseCsv" type="file" accept=".csv" />
+                  <div class="small" style="margin-top:8px;color:var(--muted)">Columns: name, weekly hours, weekend hours, after-hours messages, sick days, last vacation</div>
+                </div>
+
+                <button class="btn btn-primary" id="btnPulse">Analyze burnout risk</button>
+                <div id="pulseMsg" class="small" style="color:var(--muted)"></div>
+              </div>
+            </div>
+
+            <div class="panel pad">
+              <div style="font-weight:900">Weekly report</div>
+              <div id="pulseOut" style="margin-top:12px;overflow:auto"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-settings" class="module">
+          <div class="panel pad">
+            <div style="font-family:Syne;font-weight:800;font-size:18px">Settings</div>
+            <div class="small" style="margin-top:6px">Connection status and environment readiness.</div>
+          </div>
+
+          <div class="two-col" style="margin-top:12px">
+            <div class="panel pad">
+              <div style="font-weight:900">Supabase</div>
+              <div class="small" id="supabaseStatus" style="margin-top:8px;color:var(--muted)">Checking…</div>
+            </div>
+            <div class="panel pad">
+              <div style="font-weight:900">AI API</div>
+              <div class="small" id="aiStatus" style="margin-top:8px;color:var(--muted)">Checking…</div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <footer class="footer">
+    <div class="container footer-credit">Built by Nurhayat Yılmaz · AI Automation Specialist</div>
+  </footer>
+
+  <script src="/dashboard.js" type="module"></script>
+</body>
+</html>

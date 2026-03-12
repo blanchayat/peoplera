@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peoplera Pricing</title>
+  <meta name="description" content="Simple pricing for people-first companies." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="nav">
+    <div class="container nav-inner">
+      <a class="brand" href="/">
+        <div class="logo" aria-hidden="true"></div>
+        <span>Peoplera</span>
+      </a>
+      <nav class="nav-links">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+        <a class="btn btn-primary" href="#plans" id="jumpPlans">Choose a plan</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <div class="kicker"><span class="dot"></span> Pricing built for teams that care</div>
+        <h1 class="h1" style="max-width:900px">Simple plans. Serious outcomes.</h1>
+        <p class="lead" style="max-width:860px">Start fast with Hire, scale into Board and Pulse, then unlock enterprise-grade controls when you’re ready.</p>
+
+        <div class="panel pad" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:18px">
+          <div>
+            <div style="font-weight:900">Billing</div>
+            <div class="small">Save 20% with annual billing.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <button class="btn" id="billMonthly" aria-pressed="true">Monthly</button>
+            <button class="btn" id="billAnnual" aria-pressed="false">Annual -20%</button>
+          </div>
+        </div>
+
+        <div class="pricing" id="plans" style="margin-top:16px">
+          <article class="panel price-card">
+            <div class="badge">Starter</div>
+            <div class="price" data-base="49">$49</div>
+            <div class="small">Up to 10 employees. Hire only.</div>
+            <div style="margin-top:14px;display:grid;gap:8px" class="small">
+              <div>Candidate scoring + rankings</div>
+              <div>CSV export</div>
+              <div>Google SSO</div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:16px" data-plan="starter">Start free trial</button>
+          </article>
+
+          <article class="panel price-card" style="border-color:rgba(99,102,241,.32)">
+            <div class="badge" style="background:rgba(99,102,241,.14);border-color:rgba(99,102,241,.3)">Growth</div>
+            <div class="price" data-base="99">$99</div>
+            <div class="small">Up to 50 employees. All 3 products.</div>
+            <div style="margin-top:14px;display:grid;gap:8px" class="small">
+              <div>Hire + Board + Pulse</div>
+              <div>Onboarding plan generator</div>
+              <div>Burnout risk analysis</div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:16px" data-plan="growth">Start free trial</button>
+          </article>
+
+          <article class="panel price-card">
+            <div class="badge" style="background:rgba(0,229,160,.10);border-color:rgba(0,229,160,.25)">Scale</div>
+            <div class="price" data-base="199">$199</div>
+            <div class="small">Unlimited employees. Priority support.</div>
+            <div style="margin-top:14px;display:grid;gap:8px" class="small">
+              <div>Unlimited usage</div>
+              <div>Priority support</div>
+              <div>Advanced reporting</div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:16px" data-plan="scale">Start free trial</button>
+          </article>
+
+          <article class="panel price-card">
+            <div class="badge" style="background:rgba(255,255,255,.06)">Enterprise</div>
+            <div class="price">Custom</div>
+            <div class="small">Security reviews, custom contracts, SSO & controls.</div>
+            <div style="margin-top:14px;display:grid;gap:8px" class="small">
+              <div>Custom plan & SLA</div>
+              <div>Security + compliance</div>
+              <div>Dedicated onboarding</div>
+            </div>
+            <a class="btn" style="width:100%;margin-top:16px;display:inline-flex;justify-content:center" href="/dashboard.html">Contact sales</a>
+          </article>
+        </div>
+
+        <div class="panel pad" style="margin-top:16px;color:var(--muted);line-height:1.6">
+          <div style="font-weight:900;color:var(--text)">Notes</div>
+          <div class="small" style="margin-top:6px">Trials are for product evaluation. Billing starts after checkout confirmation. You can cancel anytime.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-grid">
+      <div class="brand" style="gap:10px">
+        <div class="logo" aria-hidden="true"></div>
+        <div>
+          <div style="font-family:Syne;font-weight:800;color:var(--text)">Peoplera</div>
+          <div class="small">The AI platform for people-first companies.</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
+        <a href="/">Home</a>
+        <a href="/dashboard.html">Dashboard</a>
+      </div>
+    </div>
+    <div class="container footer-credit">Built by Nurhayat Yılmaz · AI Automation Specialist</div>
+  </footer>
+
+  <script>
+    (function(){
+      const annualDiscount = 0.20;
+      let billingCycle = 'monthly';
+      const prices = Array.from(document.querySelectorAll('.price[data-base]'));
+      const btnMonthly = document.getElementById('billMonthly');
+      const btnAnnual = document.getElementById('billAnnual');
+
+      function formatUSD(n){
+        return '$' + String(n);
+      }
+
+      function render(){
+        prices.forEach(el=>{
+          const base = Number(el.getAttribute('data-base'));
+          const shown = billingCycle === 'annual' ? Math.round(base * 12 * (1 - annualDiscount)) : base;
+          el.textContent = formatUSD(shown);
+        });
+        btnMonthly.setAttribute('aria-pressed', billingCycle === 'monthly' ? 'true' : 'false');
+        btnAnnual.setAttribute('aria-pressed', billingCycle === 'annual' ? 'true' : 'false');
+      }
+
+      btnMonthly.addEventListener('click', ()=>{ billingCycle = 'monthly'; render(); });
+      btnAnnual.addEventListener('click', ()=>{ billingCycle = 'annual'; render(); });
+
+      async function checkout(plan, button){
+        const old = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Starting checkout…';
+        try{
+          const res = await fetch('/api/checkout',{
+            method:'POST',
+            headers:{'content-type':'application/json'},
+            body: JSON.stringify({ plan, billingCycle })
+          });
+          const data = await res.json().catch(()=>null);
+          if (!res.ok){
+            throw new Error((data && data.error) ? data.error : 'Checkout failed');
+          }
+          if (!data || !data.url) throw new Error('Checkout URL not returned');
+          window.location.href = data.url;
+        }catch(err){
+          button.disabled = false;
+          button.textContent = old;
+          alert(err && err.message ? err.message : 'Checkout failed');
+        }
+      }
+
+      document.querySelectorAll('button[data-plan]').forEach(btn=>{
+        btn.addEventListener('click', ()=>checkout(btn.getAttribute('data-plan'), btn));
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>

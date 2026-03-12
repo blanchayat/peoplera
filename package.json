@@ -1,0 +1,20 @@
+{
+  "name": "peoplera",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Peoplera — The AI platform for people-first companies",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "echo dev",
+    "start": "echo start",
+    "lint": "node -c api/hire.js && node -c api/board.js && node -c api/pulse.js && node -c api/checkout.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "jose": "^5.9.2",
+    "stripe": "^14.25.0"
+  },
+  "devDependencies": {
+    "vercel": "^50.32.3"
+  }
+}
