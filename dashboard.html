@@ -7,24 +7,32 @@
   <meta name="robots" content="noindex" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
   <link rel="stylesheet" href="/dashboard.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.min.mjs" type="module"></script>
 </head>
-<body>
+<body class="auth-gate">
   <div id="gate" class="gate" hidden>
     <div class="panel gate-card">
-      <div class="brand" style="gap:10px">
-        <div class="logo" aria-hidden="true"></div>
-        <span>Peoplera</span>
-      </div>
-      <h1 style="font-family:Syne;margin:14px 0 6px">Welcome back</h1>
-      <div class="small" style="margin-bottom:14px">Sign in with Google to access Hire, Board, and Pulse.</div>
-      <button class="btn btn-primary" id="btnLogin" style="width:100%">Continue with Google</button>
-      <div id="gateMsg" class="small" style="margin-top:10px;color:var(--muted)"></div>
+      <a class="brand gate-brand" href="/">
+        <span class="mark" aria-hidden="true">
+          <span class="dot d1"></span>
+          <span class="dot d2"></span>
+          <span class="dot d3"></span>
+        </span>
+        <span class="word">
+          <span class="peopl">peopl</span><span class="era">era</span>
+        </span>
+      </a>
+
+      <h1 class="gate-title">Welcome back</h1>
+      <div class="gate-sub">Sign in with Google to access Hire, Board, and Pulse.</div>
+
+      <button class="btn btn-primary gate-btn" id="btnLogin" style="width:100%">Continue with Google</button>
+      <div id="gateMsg" class="gate-msg"></div>
     </div>
   </div>
 

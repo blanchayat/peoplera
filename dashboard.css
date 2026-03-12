@@ -1,6 +1,77 @@
 :root{
   --side:260px;
 }
+.auth-gate{
+  background:#ffffff;
+  color:#0f172a;
+  font-family:"DM Sans",system-ui,-apple-system,Segoe UI,Roboto,Arial !important;
+}
+.auth-gate .gate{
+  background:
+    radial-gradient(ellipse 52% 40% at 70% 25%, rgba(255,217,61,0.12) 0%, transparent 62%),
+    radial-gradient(ellipse 42% 32% at 15% 20%, rgba(255,107,107,0.12) 0%, transparent 58%);
+}
+.auth-gate .gate-card{
+  width:min(520px,92vw);
+  padding:22px;
+  border-radius:16px;
+  border:1px solid rgba(15,23,42,0.10);
+  background:rgba(255,255,255,0.92);
+  box-shadow:0 22px 70px rgba(15,23,42,0.12);
+}
+.auth-gate .gate-brand{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  text-decoration:none;
+  font-weight:900;
+  font-family:"Syne",system-ui,-apple-system,Segoe UI,Roboto,Arial !important;
+}
+.auth-gate .gate-brand .mark{display:inline-flex;align-items:center;gap:6px}
+.auth-gate .gate-brand .dot{
+  width:9px;height:9px;border-radius:999px;
+  background:linear-gradient(90deg, #FF6B6B 0%, #FFD93D 55%, #FF6B6B 100%);
+  background-size:220% 100%;
+  animation:gateGradient 4.8s ease-in-out infinite;
+  box-shadow:0 10px 28px rgba(255,107,107,0.18);
+}
+.auth-gate .gate-brand .dot.d2{animation-delay:.15s}
+.auth-gate .gate-brand .dot.d3{animation-delay:.3s}
+.auth-gate .gate-brand .peopl{color:#0f172a}
+.auth-gate .gate-brand .era{
+  background:linear-gradient(90deg, #FF6B6B 0%, #FFD93D 55%, #FF6B6B 100%);
+  background-size:220% 100%;
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  animation:gateGradient 4.8s ease-in-out infinite;
+}
+@keyframes gateGradient{
+  0%,100%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+}
+.auth-gate .gate-title{
+  margin:14px 0 6px;
+  font-family:"Syne",system-ui,-apple-system,Segoe UI,Roboto,Arial !important;
+  font-weight:900;
+  font-size:28px;
+  letter-spacing:-0.05em;
+}
+.auth-gate .gate-sub{
+  color:rgba(15,23,42,0.66);
+  font-weight:800;
+  margin-bottom:14px;
+}
+.auth-gate .gate-btn{
+  border-color:transparent;
+  background:linear-gradient(90deg, #FF6B6B 0%, #FFD93D 100%);
+  color:#0b1220;
+  border-radius:16px;
+  padding:12px 14px;
+}
+.auth-gate .gate-btn:hover{box-shadow:0 18px 54px rgba(255,107,107,0.18), 0 18px 56px rgba(255,217,61,0.14)}
+.auth-gate .gate-msg{margin-top:10px;color:rgba(15,23,42,0.56);font-weight:800;font-size:12.5px}
+
 .dash{
   min-height:100vh;
   display:grid;

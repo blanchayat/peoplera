@@ -164,7 +164,7 @@ async function initSupabase(){
   const res = await fetch('/api/public-config');
   const data = await readJsonSafe(res);
   if (!res.ok) throw new Error((data && data.error) ? data.error : 'Failed to load config');
-  if (!data.supabaseUrl || !data.supabaseAnonKey) throw new Error('Supabase env not configured');
+  if (!data.supabaseUrl || !data.supabaseAnonKey) throw new Error('CONFIG_MISSING');
   supabase = window.supabase.createClient(data.supabaseUrl, data.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
   });
@@ -617,15 +617,25 @@ function wireUi(){
 async function boot(){
   wireUi();
 
+  // Default gate state: show a calm loading message and avoid surfacing config details.
+  const gateMsg = document.getElementById('gateMsg');
+  if (gateMsg) gateMsg.textContent = 'Loading…';
+
   try{
     await initSupabase();
     renderAuthState();
     await checkStatus();
   }catch(err){
-    // If config is missing, show gate with message.
+    // Avoid showing raw init/config errors in UI.
+    console.error('Dashboard init failed:', err);
     document.getElementById('gate').hidden = false;
     document.getElementById('app').hidden = true;
-    document.getElementById('gateMsg').textContent = err && err.message ? err.message : 'Initialization failed';
+    const msg = (err && err.message) ? String(err.message) : '';
+    if (msg === 'CONFIG_MISSING'){
+      document.getElementById('gateMsg').textContent = 'Loading…';
+    }else{
+      document.getElementById('gateMsg').textContent = 'Loading…';
+    }
   }
 }
 
