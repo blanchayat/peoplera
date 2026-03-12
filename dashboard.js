@@ -141,6 +141,48 @@ async function apiFetch(path, { method='POST', body=null, accessToken=null } = {
   return data;
 }
 
+async function loadHistory() {
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return;
+
+    // Load last hire result
+    const { data: hireData } = await supabase
+      .from('hire_results')
+      .select('*')
+      .eq('user_id', s.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (hireData && hireData[0]) {
+      renderHireDetail(hireData[0].candidates);
+      document.getElementById('statCandidates').textContent = String(hireData[0].candidates.length);
+    }
+
+    // Load last board result
+    const { data: boardData } = await supabase
+      .from('board_results')
+      .select('*')
+      .eq('user_id', s.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (boardData && boardData[0]) {
+      renderBoardPlan(boardData[0].onboarding_plan);
+    }
+
+    // Load last pulse result
+    const { data: pulseData } = await supabase
+      .from('pulse_results')
+      .select('*')
+      .eq('user_id', s.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if (pulseData && pulseData[0]) {
+      renderPulse(pulseData[0].employees);
+      document.getElementById('statAtRisk').textContent = String(pulseData[0].at_risk_count || 0);
+    }
+  } catch(e) { console.warn('Load history failed', e); }
+}
+
 function addFeed(type, message){
   const feed = document.getElementById('feed');
   const el = document.createElement('div');
@@ -318,6 +360,20 @@ async function runHire(){
     renderHireTable(candidates);
     renderHireDetail(candidates);
 
+    // Save hire result to Supabase
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s) {
+        const jobDesc = jobDescription;
+        const result = data;
+        await supabase.from('hire_results').insert({
+          user_id: s.user.id,
+          job_description: jobDesc,
+          candidates: result.candidates
+        });
+      }
+    } catch(e) { console.warn('Save hire result failed', e); }
+
     // stats + feed
     document.getElementById('statCandidates').textContent = String(candidates.length);
     addFeed('Hire', `Analyzed ${candidates.length} candidate(s) against the job description.`);
@@ -400,6 +456,23 @@ async function runBoard(){
 
     boardLast = data;
     renderBoardPlan(plan);
+
+    // Save board result to Supabase
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s) {
+        const employeeName = name;
+        const employeeRole = role;
+        const result = data;
+        await supabase.from('board_results').insert({
+          user_id: s.user.id,
+          employee_name: employeeName,
+          employee_role: employeeRole,
+          onboarding_plan: result.onboardingPlan
+        });
+      }
+    } catch(e) { console.warn('Save board result failed', e); }
+
     document.getElementById('btnDownloadBoard').disabled = false;
 
     document.getElementById('statEmployees').textContent = String(Number(document.getElementById('statEmployees').textContent || 0) + 1);
@@ -551,6 +624,20 @@ async function runPulse(){
     pulseLast = data;
     renderPulse(data.employees);
 
+    // Save pulse result to Supabase
+    try {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (s) {
+        const result = data;
+        const atRisk = result.employees.filter(e => ['high','critical'].includes(String(e.riskLevel||'').toLowerCase())).length;
+        await supabase.from('pulse_results').insert({
+          user_id: s.user.id,
+          employees: result.employees,
+          at_risk_count: atRisk
+        });
+      }
+    } catch(e) { console.warn('Save pulse result failed', e); }
+
     addFeed('Pulse', `Generated weekly burnout report for ${data.employees.length} employee(s).`);
 
     msg.textContent = 'Done.';
@@ -635,6 +722,7 @@ async function boot(){
   try{
     await initSupabase();
     renderAuthState();
+    await loadHistory();
     await checkStatus();
   }catch(err){
     // Avoid showing raw init/config errors in UI.
