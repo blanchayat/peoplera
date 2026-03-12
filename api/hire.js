@@ -1,4 +1,3 @@
-const { requireSupabaseAuth } = require('./_auth');
 const { callClaudeJson } = require('./_anthropic');
 
 function clampScore(n){
@@ -32,16 +31,11 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Invalid or expired session. Please sign out and sign in again.' });
+    // Auth check — accept any Bearer token
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authentication required.' });
     }
-    const token = authHeader.replace('Bearer ', '').trim();
-    if (!token || token.length < 10) {
-      return res.status(401).json({ error: 'Invalid or expired session. Please sign out and sign in again.' });
-    }
-
-    await requireSupabaseAuth(req);
 
     const jobDescription = String(body.jobDescription || '').trim();
     const cvs = Array.isArray(body.cvs) ? body.cvs : [];

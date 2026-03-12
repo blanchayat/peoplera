@@ -227,7 +227,7 @@ async function checkStatus(){
   sEl.textContent = session ? 'Connected (session active)' : 'Not signed in';
 
   try{
-    const data = await apiFetch('/api/hire', { method:'POST', body:{ ping:true }, accessToken: session?.access_token });
+    const data = await apiFetch('/api/hire', { method:'POST', body:{ ping:true }, accessToken: (await supabase.auth.getSession()).data?.session?.access_token });
     aEl.textContent = data && data.ok ? 'Connected' : 'Connected';
   }catch(err){
     aEl.textContent = (err && err.message) ? err.message : 'AI endpoint unavailable';
@@ -304,7 +304,7 @@ async function runHire(){
 
     const data = await apiFetch('/api/hire', {
       method:'POST',
-      accessToken: session?.access_token,
+      accessToken: (await supabase.auth.getSession()).data?.session?.access_token,
       body: {
         jobDescription,
         cvs
@@ -388,7 +388,7 @@ async function runBoard(){
 
     const data = await apiFetch('/api/board', {
       method:'POST',
-      accessToken: session?.access_token,
+      accessToken: (await supabase.auth.getSession()).data?.session?.access_token,
       body: {
         employee: { name, role, department, startDate },
         handbookText
@@ -543,7 +543,7 @@ async function runPulse(){
 
     const data = await apiFetch('/api/pulse', {
       method:'POST',
-      accessToken: session?.access_token,
+      accessToken: (await supabase.auth.getSession()).data?.session?.access_token,
       body: { employees: employeesInput }
     });
 
