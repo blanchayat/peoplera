@@ -1025,60 +1025,70 @@ function initDrop(dropEl, inputEl, listEl){
 }
 
 function wireUi(){
-  document.querySelectorAll('.nav-item[data-tab]').forEach(btn=>{
-    btn.addEventListener('click',()=>switchTab(btn.getAttribute('data-tab')));
-  });
+  try {
+    document.querySelectorAll('.nav-item[data-tab]').forEach(btn=>{
+      btn?.addEventListener?.('click',()=>switchTab(btn.getAttribute('data-tab')));
+    });
 
-  document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
-    const b = document.getElementById('btnLogin');
-    const reset = setBusy(b, 'Redirecting…');
-    document.getElementById('gateMsg').textContent = '';
-    try{
-      await loginGoogle();
-    }catch(err){
-      document.getElementById('gateMsg').textContent = err && err.message ? err.message : 'Login failed';
-      reset();
-    }
-  });
+    const gateMsg = document.getElementById('gateMsg');
 
-  document.getElementById('btnLogout')?.addEventListener('click', async ()=>{
-    const b = document.getElementById('btnLogout');
-    const reset = setBusy(b, 'Signing out…');
-    try{ await logout(); }
-    finally{ reset(); }
-  });
+    const btnLogin = document.getElementById('btnLogin');
+    btnLogin?.addEventListener('click', async ()=>{
+      if (!btnLogin) return;
+      const reset = setBusy(btnLogin, 'Redirecting…');
+      if (gateMsg) gateMsg.textContent = '';
+      try{
+        await loginGoogle();
+      }catch(err){
+        if (gateMsg) gateMsg.textContent = err && err.message ? err.message : 'Login failed';
+        reset();
+      }
+    });
 
-  document.getElementById('btnExportHire')?.addEventListener('click', ()=>{
-    if (!hireCsvRows.length) return;
-    download('peoplera-hire-candidates.csv', toCsv(hireCsvRows), 'text/csv');
-  });
+    const btnLogout = document.getElementById('btnLogout');
+    btnLogout?.addEventListener('click', async ()=>{
+      if (!btnLogout) return;
+      const reset = setBusy(btnLogout, 'Signing out…');
+      try{ await logout(); }
+      finally{ reset(); }
+    });
 
-  document.getElementById('btnDownloadBoard')?.addEventListener('click', ()=>{
-    try{
-      downloadBoardPdf(boardLast);
-    }catch(err){
-      const txt = generatePlanPdfText(boardLast);
-      if (txt) download('peoplera-onboarding-plan.txt', txt, 'text/plain');
-      else alert(err && err.message ? err.message : 'Download failed');
-    }
-  });
+    document.getElementById('btnExportHire')?.addEventListener('click', ()=>{
+      if (!hireCsvRows.length) return;
+      download('peoplera-hire-candidates.csv', toCsv(hireCsvRows), 'text/csv');
+    });
 
-  document.getElementById('cvFiles')?.addEventListener('change', function(){
-    const names = Array.from(this.files).map(f=>f.name).join(', ');
-    document.getElementById('cvList').textContent = names ? '✓ ' + names : '';
-  });
-  document.getElementById('handbookFile')?.addEventListener('change', function(){
-    document.getElementById('handbookName').textContent = this.files[0] ? '✓ ' + this.files[0].name : '';
-  });
-  document.getElementById('pulseFile')?.addEventListener('change', function(){
-    document.getElementById('pulseName').textContent = this.files[0] ? '✓ ' + this.files[0].name : '';
-  });
+    document.getElementById('btnDownloadBoard')?.addEventListener('click', ()=>{
+      try{
+        downloadBoardPdf(boardLast);
+      }catch(err){
+        const txt = generatePlanPdfText(boardLast);
+        if (txt) download('peoplera-onboarding-plan.txt', txt, 'text/plain');
+        else alert(err && err.message ? err.message : 'Download failed');
+      }
+    });
 
-  const cvDrop = document.getElementById('cvDrop');
-  if (cvDrop) initDrop(cvDrop, document.getElementById('cvFiles'), document.getElementById('cvList'));
+    document.getElementById('cvFiles')?.addEventListener('change', function(){
+      const names = Array.from(this.files || []).map(f=>f.name).join(', ');
+      document.getElementById('cvList')?.textContent = names ? '✓ ' + names : '';
+    });
+    document.getElementById('handbookFile')?.addEventListener('change', function(){
+      document.getElementById('handbookName')?.textContent = this.files?.[0] ? '✓ ' + this.files[0].name : '';
+    });
+    document.getElementById('pulseFile')?.addEventListener('change', function(){
+      document.getElementById('pulseName')?.textContent = this.files?.[0] ? '✓ ' + this.files[0].name : '';
+    });
 
-  // Initialize feed with a couple of realistic events
-  addFeed('Security', 'Session-protected dashboard initialized.');
+    const cvDrop = document.getElementById('cvDrop');
+    const cvFiles = document.getElementById('cvFiles');
+    const cvList = document.getElementById('cvList');
+    if (cvDrop && cvFiles && cvList) initDrop(cvDrop, cvFiles, cvList);
+
+    // Initialize feed with a couple of realistic events
+    addFeed('Security', 'Session-protected dashboard initialized.');
+  } catch(e) {
+    console.warn('wireUi error:', e);
+  }
 }
 
 async function boot(){
