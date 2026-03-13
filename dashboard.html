@@ -64,6 +64,12 @@
         <button class="nav-item" data-tab="board">Board</button>
         <button class="nav-item" data-tab="pulse">Pulse</button>
         <button class="nav-item" data-tab="settings">Settings</button>
+        <div class="nav-item" data-section="interview" onclick="showSection('interview')">
+          <span>🎤 Interview</span>
+        </div>
+        <div class="nav-item" data-section="roi" onclick="showSection('roi')">
+          <span>📊 ROI Calculator</span>
+        </div>
       </div>
 
       <div class="panel" style="margin-top:14px;padding:12px;border-radius:16px;background:rgba(255,255,255,.04)">
@@ -293,6 +299,86 @@
             </div>
           </div>
         </section>
+
+        <!-- INTERVIEW MODULE -->
+        <div class="module" id="mod-interview">
+          <div style="padding:0 24px">
+            <div class="topbar">
+              <h1>AI Interview Planner</h1>
+              <div style="font-size:13px;color:#64748b;font-weight:700">Connected (session active)</div>
+            </div>
+
+            <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div>
+                <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
+                  <div style="font-size:11px;font-weight:900;color:#6366f1;letter-spacing:0.08em;margin-bottom:12px">👤 CANDIDATE NAME</div>
+                  <input id="interviewCandidateName" type="text" placeholder="e.g. Sarah Johnson" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
+                </div>
+
+                <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
+                  <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">📋 CANDIDATE WEAKNESSES</div>
+                  <textarea id="interviewWeaknesses" rows="4" placeholder="Paste candidate weaknesses from Hire analysis..." style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:10px;padding:14px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;resize:vertical;outline:none;box-sizing:border-box"></textarea>
+                </div>
+
+                <div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
+                  <div style="font-size:11px;font-weight:900;color:#00b894;letter-spacing:0.08em;margin-bottom:8px">💼 JOB DESCRIPTION</div>
+                  <textarea id="interviewJobDesc" rows="4" placeholder="Paste the job description..." style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(0,184,148,0.2);border-radius:10px;padding:14px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;resize:vertical;outline:none;box-sizing:border-box"></textarea>
+                </div>
+
+                <button onclick="runInterview()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 24px;font-family:'Syne',system-ui;font-weight:900;font-size:14px;color:#0f172a;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,107,0.3)">🎤 Generate interview questions</button>
+                <div id="interviewStatus" style="font-size:12px;color:#64748b;margin-top:8px"></div>
+              </div>
+
+              <div>
+                <div style="font-weight:900;font-size:15px;margin-bottom:14px">Interview questions</div>
+                <div id="interviewOut"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ROI MODULE -->
+        <div class="module" id="mod-roi">
+          <div style="padding:0 24px">
+            <div class="topbar">
+              <h1>ROI Calculator</h1>
+              <div style="font-size:13px;color:#64748b;font-weight:700">See what Peoplera saves you</div>
+            </div>
+
+            <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div>
+                <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:24px">
+                  <div style="font-size:11px;font-weight:900;color:#6366f1;letter-spacing:0.08em;margin-bottom:16px">📊 YOUR USAGE THIS MONTH</div>
+                  <div style="display:grid;gap:12px">
+                    <div>
+                      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Candidates analyzed</div>
+                      <input id="roiCandidates" type="number" value="10" min="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
+                    </div>
+                    <div>
+                      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Onboarding plans generated</div>
+                      <input id="roiPlans" type="number" value="3" min="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
+                    </div>
+                    <div>
+                      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Employees monitored (Pulse)</div>
+                      <input id="roiEmployees" type="number" value="20" min="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
+                    </div>
+                    <div>
+                      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Average employee salary ($/year)</div>
+                      <input id="roiSalary" type="number" value="60000" min="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
+                    </div>
+                    <div>
+                      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Your Peoplera plan cost ($/mo)</div>
+                      <input id="roiPlanCost" type="number" value="99" min="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
+                    </div>
+                  </div>
+                  <button onclick="runROI()" style="margin-top:16px;background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 24px;font-family:'Syne',system-ui;font-weight:900;font-size:14px;color:#0f172a;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,107,0.3);width:100%">Calculate my ROI →</button>
+                </div>
+              </div>
+
+              <div id="roiOut"></div>
+            </div>
+          </div>
+        </div>
 
       </div>
     </main>

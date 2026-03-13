@@ -301,11 +301,30 @@ function switchTab(tab){
   document.querySelectorAll('.nav-item').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-tab') === tab);
   });
+  document.querySelectorAll('.nav-item[data-section]').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.module').forEach(m=>m.classList.remove('on'));
   const t = document.getElementById('tab-' + tab);
   if (t) t.classList.add('on');
   const titleMap = { overview:'Overview', hire:'Hire', board:'Board', pulse:'Pulse', settings:'Settings' };
   document.getElementById('pageTitle').textContent = titleMap[tab] || 'Dashboard';
+}
+
+function showSection(section){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  const nav = document.querySelector(`.nav-item[data-section="${section}"]`);
+  if (nav) nav.classList.add('active');
+
+  if (section === 'interview') {
+    document.querySelectorAll('.module').forEach(m => m.classList.remove('on'));
+    document.getElementById('mod-interview')?.classList.add('on');
+    document.getElementById('pageTitle').textContent = 'Interview';
+  }
+  if (section === 'roi') {
+    document.querySelectorAll('.module').forEach(m => m.classList.remove('on'));
+    document.getElementById('mod-roi')?.classList.add('on');
+    document.getElementById('pageTitle').textContent = 'ROI Calculator';
+    runROI();
+  }
 }
 
 function riskClass(level){
@@ -380,6 +399,149 @@ async function checkStatus(){
   }catch(err){
     aEl.textContent = (err && err.message) ? err.message : 'AI endpoint unavailable';
   }
+}
+
+// ── INTERVIEW ──────────────────────────────────────────
+async function runInterview(){
+  const name = document.getElementById('interviewCandidateName')?.value?.trim();
+  const weaknesses = document.getElementById('interviewWeaknesses')?.value?.trim();
+  const jobDesc = document.getElementById('interviewJobDesc')?.value?.trim();
+  const status = document.getElementById('interviewStatus');
+  const out = document.getElementById('interviewOut');
+
+  if (!name || !jobDesc) { status.textContent = 'Please fill in candidate name and job description.'; return; }
+
+  status.textContent = 'Generating questions…';
+  out.innerHTML = '<div style="color:#64748b;font-size:13px">Analyzing candidate profile…</div>';
+
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    const token = s?.access_token || '';
+
+    const res = await fetch('/api/interview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ candidate: { name, weaknesses }, jobDescription: jobDesc })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed');
+
+    const questions = data.questions || [];
+    const catColors = { Behavioral:'#6366f1', Technical:'#00b894', Culture:'#FFD93D', Situational:'#FF6B6B' };
+
+    out.innerHTML = questions.map((q, i) => {
+      const color = catColors[q.category] || '#6366f1';
+      return `
+        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:16px;margin-bottom:10px;border-left:3px solid ${color}">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <span style="background:${color}18;border:1px solid ${color}33;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:900;color:${color}">${escapeHtml(q.category)}</span>
+            <span style="font-size:11px;color:#94a3b8;font-weight:700">Q${i+1}</span>
+          </div>
+          <div style="font-weight:700;font-size:13px;color:#0f172a;line-height:1.5;margin-bottom:6px">${escapeHtml(q.question)}</div>
+          <div style="font-size:11px;color:#64748b;line-height:1.5"><span style="font-weight:800">Listen for:</span> ${escapeHtml(q.probes || '')}</div>
+        </div>
+      `;
+    }).join('');
+
+    status.textContent = `${questions.length} questions generated.`;
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+    out.innerHTML = '';
+  }
+}
+
+// ── ROI CALCULATOR ─────────────────────────────────────
+async function runROI(){
+  const candidatesAnalyzed = Number(document.getElementById('roiCandidates')?.value || 0);
+  const onboardingPlansGenerated = Number(document.getElementById('roiPlans')?.value || 0);
+  const employeesMonitored = Number(document.getElementById('roiEmployees')?.value || 0);
+  const avgSalary = Number(document.getElementById('roiSalary')?.value || 60000);
+  const planCost = Number(document.getElementById('roiPlanCost')?.value || 99);
+  const out = document.getElementById('roiOut');
+
+  out.innerHTML = '<div style="color:#64748b;font-size:13px">Calculating…</div>';
+
+  try {
+    const res = await fetch('/api/roi', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ candidatesAnalyzed, onboardingPlansGenerated, employeesMonitored, planCost, avgSalary })
+    });
+    const d = await res.json();
+
+    const fmt = (n) => '$' + Number(n || 0).toLocaleString();
+    const roiColor = d.roi >= 100 ? '#00b894' : d.roi >= 0 ? '#FFD93D' : '#FF6B6B';
+
+    out.innerHTML = `
+      <div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:16px;padding:24px;margin-bottom:12px;text-align:center">
+        <div style="font-size:11px;font-weight:900;color:#00b894;letter-spacing:0.08em;margin-bottom:8px">ESTIMATED MONTHLY ROI</div>
+        <div style="font-family:'Syne',system-ui;font-weight:900;font-size:52px;color:${roiColor};line-height:1">${d.roi}%</div>
+        <div style="font-size:13px;color:#64748b;margin-top:4px">Total value: ${fmt(d.totalValue)} vs ${fmt(planCost)} plan cost</div>
+      </div>
+
+      <div style="display:grid;gap:8px">
+        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;color:#334155">🎯 Bad hire cost prevented</div>
+          <div style="font-weight:900;font-size:14px;color:#00b894">${fmt(d.badHireCostPrevented)}</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;color:#334155">📋 Onboarding time saved</div>
+          <div style="font-weight:900;font-size:14px;color:#6366f1">${fmt(d.onboardingTimeSaved)}</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;color:#334155">🔥 Burnout prevention value</div>
+          <div style="font-weight:900;font-size:14px;color:#FF6B6B">${fmt(d.burnoutPreventionValue)}</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center">
+          <div style="font-size:13px;color:#334155">⏱ HR time saved</div>
+          <div style="font-weight:900;font-size:14px;color:#FFD93D">${fmt(d.hrTimeSaved)}</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:12px;color:#64748b">Share this with your CFO 👇</div>
+        <div style="font-family:'Syne',system-ui;font-weight:900;font-size:15px;color:#0f172a;margin-top:6px">
+          "Peoplera delivers ${fmt(d.totalValue)}/mo in value for just ${fmt(planCost)}/mo"
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    out.innerHTML = '<div style="color:#FF6B6B;font-size:13px">Error: ' + e.message + '</div>';
+  }
+}
+
+// ── EMAIL WEEKLY REPORT ────────────────────────────────
+async function sendWeeklyReport(userEmail, pulseEmployees, atRiskCount){
+  if (!userEmail || !pulseEmployees) return;
+  const criticalList = pulseEmployees
+    .filter(e => ['high','critical'].includes(String(e.riskLevel||'').toLowerCase()))
+    .map(e => `<li><strong>${escapeHtml(e.name)}</strong> — Score: ${escapeHtml(e.burnoutScore)}/100 (${escapeHtml(e.riskLevel)})</li>`)
+    .join('');
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);padding:24px;border-radius:12px 12px 0 0">
+        <h1 style="color:#0f172a;margin:0;font-size:22px">📊 Peoplera Weekly Pulse Report</h1>
+      </div>
+      <div style="background:#f8fafc;padding:24px;border-radius:0 0 12px 12px">
+        <p style="color:#334155">Your weekly burnout risk summary is ready.</p>
+        <div style="background:#fff;border-radius:8px;padding:16px;margin:16px 0">
+          <div style="font-size:32px;font-weight:900;color:${atRiskCount > 0 ? '#FF6B6B' : '#00b894'}">${atRiskCount}</div>
+          <div style="color:#64748b;font-size:13px">employees at high or critical risk</div>
+        </div>
+        ${criticalList ? `<div style="background:#fff;border-left:3px solid #FF6B6B;padding:16px;border-radius:8px"><h3 style="margin:0 0 10px;color:#FF6B6B">⚠ Needs attention</h3><ul style="color:#334155;padding-left:20px">${criticalList}</ul></div>` : '<p style="color:#00b894;font-weight:700">✓ No critical risks detected this week.</p>'}
+        <p style="color:#94a3b8;font-size:12px;margin-top:24px">Login to your Peoplera dashboard for full details.</p>
+      </div>
+    </div>
+  `;
+
+  try {
+    await fetch('/api/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: userEmail, subject: `Peoplera Weekly Report — ${atRiskCount} at-risk employee${atRiskCount !== 1 ? 's' : ''}`, html })
+    });
+  } catch(e) { console.warn('Email send failed', e); }
 }
 
 // Hire
@@ -821,6 +983,12 @@ async function runPulse(){
           employees: result.employees,
           at_risk_count: atRisk
         });
+
+        // Send weekly report email
+        const { data: { session: emailSession } } = await supabase.auth.getSession();
+        if (emailSession?.user?.email) {
+          await sendWeeklyReport(emailSession.user.email, result.employees, atRisk);
+        }
       }
     } catch(e) { console.warn('Save pulse result failed', e); }
 
@@ -850,7 +1018,7 @@ function initDrop(dropEl, inputEl, listEl){
 }
 
 function wireUi(){
-  document.querySelectorAll('.nav-item').forEach(btn=>{
+  document.querySelectorAll('.nav-item[data-tab]').forEach(btn=>{
     btn.addEventListener('click',()=>switchTab(btn.getAttribute('data-tab')));
   });
 
@@ -938,6 +1106,9 @@ window.runPulse = runPulse;
 window.clearHire = clearHire;
 window.clearBoard = clearBoard;
 window.clearPulse = clearPulse;
+window.showSection = showSection;
+window.runInterview = runInterview;
+window.runROI = runROI;
 window.loadHistoryItem = loadHistoryItem;
 window.showEmployeeCard = showEmployeeCard;
 window.closeEmployeeCard = closeEmployeeCard;
