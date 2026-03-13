@@ -1070,13 +1070,16 @@ function wireUi(){
 
     document.getElementById('cvFiles')?.addEventListener('change', function(){
       const names = Array.from(this.files || []).map(f=>f.name).join(', ');
-      document.getElementById('cvList')?.textContent = names ? '✓ ' + names : '';
+      const _el_cvList = document.getElementById('cvList');
+      if (_el_cvList) _el_cvList.textContent = names ? '✓ ' + names : '';
     });
     document.getElementById('handbookFile')?.addEventListener('change', function(){
-      document.getElementById('handbookName')?.textContent = this.files?.[0] ? '✓ ' + this.files[0].name : '';
+      const _el_handbookName = document.getElementById('handbookName');
+      if (_el_handbookName) _el_handbookName.textContent = this.files?.[0] ? '✓ ' + this.files[0].name : '';
     });
     document.getElementById('pulseFile')?.addEventListener('change', function(){
-      document.getElementById('pulseName')?.textContent = this.files?.[0] ? '✓ ' + this.files[0].name : '';
+      const _el_pulseName = document.getElementById('pulseName');
+      if (_el_pulseName) _el_pulseName.textContent = this.files?.[0] ? '✓ ' + this.files[0].name : '';
     });
 
     const cvDrop = document.getElementById('cvDrop');
