@@ -145,7 +145,13 @@
                 <div id="cvList" style="margin-top:10px;font-size:12px;color:#6366f1;font-weight:700"></div>
               </div>
 
-              <button class="btn btn-primary" id="btnHire">Analyze candidates</button>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+                <button id="btnHire" onclick="runHire()">Analyze candidates</button>
+                <button onclick="clearHire()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
+              </div>
+
+              <!-- Hire history -->
+              <div id="hireHistory" style="margin-top:20px"></div>
               <div id="hireMsg" class="small" style="color:var(--muted)"></div>
             </div>
 
@@ -215,7 +221,13 @@
                 <div id="handbookName" style="margin-top:8px;font-size:12px;color:#8b5cf6;font-weight:700"></div>
               </div>
 
-              <button class="btn btn-primary" id="btnBoard">Generate onboarding plan</button>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+                <button id="btnBoard" onclick="runBoard()">Generate onboarding plan</button>
+                <button onclick="clearBoard()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
+              </div>
+
+              <!-- Board history -->
+              <div id="boardHistory" style="margin-top:20px"></div>
               <div id="boardMsg" class="small" style="color:var(--muted)"></div>
             </div>
 
@@ -259,7 +271,13 @@
                 <div id="pulseName" style="margin-top:8px;font-size:12px;color:#FF6B6B;font-weight:700"></div>
               </div>
 
-              <button class="btn btn-primary" id="btnPulse">Analyze burnout risk</button>
+              <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+                <button id="btnPulse" onclick="runPulse()">Analyze burnout risk</button>
+                <button onclick="clearPulse()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
+              </div>
+
+              <!-- Pulse history -->
+              <div id="pulseHistory" style="margin-top:20px"></div>
               <div id="pulseMsg" class="small" style="color:var(--muted)"></div>
             </div>
 

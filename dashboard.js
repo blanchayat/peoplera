@@ -141,6 +141,61 @@ async function apiFetch(path, { method='POST', body=null, accessToken=null } = {
   return data;
 }
 
+function renderHistory(containerId, items, type) {
+  const el = document.getElementById(containerId);
+  if (!el || !items || items.length === 0) return;
+  
+  const colorMap = { hire: '#6366f1', board: '#00b894', pulse: '#FF6B6B' };
+  const color = colorMap[type];
+
+  window.__historyCache = window.__historyCache || {};
+  window.__historyCache[type] = items;
+  
+  el.innerHTML = `
+    <div style="border-top:1px solid rgba(0,0,0,0.08);padding-top:16px;margin-top:8px">
+      <div style="font-size:11px;font-weight:900;color:${color};letter-spacing:0.08em;margin-bottom:10px">🕐 RECENT ANALYSES</div>
+      <div style="display:grid;gap:8px">
+        ${items.map((item, idx) => {
+          const date = new Date(item.created_at).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+          let preview = '';
+          if (type === 'hire') {
+            const count = (item.candidates || []).length;
+            const top = item.candidates?.[0];
+            preview = `${count} candidate${count>1?'s':''} analyzed${top ? ` · Top: ${top.name} (${top.matchScore}/100)` : ''}`;
+          } else if (type === 'board') {
+            preview = `${item.employee_name || 'Employee'} · ${item.employee_role || 'Role'}`;
+          } else if (type === 'pulse') {
+            const at = item.at_risk_count || 0;
+            const total = (item.employees || []).length;
+            preview = `${total} employees · ${at} at risk`;
+          }
+          return `
+            <div onclick="loadHistoryItem('${type}', ${idx})" 
+              style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:10px;padding:10px 14px;cursor:pointer;transition:all 0.2s"
+              onmouseover="this.style.background='rgba(${type==='hire'?'99,102,241':type==='board'?'0,184,148':'255,107,107'},0.06)';this.style.borderColor='${color}44'"
+              onmouseout="this.style.background='rgba(0,0,0,0.02)';this.style.borderColor='rgba(0,0,0,0.07)'">
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#0f172a">${preview}</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:2px">${date}</div>
+              </div>
+              <div style="font-size:10px;font-weight:800;color:${color};background:${color}15;border-radius:6px;padding:3px 8px">Load →</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function loadHistoryItem(type, idx) {
+  const items = window.__historyCache?.[type] || [];
+  const item = items[idx];
+  if (!item) return;
+  if (type === 'hire') renderHireDetail(item.candidates || []);
+  else if (type === 'board') renderBoardPlan(item.onboarding_plan);
+  else if (type === 'pulse') renderPulse(item.employees || []);
+}
+
 async function loadHistory() {
   try {
     const { data: { session: s } } = await supabase.auth.getSession();
@@ -152,11 +207,12 @@ async function loadHistory() {
       .select('*')
       .eq('user_id', s.user.id)
       .order('created_at', { ascending: false })
-      .limit(1);
+      .limit(5);
     if (hireData && hireData[0]) {
       renderHireDetail(hireData[0].candidates);
       document.getElementById('statCandidates').textContent = String(hireData[0].candidates.length);
     }
+    if (hireData) renderHistory('hireHistory', hireData, 'hire');
 
     // Load last board result
     const { data: boardData } = await supabase
@@ -164,10 +220,11 @@ async function loadHistory() {
       .select('*')
       .eq('user_id', s.user.id)
       .order('created_at', { ascending: false })
-      .limit(1);
+      .limit(5);
     if (boardData && boardData[0]) {
       renderBoardPlan(boardData[0].onboarding_plan);
     }
+    if (boardData) renderHistory('boardHistory', boardData, 'board');
 
     // Load last pulse result
     const { data: pulseData } = await supabase
@@ -175,12 +232,60 @@ async function loadHistory() {
       .select('*')
       .eq('user_id', s.user.id)
       .order('created_at', { ascending: false })
-      .limit(1);
+      .limit(5);
     if (pulseData && pulseData[0]) {
       renderPulse(pulseData[0].employees);
       document.getElementById('statAtRisk').textContent = String(pulseData[0].at_risk_count || 0);
     }
+    if (pulseData) renderHistory('pulseHistory', pulseData, 'pulse');
   } catch(e) { console.warn('Load history failed', e); }
+}
+
+function clearHire(){
+  const jobDesc = document.getElementById('jobDesc');
+  if (jobDesc) jobDesc.value = '';
+  const cvFiles = document.getElementById('cvFiles');
+  if (cvFiles) cvFiles.value = '';
+  const cvList = document.getElementById('cvList');
+  if (cvList) cvList.textContent = '';
+  const hireMsg = document.getElementById('hireMsg');
+  if (hireMsg) hireMsg.textContent = '';
+  const hireDetail = document.getElementById('hireDetail');
+  if (hireDetail) hireDetail.innerHTML = '';
+  const table = document.getElementById('hireTable');
+  if (table) table.hidden = true;
+  const tbody = table ? table.querySelector('tbody') : null;
+  if (tbody) tbody.innerHTML = '';
+  const exportBtn = document.getElementById('btnExportHire');
+  if (exportBtn) exportBtn.disabled = true;
+}
+
+function clearBoard(){
+  ['empName','empRole','empDept','empStart'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const handbookFile = document.getElementById('handbookFile');
+  if (handbookFile) handbookFile.value = '';
+  const handbookName = document.getElementById('handbookName');
+  if (handbookName) handbookName.textContent = '';
+  const boardMsg = document.getElementById('boardMsg');
+  if (boardMsg) boardMsg.textContent = '';
+  const out = document.getElementById('boardOut');
+  if (out) out.innerHTML = '';
+  const dl = document.getElementById('btnDownloadBoard');
+  if (dl) dl.disabled = true;
+}
+
+function clearPulse(){
+  const pulseFile = document.getElementById('pulseFile');
+  if (pulseFile) pulseFile.value = '';
+  const pulseName = document.getElementById('pulseName');
+  if (pulseName) pulseName.textContent = '';
+  const pulseMsg = document.getElementById('pulseMsg');
+  if (pulseMsg) pulseMsg.textContent = '';
+  const out = document.getElementById('pulseOut');
+  if (out) out.innerHTML = '';
 }
 
 function addFeed(type, message){
@@ -784,13 +889,11 @@ function wireUi(){
     finally{ reset(); }
   });
 
-  document.getElementById('btnHire').addEventListener('click', runHire);
   document.getElementById('btnExportHire').addEventListener('click', ()=>{
     if (!hireCsvRows.length) return;
     download('peoplera-hire-candidates.csv', toCsv(hireCsvRows), 'text/csv');
   });
 
-  document.getElementById('btnBoard').addEventListener('click', runBoard);
   document.getElementById('btnDownloadBoard').addEventListener('click', ()=>{
     try{
       downloadBoardPdf(boardLast);
@@ -800,8 +903,6 @@ function wireUi(){
       else alert(err && err.message ? err.message : 'Download failed');
     }
   });
-
-  document.getElementById('btnPulse').addEventListener('click', runPulse);
 
   document.getElementById('cvFiles')?.addEventListener('change', function(){
     const names = Array.from(this.files).map(f=>f.name).join(', ');
@@ -846,5 +947,15 @@ async function boot(){
     }
   }
 }
+
+window.runHire = runHire;
+window.runBoard = runBoard;
+window.runPulse = runPulse;
+window.clearHire = clearHire;
+window.clearBoard = clearBoard;
+window.clearPulse = clearPulse;
+window.loadHistoryItem = loadHistoryItem;
+window.showEmployeeCard = showEmployeeCard;
+window.closeEmployeeCard = closeEmployeeCard;
 
 boot();
