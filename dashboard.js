@@ -848,6 +848,91 @@ function downloadBoardPdf(data){
 // Pulse
 let pulseLast = null;
 
+// ── PULSE MANUAL ENTRY ─────────────────────────────────
+let pulseEmployees = [];
+
+function switchPulseTab(tab) {
+  const manual = document.getElementById('pulseManualPanel');
+  const csv = document.getElementById('pulseCsvPanel');
+  const btnManual = document.getElementById('pulseTabManual');
+  const btnCsv = document.getElementById('pulseTabCsv');
+  if (!manual || !csv || !btnManual || !btnCsv) return;
+
+  if (tab === 'manual') {
+    manual.style.display = 'block';
+    csv.style.display = 'none';
+    btnManual.style.background = 'rgba(255,107,107,0.1)';
+    btnManual.style.borderColor = '#FF6B6B';
+    btnManual.style.color = '#FF6B6B';
+    btnCsv.style.background = 'transparent';
+    btnCsv.style.borderColor = 'rgba(0,0,0,0.1)';
+    btnCsv.style.color = '#64748b';
+  } else {
+    manual.style.display = 'none';
+    csv.style.display = 'block';
+    btnCsv.style.background = 'rgba(255,107,107,0.1)';
+    btnCsv.style.borderColor = '#FF6B6B';
+    btnCsv.style.color = '#FF6B6B';
+    btnManual.style.background = 'transparent';
+    btnManual.style.borderColor = 'rgba(0,0,0,0.1)';
+    btnManual.style.color = '#64748b';
+  }
+}
+
+function addPulseEmployee() {
+  const idx = pulseEmployees.length;
+  pulseEmployees.push({});
+  const list = document.getElementById('pulseEmployeeList');
+  if (!list) return;
+
+  const card = document.createElement('div');
+  card.id = `pulseEmp_${idx}`;
+  card.style.cssText = 'background:rgba(255,107,107,0.04);border:1px solid rgba(255,107,107,0.15);border-radius:12px;padding:16px;position:relative';
+  card.innerHTML = `
+    <button onclick="removePulseEmployee(${idx})" style="position:absolute;top:10px;right:10px;background:none;border:none;color:#FF6B6B;font-size:16px;cursor:pointer;font-weight:900">✕</button>
+    <div style="font-size:11px;font-weight:900;color:#FF6B6B;margin-bottom:10px;letter-spacing:0.05em">EMPLOYEE ${idx + 1}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Full name *</div>
+        <input data-idx="${idx}" data-field="name" placeholder="e.g. Alex Kim" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
+      <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Weekly hours</div>
+        <input data-idx="${idx}" data-field="weeklyHours" type="number" min="0" max="168" placeholder="45" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
+      <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Weekend hours</div>
+        <input data-idx="${idx}" data-field="weekendHours" type="number" min="0" placeholder="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
+      <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">After-hours messages</div>
+        <input data-idx="${idx}" data-field="afterHoursMessages" type="number" min="0" placeholder="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
+      <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Sick days (last 3mo)</div>
+        <input data-idx="${idx}" data-field="sickDays" type="number" min="0" placeholder="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
+      <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Last vacation</div>
+        <input data-idx="${idx}" data-field="lastVacation" placeholder="e.g. 3 months ago" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
+    </div>
+  `;
+  list.appendChild(card);
+}
+
+function updatePulseEmp(input) {
+  const idx = Number(input.getAttribute('data-idx'));
+  const field = input.getAttribute('data-field');
+  if (!Number.isFinite(idx) || !field) return;
+  if (!pulseEmployees[idx]) pulseEmployees[idx] = {};
+  pulseEmployees[idx][field] = input.value;
+}
+
+function removePulseEmployee(idx) {
+  document.getElementById(`pulseEmp_${idx}`)?.remove();
+  pulseEmployees[idx] = null;
+}
+
+function downloadPulseTemplate() {
+  const csv = 'name,weekly hours,weekend hours,after-hours messages,sick days,last vacation\nAlex Kim,58,8,22,4,8 months ago\nSara Lee,42,2,6,1,2 months ago';
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'peoplera-pulse-template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function renderPulse(employees){
   const out = document.getElementById('pulseOut');
   const rows = employees.slice().sort((a,b)=>(b.burnoutScore||0)-(a.burnoutScore||0));
@@ -960,10 +1045,22 @@ async function runPulse(){
   const msg = document.getElementById('pulseMsg');
   msg.textContent = '';
   try{
-    const file = document.getElementById('pulseFile').files?.[0] || null;
-    if (!file) throw new Error('Upload a CSV');
-    const text = await file.text();
-    const rows = parseCsvText(text);
+    const isManual = document.getElementById('pulseManualPanel')?.style.display !== 'none';
+    let csvText = '';
+
+    if (isManual) {
+      const valid = pulseEmployees.filter(e => e && e.name);
+      if (valid.length === 0) throw new Error('Please add at least one employee.');
+      const header = 'name,weekly hours,weekend hours,after-hours messages,sick days,last vacation';
+      const rows = valid.map(e => `${e.name||''},${e.weeklyHours||0},${e.weekendHours||0},${e.afterHoursMessages||0},${e.sickDays||0},${e.lastVacation||'unknown'}`);
+      csvText = [header, ...rows].join('\n');
+    } else {
+      const file = document.getElementById('pulseFile')?.files?.[0] || null;
+      if (!file) throw new Error('Please upload a CSV file.');
+      csvText = await file.text();
+    }
+
+    const rows = parseCsvText(csvText);
     if (rows.length < 2) throw new Error('CSV must include a header row and at least one employee row');
 
     const employeesInput = mapEmployeeRows(rows);
@@ -1129,6 +1226,11 @@ window.clearPulse = clearPulse;
 window.showSection = showSection;
 window.runInterview = runInterview;
 window.runROI = runROI;
+window.switchPulseTab = switchPulseTab;
+window.addPulseEmployee = addPulseEmployee;
+window.updatePulseEmp = updatePulseEmp;
+window.removePulseEmployee = removePulseEmployee;
+window.downloadPulseTemplate = downloadPulseTemplate;
 window.loadHistoryItem = loadHistoryItem;
 window.showEmployeeCard = showEmployeeCard;
 window.closeEmployeeCard = closeEmployeeCard;

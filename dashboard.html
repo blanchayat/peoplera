@@ -240,26 +240,42 @@
 
           <div class="two-col" style="margin-top:12px">
             <div class="panel pad">
-              <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
-                <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">📊 EMPLOYEE DATA CSV</div>
-                <div style="font-size:12px;color:#64748b;margin-bottom:4px">Required columns:</div>
-                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">name</span>
-                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">weekly hours</span>
-                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">weekend hours</span>
-                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">after-hours messages</span>
-                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">sick days</span>
-                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">last vacation</span>
-                </div>
-                <label style="display:flex;align-items:center;gap:10px;background:rgba(255,107,107,0.08);border:2px dashed rgba(255,107,107,0.3);border-radius:10px;padding:16px;cursor:pointer">
-                  <span style="font-size:20px">📈</span>
-                  <div>
-                    <div style="font-weight:800;font-size:13px;color:#0f172a">Click to upload CSV file</div>
-                    <div style="font-size:11px;color:#94a3b8;margin-top:2px">CSV format only</div>
+              <!-- Tab switcher -->
+              <div style="display:flex;gap:8px;margin-bottom:16px">
+                <button id="pulseTabManual" onclick="switchPulseTab('manual')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #FF6B6B;background:rgba(255,107,107,0.1);font-weight:800;font-size:12px;color:#FF6B6B;cursor:pointer">👤 Add manually</button>
+                <button id="pulseTabCsv" onclick="switchPulseTab('csv')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid rgba(0,0,0,0.1);background:transparent;font-weight:800;font-size:12px;color:#64748b;cursor:pointer">📂 Upload CSV</button>
+              </div>
+
+              <!-- Manual entry panel -->
+              <div id="pulseManualPanel" style="margin-bottom:16px">
+                <div id="pulseEmployeeList" style="display:grid;gap:10px;margin-bottom:12px"></div>
+                <button onclick="addPulseEmployee()" style="width:100%;padding:10px;border-radius:10px;border:2px dashed rgba(255,107,107,0.3);background:transparent;font-weight:800;font-size:12px;color:#FF6B6B;cursor:pointer">+ Add employee</button>
+              </div>
+
+              <!-- CSV upload panel -->
+              <div id="pulseCsvPanel" style="display:none;margin-bottom:16px">
+                <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:16px;padding:24px">
+                  <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">📊 EMPLOYEE DATA CSV</div>
+                  <div style="font-size:12px;color:#64748b;margin-bottom:4px">Required columns:</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+                    <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">name</span>
+                    <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">weekly hours</span>
+                    <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">weekend hours</span>
+                    <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">after-hours messages</span>
+                    <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">sick days</span>
+                    <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">last vacation</span>
                   </div>
-                  <input type="file" id="pulseFile" accept=".csv" style="display:none">
-                </label>
-                <div id="pulseName" style="margin-top:8px;font-size:12px;color:#FF6B6B;font-weight:700"></div>
+                  <label style="display:flex;align-items:center;gap:10px;background:rgba(255,107,107,0.08);border:2px dashed rgba(255,107,107,0.3);border-radius:10px;padding:16px;cursor:pointer">
+                    <span style="font-size:20px">📈</span>
+                    <div>
+                      <div style="font-weight:800;font-size:13px;color:#0f172a">Click to upload CSV file</div>
+                      <div style="font-size:11px;color:#94a3b8;margin-top:2px">CSV format only</div>
+                    </div>
+                    <input type="file" id="pulseFile" accept=".csv" style="display:none">
+                  </label>
+                  <div id="pulseName" style="margin-top:8px;font-size:12px;color:#FF6B6B;font-weight:700"></div>
+                  <a id="pulseCsvTemplate" href="#" onclick="downloadPulseTemplate()" style="display:inline-block;margin-top:10px;font-size:12px;color:#6366f1;font-weight:700;text-decoration:underline">⬇ Download CSV template</a>
+                </div>
               </div>
 
               <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
