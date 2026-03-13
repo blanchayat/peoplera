@@ -703,6 +703,115 @@ async function runHire(){
 // Board
 let boardLast = null;
 
+function applyBoardTemplate(role, dept, context) {
+  const nameEl = document.getElementById('empName');
+  const roleEl = document.getElementById('empRole');
+  const deptEl = document.getElementById('empDept');
+  if (roleEl) roleEl.value = role;
+  if (deptEl) deptEl.value = dept;
+  if (nameEl && !nameEl.value) nameEl.focus();
+  window._boardTemplateContext = context;
+}
+
+function toggleHandbook(checkbox) {
+  const uploadArea = document.getElementById('handbookUploadArea');
+  if (uploadArea) uploadArea.style.display = checkbox.checked ? 'none' : 'block';
+}
+
+async function sendBoardToEmployee() {
+  const email = document.getElementById('empEmail')?.value?.trim();
+  const name = document.getElementById('empName')?.value?.trim();
+  const plan = window._lastBoardPlan;
+  if (!email) { alert('Please enter employee email first.'); return; }
+  if (!plan) { alert('Generate a plan first.'); return; }
+
+  const btn = document.getElementById('btnSendEmployee');
+  if (!btn) return;
+  const oldText = btn.textContent;
+  btn.textContent = 'Sending…';
+  btn.disabled = true;
+
+  const firstWeek = Array.isArray(plan.firstWeekChecklist) ? plan.firstWeekChecklist.map((t)=>`<li style="padding:4px 0">${escapeHtml(t)}</li>`).join('') : '';
+  const day30 = Array.isArray(plan.day30) ? plan.day30.map((t)=>`<li style="padding:4px 0">${escapeHtml(t)}</li>`).join('') : '';
+  const day60 = Array.isArray(plan.day60) ? plan.day60.map((t)=>`<li style="padding:4px 0">${escapeHtml(t)}</li>`).join('') : '';
+  const day90 = Array.isArray(plan.day90) ? plan.day90.map((t)=>`<li style="padding:4px 0">${escapeHtml(t)}</li>`).join('') : '';
+
+  const html = `
+    <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
+      <div style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);padding:24px;border-radius:12px 12px 0 0">
+        <h1 style="color:#0f172a;margin:0;font-size:20px">👋 Welcome to the team, ${escapeHtml(name || '')}!</h1>
+        <p style="color:#0f172a;margin:8px 0 0;opacity:0.8">Your personalized onboarding plan is ready.</p>
+      </div>
+      <div style="background:#f8fafc;padding:24px;border-radius:0 0 12px 12px">
+        <div style="background:#fff;border-left:3px solid #6366f1;border-radius:8px;padding:16px;margin-bottom:12px">
+          <h3 style="margin:0 0 10px;color:#6366f1">📋 First Week Checklist</h3>
+          <ul style="color:#334155;padding-left:20px">${firstWeek}</ul>
+        </div>
+        <div style="background:#fff;border-left:3px solid #00b894;border-radius:8px;padding:16px;margin-bottom:12px">
+          <h3 style="margin:0 0 10px;color:#00b894">◎ Day 30 Goals</h3>
+          <ul style="color:#334155;padding-left:20px">${day30}</ul>
+        </div>
+        <div style="background:#fff;border-left:3px solid #f59e0b;border-radius:8px;padding:16px;margin-bottom:12px">
+          <h3 style="margin:0 0 10px;color:#f59e0b">◎ Day 60 Goals</h3>
+          <ul style="color:#334155;padding-left:20px">${day60}</ul>
+        </div>
+        <div style="background:#fff;border-left:3px solid #FF6B6B;border-radius:8px;padding:16px;margin-bottom:12px">
+          <h3 style="margin:0 0 10px;color:#FF6B6B">◎ Day 90 Goals</h3>
+          <ul style="color:#334155;padding-left:20px">${day90}</ul>
+        </div>
+        <p style="color:#94a3b8;font-size:12px;margin-top:16px">Sent via Peoplera · The AI platform for people-first companies</p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const res = await fetch('/api/email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: email, subject: `Your onboarding plan is ready, ${name}!`, html })
+    });
+    const data = await readJsonSafe(res);
+    if (!res.ok) throw new Error(data.error || 'Failed');
+    btn.textContent = '✓ Sent!';
+    btn.style.background = 'rgba(0,184,148,0.2)';
+    setTimeout(() => { btn.textContent = oldText; btn.disabled = false; }, 3000);
+  } catch(e) {
+    btn.textContent = oldText;
+    btn.disabled = false;
+    alert('Email failed: ' + e.message);
+  }
+}
+
+function updateBoardProgress() {
+  const checkboxes = document.querySelectorAll('.board-task-check');
+  const total = checkboxes.length;
+  const done = Array.from(checkboxes).filter(c => c.checked).length;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const bar = document.getElementById('boardProgressBar');
+  const text = document.getElementById('boardProgressText');
+  const progress = document.getElementById('boardProgress');
+  if (bar) bar.style.width = pct + '%';
+  if (text) text.textContent = `${done} of ${total} tasks completed (${pct}%)`;
+  if (progress) progress.style.display = total > 0 ? 'block' : 'none';
+
+  try {
+    const checks = Array.from(checkboxes).map((c,i) => ({ idx: i, checked: c.checked }));
+    (async ()=>{
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) return;
+      const { data: rows } = await supabase
+        .from('board_results')
+        .select('id')
+        .eq('user_id', s.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const lastId = rows?.[0]?.id;
+      if (!lastId) return;
+      await supabase.from('board_results').update({ progress: checks }).eq('id', lastId);
+    })().catch(()=>{});
+  } catch(e) {}
+}
+
 function renderBoardPlan(plan){
   const out = document.getElementById('boardOut');
   if(!plan) return;
@@ -715,7 +824,10 @@ function renderBoardPlan(plan){
         ${list.map((item, idx) => `
           <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.05)">
             <div style="width:24px;height:24px;background:${color}18;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:${color};flex-shrink:0;margin-top:1px">${idx+1}</div>
-            <div style="font-size:13px;color:#334155;line-height:1.6">${escapeHtml(item)}</div>
+            <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;width:100%">
+              <input type="checkbox" class="board-task-check" onchange="updateBoardProgress()" style="margin-top:2px;accent-color:#6366f1;flex-shrink:0">
+              <span style="font-size:13px;color:#334155;line-height:1.6">${escapeHtml(item)}</span>
+            </label>
           </div>
         `).join('')}
       </div>
@@ -731,6 +843,11 @@ function renderBoardPlan(plan){
       ${section('⊕', 'RESOURCES', plan.resources, '#8b5cf6')}
     </div>
   `;
+
+  window._lastBoardPlan = plan;
+  const sendBtn = document.getElementById('btnSendEmployee');
+  if (sendBtn) sendBtn.style.display = 'inline-flex';
+  updateBoardProgress();
 }
 
 async function runBoard(){
@@ -743,20 +860,30 @@ async function runBoard(){
     const role = document.getElementById('empRole').value.trim();
     const department = document.getElementById('empDept').value.trim();
     const startDate = document.getElementById('empStart').value;
-    const file = document.getElementById('handbookFile').files?.[0] || null;
+    const noHandbook = Boolean(document.getElementById('noHandbook')?.checked);
+    const file = document.getElementById('handbookFile')?.files?.[0] || null;
+    const templateContext = String(window._boardTemplateContext || '').trim();
 
     if (!name || !role || !department || !startDate) throw new Error('All employee fields are required');
-    if (!file) throw new Error('Upload a handbook PDF');
+    let handbookText = '';
+    if (!noHandbook) {
+      if (!file) throw new Error('Upload a handbook PDF (or choose “no handbook”)');
+      handbookText = await extractPdfText(file);
+      if (!handbookText) throw new Error('Could not extract handbook text');
+    }
 
-    const handbookText = await extractPdfText(file);
-    if (!handbookText) throw new Error('Could not extract handbook text');
+    const mergedContext = [
+      templateContext ? `Role context: ${templateContext}` : '',
+      noHandbook ? 'No handbook available. Generate a general best-practice onboarding plan.' : '',
+      handbookText
+    ].filter(Boolean).join('\n\n');
 
     const data = await apiFetch('/api/board', {
       method:'POST',
       accessToken: (await supabase.auth.getSession()).data?.session?.access_token,
       body: {
         employee: { name, role, department, startDate },
-        handbookText
+        handbookText: mergedContext
       }
     });
 
@@ -1251,6 +1378,10 @@ window.clearPulse = clearPulse;
 window.showSection = showSection;
 window.runInterview = runInterview;
 window.runROI = runROI;
+window.applyBoardTemplate = applyBoardTemplate;
+window.toggleHandbook = toggleHandbook;
+window.sendBoardToEmployee = sendBoardToEmployee;
+window.updateBoardProgress = updateBoardProgress;
 window.switchPulseTab = switchPulseTab;
 window.addPulseEmployee = addPulseEmployee;
 window.updatePulseEmp = updatePulseEmp;
