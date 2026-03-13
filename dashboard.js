@@ -236,6 +236,26 @@ async function loadHistory() {
     if (pulseData && pulseData[0]) {
       renderPulse(pulseData[0].employees);
       document.getElementById('statAtRisk').textContent = String(pulseData[0].at_risk_count || 0);
+
+      // Update at-risk preview on overview
+      const atRiskEmps = (pulseData[0].employees || [])
+        .filter(e => ['high','critical'].includes(String(e.riskLevel||'').toLowerCase()))
+        .slice(0, 3);
+      const preview = document.getElementById('atRiskPreview');
+      if (preview) {
+        if (atRiskEmps.length === 0) {
+          preview.innerHTML = '<div style="color:#00b894;font-weight:700">✓ No at-risk employees detected.</div>';
+        } else {
+          preview.innerHTML = atRiskEmps.map(e => {
+            const color = String(e.riskLevel||'').toLowerCase() === 'critical' ? '#ff3b3b' : '#FF6B6B';
+            const lvl = String(e.riskLevel||'').toUpperCase();
+            return `<div onclick="showSection('pulse')" style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:${color}08;border:1px solid ${color}22;border-radius:8px;margin-bottom:6px;cursor:pointer">
+              <div style="font-weight:700;font-size:13px">${escapeHtml(e.name||'')}</div>
+              <span style="background:${color}22;border:1px solid ${color}44;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:900;color:${color}">${escapeHtml(lvl)}</span>
+            </div>`;
+          }).join('');
+        }
+      }
     }
     if (pulseData) renderHistory('pulseHistory', pulseData, 'pulse');
   } catch(e) { console.warn('Load history failed', e); }
@@ -290,7 +310,8 @@ async function clearPulse(){
 }
 
 function addFeed(type, message){
-  const feed = document.getElementById('feed');
+  const feed = document.getElementById('feedList') || document.getElementById('feed');
+  if (!feed) return;
   const el = document.createElement('div');
   el.className = 'feed-item';
   el.innerHTML = `<div class="t">${escapeHtml(type)}</div><div class="m">${escapeHtml(message)}</div>`;
@@ -310,6 +331,10 @@ function switchTab(tab){
 }
 
 function showSection(section){
+  if (['overview','hire','board','pulse','settings'].includes(section)) {
+    switchTab(section);
+    return;
+  }
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   const nav = document.querySelector(`.nav-item[data-section="${section}"]`);
   if (nav) nav.classList.add('active');

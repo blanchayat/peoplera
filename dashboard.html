@@ -88,34 +88,93 @@
         </div>
 
         <section id="tab-overview" class="module on">
-          <div class="grid3">
-            <div class="panel stat" onclick="document.querySelector('.nav-item[data-tab=hire]').click()">
-              <div class="label">Total candidates</div>
-              <div class="value" id="statCandidates">0</div>
-            </div>
-            <div class="panel stat">
-              <div class="label">Active employees</div>
-              <div class="value" id="statEmployees">0</div>
-            </div>
-            <div class="panel stat" onclick="document.querySelector('.nav-item[data-tab=pulse]').click()">
-              <div class="label">At-risk employees</div>
-              <div class="value" id="statAtRisk">0</div>
-            </div>
-          </div>
-
-          <div class="two-col">
-            <div class="panel feed">
-              <div style="font-weight:900">Recent activity</div>
-              <div id="feed"></div>
+          <div style="padding:0 24px">
+            <div class="topbar">
+              <h1>Overview</h1>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:8px;height:8px;border-radius:50%;background:#00e5a0;box-shadow:0 0 6px #00e5a0"></div>
+                <div style="font-size:13px;font-weight:700;color:#64748b">AI ready · Connected</div>
+              </div>
             </div>
 
-            <div class="panel feed">
-              <div style="font-weight:900">Getting started</div>
-              <div class="small" style="color:var(--muted)">Try a complete flow:</div>
-              <div class="small" style="display:grid;gap:8px">
-                <div>1) Paste a job description and upload 2-3 CVs in Hire.</div>
-                <div>2) Add a new employee and upload a handbook PDF in Board.</div>
-                <div>3) Upload employee metrics CSV in Pulse to generate weekly risk report.</div>
+            <!-- Stat cards -->
+            <div class="grid3" style="margin-top:16px">
+              <div class="panel stat" onclick="showSection('hire')" style="cursor:pointer;border-left:3px solid #6366f1;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div class="label" style="font-size:11px;font-weight:900;letter-spacing:0.05em;color:#6366f1">TOTAL CANDIDATES</div>
+                  <div style="width:32px;height:32px;background:rgba(99,102,241,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">🎯</div>
+                </div>
+                <div class="value" id="statCandidates" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#6366f1;margin-top:8px">0</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Click to view Hire →</div>
+              </div>
+
+              <div class="panel stat" style="border-left:3px solid #00b894">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div class="label" style="font-size:11px;font-weight:900;letter-spacing:0.05em;color:#00b894">ACTIVE EMPLOYEES</div>
+                  <div style="width:32px;height:32px;background:rgba(0,184,148,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">👥</div>
+                </div>
+                <div class="value" id="statEmployees" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#00b894;margin-top:8px">0</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Tracked via Pulse</div>
+              </div>
+
+              <div class="panel stat" onclick="showSection('pulse')" style="cursor:pointer;border-left:3px solid #FF6B6B;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <div class="label" style="font-size:11px;font-weight:900;letter-spacing:0.05em;color:#FF6B6B">AT-RISK EMPLOYEES</div>
+                  <div style="width:32px;height:32px;background:rgba(255,107,107,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">⚠️</div>
+                </div>
+                <div class="value" id="statAtRisk" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#FF6B6B;margin-top:8px">0</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Click to view Pulse →</div>
+              </div>
+            </div>
+
+            <!-- Quick actions row -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px">
+              <div onclick="showSection('hire')" style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(99,102,241,0.12)'" onmouseout="this.style.background='rgba(99,102,241,0.06)'">
+                <div style="font-size:22px;margin-bottom:6px">🎯</div>
+                <div style="font-size:12px;font-weight:800;color:#6366f1">Hire</div>
+                <div style="font-size:10px;color:#94a3b8;margin-top:2px">Analyze CVs</div>
+              </div>
+              <div onclick="showSection('board')" style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(0,184,148,0.12)'" onmouseout="this.style.background='rgba(0,184,148,0.06)'">
+                <div style="font-size:22px;margin-bottom:6px">📋</div>
+                <div style="font-size:12px;font-weight:800;color:#00b894">Board</div>
+                <div style="font-size:10px;color:#94a3b8;margin-top:2px">Onboarding plans</div>
+              </div>
+              <div onclick="showSection('pulse')" style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(255,107,107,0.12)'" onmouseout="this.style.background='rgba(255,107,107,0.06)'">
+                <div style="font-size:22px;margin-bottom:6px">💓</div>
+                <div style="font-size:12px;font-weight:800;color:#FF6B6B">Pulse</div>
+                <div style="font-size:10px;color:#94a3b8;margin-top:2px">Burnout tracking</div>
+              </div>
+              <div onclick="showSection('interview')" style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(245,158,11,0.12)'" onmouseout="this.style.background='rgba(245,158,11,0.06)'">
+                <div style="font-size:22px;margin-bottom:6px">🎤</div>
+                <div style="font-size:12px;font-weight:800;color:#f59e0b">Interview</div>
+                <div style="font-size:10px;color:#94a3b8;margin-top:2px">AI questions</div>
+              </div>
+            </div>
+
+            <!-- Recent activity + At-risk preview -->
+            <div class="two-col" style="margin-top:12px">
+              <div class="panel feed">
+                <div style="font-weight:900;font-size:14px;margin-bottom:4px">Recent activity</div>
+                <div id="feedList">
+                  <div class="feed-item">
+                    <div class="t">Security</div>
+                    <div class="m">Session-protected dashboard initialized.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel" style="padding:16px">
+                <div style="font-weight:900;font-size:14px;margin-bottom:12px">⚠ At-risk employees</div>
+                <div id="atRiskPreview" style="color:#94a3b8;font-size:13px">Run Pulse to see at-risk employees here.</div>
+                <div style="margin-top:12px">
+                  <div style="font-weight:900;font-size:14px;margin-bottom:10px">🚀 Quick start</div>
+                  <div style="display:grid;gap:6px;font-size:12px;color:#64748b">
+                    <div>1) Paste a job description and upload CVs in <span onclick="showSection('hire')" style="color:#6366f1;font-weight:800;cursor:pointer">Hire →</span></div>
+                    <div>2) Add a new employee in <span onclick="showSection('board')" style="color:#00b894;font-weight:800;cursor:pointer">Board →</span></div>
+                    <div>3) Add employees in <span onclick="showSection('pulse')" style="color:#FF6B6B;font-weight:800;cursor:pointer">Pulse →</span> to track burnout</div>
+                    <div>4) Generate interview questions in <span onclick="showSection('interview')" style="color:#f59e0b;font-weight:800;cursor:pointer">Interview →</span></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
