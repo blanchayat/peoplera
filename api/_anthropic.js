@@ -40,7 +40,8 @@ function jsonSchemaHint(schemaName) {
         burnoutScore: '0-100',
         riskLevel: 'low/medium/high/critical',
         riskFactors: ['string'],
-        recommendations: ['string']
+        recommendations: ['string'],
+        benchmark: 'string'
       }]
     };
   }

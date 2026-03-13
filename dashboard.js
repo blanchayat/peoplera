@@ -241,47 +241,52 @@ async function loadHistory() {
   } catch(e) { console.warn('Load history failed', e); }
 }
 
-function clearHire(){
-  const jobDesc = document.getElementById('jobDesc');
-  if (jobDesc) jobDesc.value = '';
-  const cvFiles = document.getElementById('cvFiles');
-  if (cvFiles) cvFiles.value = '';
-  const cvList = document.getElementById('cvList');
-  if (cvList) cvList.textContent = '';
-  const hireMsg = document.getElementById('hireMsg');
-  if (hireMsg) hireMsg.textContent = '';
-  const hireDetail = document.getElementById('hireDetail');
-  if (hireDetail) hireDetail.innerHTML = '';
-  const exportBtn = document.getElementById('btnExportHire');
-  if (exportBtn) exportBtn.disabled = true;
+async function clearHire(){
+  document.getElementById('hireDetail').innerHTML = '';
+  document.getElementById('statCandidates').textContent = '0';
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return;
+    const { data: hireData } = await supabase
+      .from('hire_results')
+      .select('*')
+      .eq('user_id', s.user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (hireData) renderHistory('hireHistory', hireData, 'hire');
+  } catch(e) { console.warn(e); }
 }
 
-function clearBoard(){
-  ['empName','empRole','empDept','empStart'].forEach(id=>{
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const handbookFile = document.getElementById('handbookFile');
-  if (handbookFile) handbookFile.value = '';
-  const handbookName = document.getElementById('handbookName');
-  if (handbookName) handbookName.textContent = '';
-  const boardMsg = document.getElementById('boardMsg');
-  if (boardMsg) boardMsg.textContent = '';
-  const out = document.getElementById('boardOut');
-  if (out) out.innerHTML = '';
-  const dl = document.getElementById('btnDownloadBoard');
-  if (dl) dl.disabled = true;
+async function clearBoard(){
+  document.getElementById('boardOut').innerHTML = '';
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return;
+    const { data: boardData } = await supabase
+      .from('board_results')
+      .select('*')
+      .eq('user_id', s.user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (boardData) renderHistory('boardHistory', boardData, 'board');
+  } catch(e) { console.warn(e); }
 }
 
-function clearPulse(){
-  const pulseFile = document.getElementById('pulseFile');
-  if (pulseFile) pulseFile.value = '';
-  const pulseName = document.getElementById('pulseName');
-  if (pulseName) pulseName.textContent = '';
-  const pulseMsg = document.getElementById('pulseMsg');
-  if (pulseMsg) pulseMsg.textContent = '';
-  const out = document.getElementById('pulseOut');
-  if (out) out.innerHTML = '';
+async function clearPulse(){
+  document.getElementById('pulseOut').innerHTML = '';
+  document.getElementById('statAtRisk').textContent = '0';
+  // Reload history after clearing view
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return;
+    const { data: pulseData } = await supabase
+      .from('pulse_results')
+      .select('*')
+      .eq('user_id', s.user.id)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    if (pulseData) renderHistory('pulseHistory', pulseData, 'pulse');
+  } catch(e) { console.warn(e); }
 }
 
 function addFeed(type, message){

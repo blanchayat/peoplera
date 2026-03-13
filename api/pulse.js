@@ -23,7 +23,8 @@ function normalizeEmployee(e){
     burnoutScore: clampScore(e?.burnoutScore),
     riskLevel: normalizeLevel(e?.riskLevel),
     riskFactors: cleanList(e?.riskFactors, 8),
-    recommendations: cleanList(e?.recommendations, 8)
+    recommendations: cleanList(e?.recommendations, 8),
+    benchmark: String(e?.benchmark || '').slice(0, 220)
   };
 }
 
@@ -65,7 +66,7 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const system = 'You are Peoplera Pulse. You are an HR analytics expert focused on burnout prevention. Provide defensible risk scoring and actionable recommendations.';
+    const system = 'You are Peoplera Pulse. You are an HR analytics expert focused on burnout prevention. Provide defensible risk scoring and actionable recommendations. Also include a "benchmark" field for each employee: compare their burnoutScore to industry average of 35. State if they are above or below average and by how much.';
 
     const user = `Employee metrics (weekly snapshot):\n${JSON.stringify(safe)}\n\nInstructions:\n- Output one employee object per input employee (match by name).\n- burnoutScore must be 0-100.\n- riskLevel must be low/medium/high/critical.\n- Provide top riskFactors and concrete recommendations for HR intervention.\nReturn JSON exactly matching required schema.`;
 
