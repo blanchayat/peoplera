@@ -422,24 +422,31 @@ let boardLast = null;
 
 function renderBoardPlan(plan){
   const out = document.getElementById('boardOut');
-  const section = (title, items)=>{
+  if(!plan) return;
+
+  const section = (emoji, title, items, color) => {
     const list = Array.isArray(items) ? items : [];
     return `
-      <div style="margin-top:12px">
-        <div style="font-weight:1000;color:var(--text)">${escapeHtml(title)}</div>
-        <div class="small" style="margin-top:6px;display:grid;gap:6px">
-          ${list.map(i=>`<div class="feed-item" style="margin:0">${escapeHtml(i)}</div>`).join('')}
-        </div>
+      <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:16px;margin-bottom:12px;border-left:3px solid ${color}">
+        <div style="font-size:11px;font-weight:900;color:${color};letter-spacing:0.08em;margin-bottom:10px">${emoji} ${title}</div>
+        ${list.map((item, idx) => `
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.05)">
+            <div style="width:24px;height:24px;background:${color}18;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:${color};flex-shrink:0;margin-top:1px">${idx+1}</div>
+            <div style="font-size:13px;color:#334155;line-height:1.6">${escapeHtml(item)}</div>
+          </div>
+        `).join('')}
       </div>
     `;
   };
 
   out.innerHTML = `
-    ${section('First week checklist', plan.firstWeekChecklist)}
-    ${section('30 days', plan.day30)}
-    ${section('60 days', plan.day60)}
-    ${section('90 days', plan.day90)}
-    ${section('Resources', plan.resources)}
+    <div style="display:grid;gap:4px">
+      ${section('📋', 'FIRST WEEK CHECKLIST', plan.firstWeekChecklist, '#6366f1')}
+      ${section('◎', 'DAY 30', plan.day30, '#00b894')}
+      ${section('◎', 'DAY 60', plan.day60, '#f59e0b')}
+      ${section('◎', 'DAY 90', plan.day90, '#FF6B6B')}
+      ${section('⊕', 'RESOURCES', plan.resources, '#8b5cf6')}
+    </div>
   `;
 }
 
