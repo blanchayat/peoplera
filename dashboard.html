@@ -44,17 +44,14 @@
   <div id="app" class="dash" hidden>
     <aside class="sidebar">
       <div class="side-top">
-        <a class="brand" href="/">
-          <span class="mark" aria-hidden="true">
-            <span class="dot d1"></span>
-            <span class="dot d2"></span>
-            <span class="dot d3"></span>
-          </span>
-          <span class="word">
-            <span class="peopl">peopl</span><span class="era">era</span>
-          </span>
+        <a href="/" style="display:flex;align-items:center;gap:10px;text-decoration:none">
+          <img src="/logo.png" alt="Peoplera" style="height:36px;width:auto">
         </a>
-        <button class="btn" id="btnLogout">Log out</button>
+        <button onclick="supabase.auth.signOut().then(()=>location.href='/')" title="Sign out" style="width:34px;height:34px;border-radius:50%;background:rgba(255,107,107,0.12);border:1.5px solid rgba(255,107,107,0.3);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;flex-shrink:0" onmouseover="this.style.background='rgba(255,107,107,0.25)';this.style.borderColor='#FF6B6B'" onmouseout="this.style.background='rgba(255,107,107,0.12)';this.style.borderColor='rgba(255,107,107,0.3)'">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="#FF6B6B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
       <div class="pill" id="userPill">Signed in</div>
 

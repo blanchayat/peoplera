@@ -339,13 +339,20 @@ let supabase = null;
 let session = null;
 
 async function initSupabase(){
+  if (!window.supabaseLib && window.supabase && typeof window.supabase.createClient === 'function') {
+    window.supabaseLib = window.supabase;
+  }
+  const supabaseLib = window.supabaseLib || window.supabase;
   const res = await fetch('/api/public-config');
   const data = await readJsonSafe(res);
   if (!res.ok) throw new Error((data && data.error) ? data.error : 'Failed to load config');
   if (!data.supabaseUrl || !data.supabaseAnonKey) throw new Error('CONFIG_MISSING');
-  supabase = window.supabase.createClient(data.supabaseUrl, data.supabaseAnonKey, {
+  supabase = supabaseLib.createClient(data.supabaseUrl, data.supabaseAnonKey, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
   });
+
+  window.supabase = supabase;
+  window.supabaseClient = supabase;
 
   const { data: sData } = await supabase.auth.getSession();
   session = sData.session;
