@@ -321,7 +321,7 @@ function renderHireDetail(candidates){
     const s = Array.isArray(c.strengths) ? c.strengths : [];
     const w = Array.isArray(c.weaknesses) ? c.weaknesses : [];
     return `
-      <div style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:20px;margin-top:14px;border-left:3px solid ${color}">
+      <div style="background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.15);border-radius:16px;padding:20px;margin-top:14px;border-left:3px solid ${color}">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:10px">
           <div style="font-weight:900;font-size:17px;font-family:'Syne',system-ui">${escapeHtml(c.name || '')}</div>
           <div style="display:flex;align-items:center;gap:8px">
