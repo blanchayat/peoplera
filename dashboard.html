@@ -126,25 +126,27 @@
 
           <div class="two-col" style="margin-top:12px">
             <div class="panel pad">
-              <div class="form-grid">
-                <div class="field">
-                  <label for="jobDesc">Job description</label>
-                  <textarea id="jobDesc" placeholder="Paste the role description, responsibilities, and must-haves"></textarea>
-                </div>
-
-                <div class="field">
-                  <label>CV upload (PDF/TXT)</label>
-                  <div class="drop" id="cvDrop">
-                    <div style="font-weight:900">Drag & drop CV files</div>
-                    <div class="small" style="margin-top:6px">Or choose files. PDF text is extracted locally in your browser.</div>
-                    <input class="input" id="cvFiles" type="file" accept=".pdf,.txt" multiple style="margin-top:10px" />
-                    <div class="small" id="cvList" style="margin-top:10px;color:var(--muted)"></div>
-                  </div>
-                </div>
-
-                <button class="btn btn-primary" id="btnHire">Analyze candidates</button>
-                <div id="hireMsg" class="small" style="color:var(--muted)"></div>
+              <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
+                <div style="font-size:11px;font-weight:900;color:#6366f1;letter-spacing:0.08em;margin-bottom:16px">📋 JOB DESCRIPTION</div>
+                <textarea id="jobDesc" rows="6" placeholder="Paste the full job description here — role, requirements, skills, experience level..." style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:14px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;resize:vertical;outline:none;box-sizing:border-box;line-height:1.6"></textarea>
               </div>
+
+              <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
+                <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">📎 CV UPLOAD</div>
+                <div style="font-size:12px;color:#64748b;margin-bottom:12px">Upload PDF or TXT files. Text is extracted locally in your browser.</div>
+                <label style="display:flex;align-items:center;gap:10px;background:rgba(255,107,107,0.08);border:2px dashed rgba(255,107,107,0.3);border-radius:10px;padding:16px;cursor:pointer;transition:all 0.2s">
+                  <span style="font-size:20px">📂</span>
+                  <div>
+                    <div style="font-weight:800;font-size:13px;color:#0f172a">Drag & drop or click to upload</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:2px">PDF, TXT supported · Multiple files allowed</div>
+                  </div>
+                  <input type="file" id="cvFiles" accept=".pdf,.txt" multiple style="display:none">
+                </label>
+                <div id="cvList" style="margin-top:10px;font-size:12px;color:#6366f1;font-weight:700"></div>
+              </div>
+
+              <button class="btn btn-primary" id="btnHire">Analyze candidates</button>
+              <div id="hireMsg" class="small" style="color:var(--muted)"></div>
             </div>
 
             <div class="panel pad">
@@ -177,37 +179,44 @@
 
           <div class="two-col" style="margin-top:12px">
             <div class="panel pad">
-              <div class="form-grid">
-                <div class="row">
-                  <div style="flex:1" class="field">
-                    <label for="empName">Name</label>
-                    <input class="input" id="empName" placeholder="e.g. Sara Ahmed" />
+              <div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
+                <div style="font-size:11px;font-weight:900;color:#00b894;letter-spacing:0.08em;margin-bottom:16px">👤 EMPLOYEE DETAILS</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                  <div>
+                    <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Name</div>
+                    <input id="empName" type="text" placeholder="e.g. Sara Ahmed" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(0,184,148,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
                   </div>
-                  <div style="flex:1" class="field">
-                    <label for="empRole">Role</label>
-                    <input class="input" id="empRole" placeholder="e.g. Product Designer" />
+                  <div>
+                    <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Role</div>
+                    <input id="empRole" type="text" placeholder="e.g. Product Designer" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(0,184,148,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Department</div>
+                    <input id="empDept" type="text" placeholder="e.g. Product" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(0,184,148,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
+                  </div>
+                  <div>
+                    <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Start Date</div>
+                    <input id="empStart" type="date" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(0,184,148,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
                   </div>
                 </div>
-                <div class="row">
-                  <div style="flex:1" class="field">
-                    <label for="empDept">Department</label>
-                    <input class="input" id="empDept" placeholder="e.g. Product" />
-                  </div>
-                  <div style="flex:1" class="field">
-                    <label for="empStart">Start date</label>
-                    <input class="input" id="empStart" type="date" />
-                  </div>
-                </div>
-
-                <div class="field">
-                  <label>Company handbook / docs (PDF)</label>
-                  <input class="input" id="handbookFile" type="file" accept=".pdf" />
-                  <div class="small" id="handbookMsg" style="margin-top:8px;color:var(--muted)"></div>
-                </div>
-
-                <button class="btn btn-primary" id="btnBoard">Generate onboarding plan</button>
-                <div id="boardMsg" class="small" style="color:var(--muted)"></div>
               </div>
+
+              <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
+                <div style="font-size:11px;font-weight:900;color:#8b5cf6;letter-spacing:0.08em;margin-bottom:8px">📚 COMPANY HANDBOOK</div>
+                <div style="font-size:12px;color:#64748b;margin-bottom:12px">Upload your company handbook or onboarding docs (PDF)</div>
+                <label style="display:flex;align-items:center;gap:10px;background:rgba(139,92,246,0.08);border:2px dashed rgba(139,92,246,0.3);border-radius:10px;padding:16px;cursor:pointer">
+                  <span style="font-size:20px">📖</span>
+                  <div>
+                    <div style="font-weight:800;font-size:13px;color:#0f172a">Click to upload handbook PDF</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:2px">PDF only</div>
+                  </div>
+                  <input type="file" id="handbookFile" accept=".pdf" style="display:none">
+                </label>
+                <div id="handbookName" style="margin-top:8px;font-size:12px;color:#8b5cf6;font-weight:700"></div>
+              </div>
+
+              <button class="btn btn-primary" id="btnBoard">Generate onboarding plan</button>
+              <div id="boardMsg" class="small" style="color:var(--muted)"></div>
             </div>
 
             <div class="panel pad">
@@ -228,16 +237,30 @@
 
           <div class="two-col" style="margin-top:12px">
             <div class="panel pad">
-              <div class="form-grid">
-                <div class="field">
-                  <label>Employee data CSV</label>
-                  <input class="input" id="pulseCsv" type="file" accept=".csv" />
-                  <div class="small" style="margin-top:8px;color:var(--muted)">Columns: name, weekly hours, weekend hours, after-hours messages, sick days, last vacation</div>
+              <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:16px;padding:24px;margin-bottom:16px">
+                <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">📊 EMPLOYEE DATA CSV</div>
+                <div style="font-size:12px;color:#64748b;margin-bottom:4px">Required columns:</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">name</span>
+                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">weekly hours</span>
+                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">weekend hours</span>
+                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">after-hours messages</span>
+                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">sick days</span>
+                  <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:700;color:#FF6B6B">last vacation</span>
                 </div>
-
-                <button class="btn btn-primary" id="btnPulse">Analyze burnout risk</button>
-                <div id="pulseMsg" class="small" style="color:var(--muted)"></div>
+                <label style="display:flex;align-items:center;gap:10px;background:rgba(255,107,107,0.08);border:2px dashed rgba(255,107,107,0.3);border-radius:10px;padding:16px;cursor:pointer">
+                  <span style="font-size:20px">📈</span>
+                  <div>
+                    <div style="font-weight:800;font-size:13px;color:#0f172a">Click to upload CSV file</div>
+                    <div style="font-size:11px;color:#94a3b8;margin-top:2px">CSV format only</div>
+                  </div>
+                  <input type="file" id="pulseFile" accept=".csv" style="display:none">
+                </label>
+                <div id="pulseName" style="margin-top:8px;font-size:12px;color:#FF6B6B;font-weight:700"></div>
               </div>
+
+              <button class="btn btn-primary" id="btnPulse">Analyze burnout risk</button>
+              <div id="pulseMsg" class="small" style="color:var(--muted)"></div>
             </div>
 
             <div class="panel pad">

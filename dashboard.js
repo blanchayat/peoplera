@@ -702,7 +702,7 @@ async function runPulse(){
   const msg = document.getElementById('pulseMsg');
   msg.textContent = '';
   try{
-    const file = document.getElementById('pulseCsv').files?.[0] || null;
+    const file = document.getElementById('pulseFile').files?.[0] || null;
     if (!file) throw new Error('Upload a CSV');
     const text = await file.text();
     const rows = parseCsvText(text);
@@ -803,7 +803,19 @@ function wireUi(){
 
   document.getElementById('btnPulse').addEventListener('click', runPulse);
 
-  initDrop(document.getElementById('cvDrop'), document.getElementById('cvFiles'), document.getElementById('cvList'));
+  document.getElementById('cvFiles')?.addEventListener('change', function(){
+    const names = Array.from(this.files).map(f=>f.name).join(', ');
+    document.getElementById('cvList').textContent = names ? '✓ ' + names : '';
+  });
+  document.getElementById('handbookFile')?.addEventListener('change', function(){
+    document.getElementById('handbookName').textContent = this.files[0] ? '✓ ' + this.files[0].name : '';
+  });
+  document.getElementById('pulseFile')?.addEventListener('change', function(){
+    document.getElementById('pulseName').textContent = this.files[0] ? '✓ ' + this.files[0].name : '';
+  });
+
+  const cvDrop = document.getElementById('cvDrop');
+  if (cvDrop) initDrop(cvDrop, document.getElementById('cvFiles'), document.getElementById('cvList'));
 
   // Initialize feed with a couple of realistic events
   addFeed('Security', 'Session-protected dashboard initialized.');
