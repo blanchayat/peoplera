@@ -1029,7 +1029,7 @@ function wireUi(){
     btn.addEventListener('click',()=>switchTab(btn.getAttribute('data-tab')));
   });
 
-  document.getElementById('btnLogin').addEventListener('click', async ()=>{
+  document.getElementById('btnLogin')?.addEventListener('click', async ()=>{
     const b = document.getElementById('btnLogin');
     const reset = setBusy(b, 'Redirecting…');
     document.getElementById('gateMsg').textContent = '';
@@ -1041,19 +1041,19 @@ function wireUi(){
     }
   });
 
-  document.getElementById('btnLogout').addEventListener('click', async ()=>{
+  document.getElementById('btnLogout')?.addEventListener('click', async ()=>{
     const b = document.getElementById('btnLogout');
     const reset = setBusy(b, 'Signing out…');
     try{ await logout(); }
     finally{ reset(); }
   });
 
-  document.getElementById('btnExportHire').addEventListener('click', ()=>{
+  document.getElementById('btnExportHire')?.addEventListener('click', ()=>{
     if (!hireCsvRows.length) return;
     download('peoplera-hire-candidates.csv', toCsv(hireCsvRows), 'text/csv');
   });
 
-  document.getElementById('btnDownloadBoard').addEventListener('click', ()=>{
+  document.getElementById('btnDownloadBoard')?.addEventListener('click', ()=>{
     try{
       downloadBoardPdf(boardLast);
     }catch(err){
