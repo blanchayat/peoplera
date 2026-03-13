@@ -146,7 +146,7 @@
               </div>
 
               <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-                <button id="btnHire" onclick="runHire()">Analyze candidates</button>
+                <button id="btnHire" onclick="runHire()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 24px;font-family:'Syne',system-ui;font-weight:900;font-size:14px;color:#0f172a;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,107,0.3);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(255,107,107,0.4)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 16px rgba(255,107,107,0.3)'">Analyze candidates</button>
                 <button onclick="clearHire()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
               </div>
 
@@ -159,18 +159,6 @@
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
                 <div style="font-weight:900">Ranked candidates</div>
                 <button class="btn" id="btnExportHire" disabled>Export CSV</button>
-              </div>
-              <div style="overflow:auto;margin-top:12px">
-                <table class="table" id="hireTable" hidden>
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Score</th>
-                      <th>Recommendation</th>
-                    </tr>
-                  </thead>
-                  <tbody></tbody>
-                </table>
               </div>
               <div id="hireDetail" class="small" style="margin-top:10px;color:var(--muted)"></div>
             </div>
@@ -222,7 +210,7 @@
               </div>
 
               <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-                <button id="btnBoard" onclick="runBoard()">Generate onboarding plan</button>
+                <button id="btnBoard" onclick="runBoard()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 24px;font-family:'Syne',system-ui;font-weight:900;font-size:14px;color:#0f172a;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,107,0.3);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(255,107,107,0.4)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 16px rgba(255,107,107,0.3)'">Generate onboarding plan</button>
                 <button onclick="clearBoard()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
               </div>
 
@@ -272,7 +260,7 @@
               </div>
 
               <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
-                <button id="btnPulse" onclick="runPulse()">Analyze burnout risk</button>
+                <button id="btnPulse" onclick="runPulse()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 24px;font-family:'Syne',system-ui;font-weight:900;font-size:14px;color:#0f172a;cursor:pointer;box-shadow:0 4px 16px rgba(255,107,107,0.3);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(255,107,107,0.4)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 16px rgba(255,107,107,0.3)'">Analyze burnout risk</button>
                 <button onclick="clearPulse()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
               </div>
 

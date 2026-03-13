@@ -252,10 +252,6 @@ function clearHire(){
   if (hireMsg) hireMsg.textContent = '';
   const hireDetail = document.getElementById('hireDetail');
   if (hireDetail) hireDetail.innerHTML = '';
-  const table = document.getElementById('hireTable');
-  if (table) table.hidden = true;
-  const tbody = table ? table.querySelector('tbody') : null;
-  if (tbody) tbody.innerHTML = '';
   const exportBtn = document.getElementById('btnExportHire');
   if (exportBtn) exportBtn.disabled = true;
 }
@@ -402,22 +398,6 @@ async function readCvFiles(files){
   return items;
 }
 
-function renderHireTable(candidates){
-  const table = document.getElementById('hireTable');
-  const tbody = table.querySelector('tbody');
-  tbody.innerHTML = '';
-  candidates.forEach(c=>{
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${escapeHtml(c.name || '')}</td>
-      <td>${escapeHtml(c.matchScore)}</td>
-      <td>${escapeHtml(c.recommendation || '')}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-  table.hidden = false;
-}
-
 function renderHireDetail(candidates){
   const el = document.getElementById('hireDetail');
   el.innerHTML = candidates.map(c => {
@@ -481,7 +461,6 @@ async function runHire(){
 
     hireLast = data;
     const candidates = data.candidates.slice().sort((a,b)=>(b.matchScore||0)-(a.matchScore||0));
-    renderHireTable(candidates);
     renderHireDetail(candidates);
 
     // Save hire result to Supabase
