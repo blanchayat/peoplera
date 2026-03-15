@@ -143,7 +143,8 @@ async function apiFetch(path, { method='POST', body=null, accessToken=null } = {
 
 function renderHistory(containerId, items, type) {
   const el = document.getElementById(containerId);
-  if (!el || !items || items.length === 0) return;
+  if (!el) return;
+  if (!items || items.length === 0) { el.innerHTML = ''; return; }
   
   const colorMap = { hire: '#6366f1', board: '#00b894', pulse: '#FF6B6B' };
   const color = colorMap[type];
@@ -170,21 +171,41 @@ function renderHistory(containerId, items, type) {
             preview = `${total} employees · ${at} at risk`;
           }
           return `
-            <div onclick="loadHistoryItem('${type}', ${idx})" 
-              style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:10px;padding:10px 14px;cursor:pointer;transition:all 0.2s"
+            <div 
+              style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:10px;padding:10px 14px;transition:all 0.2s"
               onmouseover="this.style.background='rgba(${type==='hire'?'99,102,241':type==='board'?'0,184,148':'255,107,107'},0.06)';this.style.borderColor='${color}44'"
               onmouseout="this.style.background='rgba(0,0,0,0.02)';this.style.borderColor='rgba(0,0,0,0.07)'">
               <div>
                 <div style="font-size:12px;font-weight:700;color:#0f172a">${preview}</div>
                 <div style="font-size:11px;color:#94a3b8;margin-top:2px">${date}</div>
               </div>
-              <div style="font-size:10px;font-weight:800;color:${color};background:${color}15;border-radius:6px;padding:3px 8px">Load →</div>
+              <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+                <button onclick="loadHistoryItem('${type}', ${idx})" style="font-size:10px;font-weight:800;color:${color};background:${color}15;border:none;border-radius:6px;padding:5px 10px;cursor:pointer">Load →</button>
+                <button onclick="deleteHistoryItem('${type}', ${idx}, '${item.id}')" 
+                  style="background:none;border:none;padding:2px 6px;font-size:14px;cursor:pointer;color:#94a3b8"
+                  onmouseover="this.style.color='#FF6B6B'" onmouseout="this.style.color='#94a3b8'">🗑</button>
+              </div>
             </div>
           `;
         }).join('')}
       </div>
     </div>
   `;
+}
+
+async function deleteHistoryItem(type, idx, id) {
+  try {
+    const tableMap = { hire: 'hire_results', board: 'board_results', pulse: 'pulse_results' };
+    const historyIdMap = { hire: 'hireHistory', board: 'boardHistory', pulse: 'pulseHistory' };
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s && id) {
+      await supabase.from(tableMap[type]).delete().eq('id', id);
+    }
+    if (window.__historyCache?.[type]) {
+      window.__historyCache[type] = window.__historyCache[type].filter((_, i) => i !== idx);
+      renderHistory(historyIdMap[type], window.__historyCache[type], type);
+    }
+  } catch(e) { console.warn('Delete history item failed', e); }
 }
 
 function loadHistoryItem(type, idx) {
@@ -318,7 +339,183 @@ function addFeed(type, message){
   feed.prepend(el);
 }
 
+async function loadSettings(){
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    const u = s?.user || null;
+    const email = u?.email || '';
+    const userEmail = email;
+
+    const createdAt = u?.created_at ? String(u.created_at) : new Date().toISOString();
+    const trialEnd = new Date(createdAt);
+    trialEnd.setDate(trialEnd.getDate() + 14);
+    const trialEndDate = trialEnd.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const memberSince = new Date(createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+    const settingsEl = document.getElementById('tab-settings');
+    if (!settingsEl) return;
+
+    async function cancelSubscription() {
+      // Show confirmation modal
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px';
+      modal.innerHTML = `
+        <div style="background:#ffffff;border-radius:24px;padding:32px;width:min(440px,92vw);box-shadow:0 32px 80px rgba(0,0,0,0.3)">
+          <div style="text-align:center;margin-bottom:24px">
+            <div style="font-size:48px;margin-bottom:12px">⚠️</div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:20px;color:#0f172a;margin-bottom:8px">Cancel your subscription?</div>
+            <div style="font-size:13px;color:#64748b;line-height:1.6">
+              You will lose access to all Peoplera features at the end of your current billing period. Your data will be retained for 30 days after cancellation.
+            </div>
+          </div>
+          <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.15);border-radius:12px;padding:14px;margin-bottom:20px">
+            <div style="font-size:12px;color:#64748b;line-height:1.6">
+              <div style="margin-bottom:4px">❌ You will lose access to Hire, Board and Pulse</div>
+              <div style="margin-bottom:4px">❌ Onboarding plans will no longer be generated</div>
+              <div>✅ Your data is retained for 30 days</div>
+            </div>
+          </div>
+          <div style="display:grid;gap:10px">
+            <button id="confirmCancel" style="width:100%;background:rgba(255,59,59,0.1);border:1px solid rgba(255,59,59,0.3);border-radius:12px;padding:13px;font-size:13px;font-weight:800;color:#ff3b3b;cursor:pointer">
+              Yes, cancel my subscription
+            </button>
+            <button id="dismissCancel" style="width:100%;background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:13px;font-size:13px;font-weight:900;color:#0f172a;cursor:pointer">
+              Keep my subscription →
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      // Dismiss
+      document.getElementById('dismissCancel').onclick = () => modal.remove();
+      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+      // Confirm cancel
+      document.getElementById('confirmCancel').onclick = async () => {
+        const btn = document.getElementById('confirmCancel');
+        btn.textContent = 'Cancelling…';
+        btn.disabled = true;
+        try {
+          const { data: { session: s } } = await supabase.auth.getSession();
+          const res = await fetch('/api/cancel-subscription', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + s.access_token }
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Cancel failed');
+          modal.remove();
+          await supabase.auth.signOut();
+          window.location.href = '/pricing.html?reason=cancelled';
+        } catch(e) {
+          btn.textContent = 'Yes, cancel my subscription';
+          btn.disabled = false;
+          alert('Cancellation failed: ' + e.message);
+        }
+      };
+    }
+    window.cancelSubscription = cancelSubscription;
+
+    settingsEl.innerHTML = `
+  <div style="max-width:700px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      
+      <!-- Profile Card -->
+      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(255,107,107,0.12);border-radius:20px;padding:24px;backdrop-filter:blur(10px)">
+        <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:16px">👤 PROFILE</div>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FFD93D);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#0f172a;flex-shrink:0">
+            ${(userEmail?.[0] || 'U').toUpperCase()}
+          </div>
+          <div>
+            <div style="font-weight:800;font-size:14px;color:#0f172a">${escapeHtml(userEmail || '')}</div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:2px">Signed in with Google</div>
+          </div>
+        </div>
+        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:14px;margin-bottom:10px">
+          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:6px">CURRENT PLAN</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="currentPlan" style="font-family:'Syne',system-ui;font-weight:900;font-size:18px;color:#0f172a">—</span>
+            <span id="planStatus" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);color:#0f172a;font-size:10px;font-weight:900;padding:3px 10px;border-radius:999px">—</span>
+          </div>
+        </div>
+        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:14px">
+          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:6px">MEMBER SINCE</div>
+          <div style="font-weight:800;font-size:15px;color:#0f172a">${memberSince}</div>
+        </div>
+      </div>
+
+      <!-- Subscription Card -->
+      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(255,107,107,0.12);border-radius:20px;padding:24px;backdrop-filter:blur(10px)">
+        <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:16px">💳 SUBSCRIPTION</div>
+        <div style="background:linear-gradient(135deg,rgba(255,107,107,0.06),rgba(255,217,61,0.06));border:1px solid rgba(255,107,107,0.15);border-radius:12px;padding:16px;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:12px;color:#64748b;font-weight:700">Status</div>
+            <span style="background:rgba(0,184,148,0.12);border:1px solid rgba(0,184,148,0.3);color:#00b894;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px">● Active</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:12px;color:#64748b;font-weight:700">Renews</div>
+            <div style="font-size:13px;font-weight:800;color:#0f172a">Monthly</div>
+          </div>
+          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:12px;color:#64748b;font-weight:700">Free trial ends</div>
+            <div style="font-size:13px;font-weight:800;color:#FF6B6B">${trialEndDate}</div>
+          </div>
+          <div style="margin-top:6px;background:rgba(255,107,107,0.06);border-radius:8px;padding:8px 10px;font-size:11px;color:#64748b;line-height:1.5">
+            💳 You won't be charged until <strong style="color:#0f172a">${trialEndDate}</strong>. Cancel anytime before then for free.
+          </div>
+        </div>
+        <button onclick="window.open('https://app.lemonsqueezy.com/billing','_blank')" style="width:100%;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:12px;font-size:13px;font-weight:800;color:#6366f1;cursor:pointer;margin-bottom:10px">
+          🔗 Manage subscription
+        </button>
+        <button onclick="cancelSubscription()" style="width:100%;background:none;border:none;padding:8px;font-size:12px;font-weight:700;color:#94a3b8;cursor:pointer;text-decoration:underline">
+          Cancel subscription
+        </button>
+      </div>
+
+    </div>
+
+    <div style="margin-top:16px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:14px;padding:16px">
+      <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">💬 SUPPORT</div>
+      <div style="font-size:13px;color:#334155;margin-bottom:8px">Need help? We typically respond within 24 hours.</div>
+      <a href="mailto:support@peoplera.work" style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:800;color:#6366f1;text-decoration:none">
+        ✉ support@peoplera.work
+      </a>
+    </div>
+  </div>
+`;
+  } catch(e) {
+    console.warn('loadSettings error:', e);
+  }
+}
+
 function switchTab(tab){
+  // Plan-based access control
+  if (tab === 'pulse') {
+    const planPill = document.getElementById('planPill');
+    const currentPlan = (planPill?.textContent || '').toLowerCase();
+    if (currentPlan === 'starter' || currentPlan === '') {
+      // Show upgrade prompt instead
+      document.querySelectorAll('.module').forEach(m => m.classList.remove('on'));
+      const pulseTab = document.getElementById('tab-pulse');
+      if (pulseTab) {
+        pulseTab.classList.add('on');
+        pulseTab.innerHTML = `
+          <div style="max-width:500px;margin:60px auto;text-align:center;padding:40px;background:rgba(255,255,255,0.8);border:1px solid rgba(255,107,107,0.15);border-radius:24px;backdrop-filter:blur(10px)">
+            <div style="font-size:48px;margin-bottom:16px">🔒</div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:22px;color:#0f172a;margin-bottom:8px">Pulse is a Growth feature</div>
+            <div style="font-size:14px;color:#64748b;line-height:1.6;margin-bottom:24px">Upgrade to Growth or Scale to unlock weekly burnout risk reports, employee monitoring, and HR intervention recommendations.</div>
+            <a href="/pricing.html" style="display:inline-block;background:linear-gradient(90deg,#FF6B6B,#FFD93D);color:#0f172a;font-weight:900;font-size:14px;padding:14px 32px;border-radius:999px;text-decoration:none">Upgrade plan →</a>
+          </div>
+        `;
+      }
+      document.querySelectorAll('.nav-item').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-tab') === 'pulse');
+      });
+      document.getElementById('pageTitle').textContent = 'Pulse';
+      return;
+    }
+  }
   document.querySelectorAll('.nav-item').forEach(b=>{
     b.classList.toggle('active', b.getAttribute('data-tab') === tab);
   });
@@ -328,6 +525,10 @@ function switchTab(tab){
   if (t) t.classList.add('on');
   const titleMap = { overview:'Overview', hire:'Hire', board:'Board', pulse:'Pulse', settings:'Settings' };
   document.getElementById('pageTitle').textContent = titleMap[tab] || 'Dashboard';
+
+  if (tab === 'settings') {
+    loadSettings();
+  }
 }
 
 function showSection(section){
@@ -382,9 +583,16 @@ async function initSupabase(){
   const { data: sData } = await supabase.auth.getSession();
   session = sData.session;
 
-  supabase.auth.onAuthStateChange((_event, newSession)=>{
+  supabase.auth.onAuthStateChange((_event, newSession) => {
     session = newSession;
-    renderAuthState();
+    if (_event === 'SIGNED_OUT') {
+      window.__subChecked = false;
+      document.getElementById('gate').hidden = false;
+      document.getElementById('app').hidden = true;
+    } else if (_event === 'SIGNED_IN') {
+      window.__subChecked = false;
+      renderAuthState();
+    }
   });
 
   return true;
@@ -405,31 +613,127 @@ async function logout(){
   if (error) throw error;
 }
 
-function renderAuthState(){
+async function loadUserPlan() {
+  try {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return;
+    
+    const { data } = await supabase
+      .from('user_plans')
+      .select('plan, status')
+      .eq('email', s.user.email)
+      .single();
+
+    const planNames = {
+      'starter': 'Starter',
+      'growth': 'Growth', 
+      'scale': 'Scale',
+      'enterprise': 'Enterprise',
+      'free': 'Free Trial'
+    };
+
+    const plan = data?.plan || 'free';
+    const planName = planNames[plan] || 'Starter';
+    const status = data?.status || 'active';
+
+    const planEl = document.getElementById('currentPlan');
+    const statusEl = document.getElementById('planStatus');
+    if (planEl) planEl.textContent = planName;
+    if (statusEl) statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+  } catch(e) {
+    const planEl = document.getElementById('currentPlan');
+    if (planEl) planEl.textContent = 'Starter';
+  }
+}
+
+async function renderAuthState(){
   const gate = document.getElementById('gate');
   const app = document.getElementById('app');
+  
   if (!session){
     gate.hidden = false;
     app.hidden = true;
     return;
   }
+
+  // Show app immediately — no flicker
   gate.hidden = true;
   app.hidden = false;
 
+  if (window.__showWelcome) {
+    window.__showWelcome = false;
+    setTimeout(() => {
+      const toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:9999;background:linear-gradient(90deg,#FF6B6B,#FFD93D);border-radius:16px;padding:18px 32px;text-align:center;box-shadow:0 8px 40px rgba(255,107,107,0.4);min-width:320px';
+      toast.innerHTML = `
+        <div style="font-size:24px;margin-bottom:6px">🎉</div>
+        <div style="font-family:'Syne',system-ui;font-weight:900;font-size:16px;color:#0f172a">Welcome to Peoplera!</div>
+        <div style="font-size:12px;color:#0f172a;opacity:0.7;margin-top:4px">Your subscription is active. Let's get started.</div>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.transition = 'opacity 0.5s'; toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
+    }, 1000);
+  }
+
   const email = session.user && session.user.email ? session.user.email : 'Signed in';
   document.getElementById('userPill').textContent = email;
+
+  // Only check subscription once per page load
+  if (window.__subChecked) return;
+  window.__subChecked = true;
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+    if (!token) return;
+
+    const subRes = await fetch('/api/check-subscription', {
+      method: 'POST',
+      headers: { 
+        'content-type': 'application/json', 
+        'authorization': 'Bearer ' + token 
+      },
+      body: JSON.stringify({ email: email.toLowerCase() })
+    });
+    
+    if (!subRes.ok) return; // If check fails, allow access
+    
+    const subData = await subRes.json();
+    
+    if (subData.subscribed === false) {
+      window.__subChecked = false;
+      gate.hidden = false;
+      app.hidden = true;
+      window.location.href = '/pricing.html?reason=no_subscription';
+      return;
+    }
+
+    if (subData.plan) {
+      const planPill = document.getElementById('planPill');
+      if (planPill) planPill.textContent = subData.plan.charAt(0).toUpperCase() + subData.plan.slice(1);
+    }
+  } catch(e) {
+    console.warn('Subscription check failed, allowing access:', e);
+  }
 }
 
 async function checkStatus(){
   const sEl = document.getElementById('supabaseStatus');
   const aEl = document.getElementById('aiStatus');
-  sEl.textContent = session ? 'Connected (session active)' : 'Not signed in';
-
+  if (sEl) sEl.textContent = session ? 'Connected (session active)' : 'Not signed in';
+  if (!aEl) return;
   try{
-    const data = await apiFetch('/api/hire', { method:'POST', body:{ ping:true }, accessToken: (await supabase.auth.getSession()).data?.session?.access_token });
-    aEl.textContent = data && data.ok ? 'Connected' : 'Connected';
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    if (!token) { aEl.textContent = 'Not authenticated'; return; }
+    const res = await fetch('/api/hire', { 
+      method:'POST', 
+      headers:{'content-type':'application/json', 'authorization': 'Bearer ' + token},
+      body: JSON.stringify({ ping: true })
+    });
+    aEl.textContent = res.status !== 500 ? 'Connected' : 'AI endpoint unavailable';
   }catch(err){
-    aEl.textContent = (err && err.message) ? err.message : 'AI endpoint unavailable';
+    if (aEl) aEl.textContent = (err && err.message) ? err.message : 'AI endpoint unavailable';
   }
 }
 
@@ -637,6 +941,7 @@ async function runHire(){
   const reset = setBusy(btn, 'Analyzing…');
   const msg = document.getElementById('hireMsg');
   msg.textContent = '';
+  document.getElementById('hireDetail').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px">⏳ Analyzing candidates…</div>';
   try{
     const jobDescription = document.getElementById('jobDesc').value.trim();
     const fileInput = document.getElementById('cvFiles');
@@ -846,7 +1151,8 @@ function renderBoardPlan(plan){
 
   window._lastBoardPlan = plan;
   const sendBtn = document.getElementById('btnSendEmployee');
-  if (sendBtn) sendBtn.style.display = 'inline-flex';
+  const empEmail = document.getElementById('empEmail')?.value?.trim();
+  if (sendBtn) sendBtn.style.display = empEmail ? 'inline-flex' : 'none';
   updateBoardProgress();
 }
 
@@ -855,6 +1161,7 @@ async function runBoard(){
   const reset = setBusy(btn, 'Generating…');
   const msg = document.getElementById('boardMsg');
   msg.textContent = '';
+  document.getElementById('boardOut').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px">⏳ Generating onboarding plan…</div>';
   try{
     const name = document.getElementById('empName').value.trim();
     const role = document.getElementById('empRole').value.trim();
@@ -1196,6 +1503,7 @@ async function runPulse(){
   const reset = setBusy(btn, 'Analyzing…');
   const msg = document.getElementById('pulseMsg');
   msg.textContent = '';
+  document.getElementById('pulseOut').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px">⏳ Analyzing burnout risk…</div>';
   try{
     const isManual = document.getElementById('pulseManualPanel')?.style.display !== 'none';
     let csvText = '';
@@ -1279,6 +1587,15 @@ function wireUi(){
       btn?.addEventListener?.('click',()=>switchTab(btn.getAttribute('data-tab')));
     });
 
+    const empEmailInput = document.getElementById('empEmail');
+    const sendBtn = document.getElementById('btnSendEmployee');
+    if (empEmailInput && sendBtn) {
+      sendBtn.style.display = empEmailInput.value.trim() ? 'inline-flex' : 'none';
+      empEmailInput.addEventListener('input', function() {
+        if (sendBtn) sendBtn.style.display = this.value.trim() ? 'inline-flex' : 'none';
+      });
+    }
+
     const gateMsg = document.getElementById('gateMsg');
 
     const btnLogin = document.getElementById('btnLogin');
@@ -1344,28 +1661,35 @@ function wireUi(){
 }
 
 async function boot(){
+  // Welcome message after payment
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('welcome') === '1') {
+    // Remove param from URL without reload
+    window.history.replaceState({}, '', '/dashboard.html');
+    // Show welcome toast after app loads
+    window.__showWelcome = true;
+  }
+
   wireUi();
 
-  // Default gate state: show a calm loading message and avoid surfacing config details.
   const gateMsg = document.getElementById('gateMsg');
   if (gateMsg) gateMsg.textContent = 'Loading…';
-
   try{
     await initSupabase();
-    renderAuthState();
-    await loadHistory();
-    await checkStatus();
-  }catch(err){
-    // Avoid showing raw init/config errors in UI.
-    console.error('Dashboard init failed:', err);
-    document.getElementById('gate').hidden = false;
-    document.getElementById('app').hidden = true;
-    const msg = (err && err.message) ? String(err.message) : '';
-    if (msg === 'CONFIG_MISSING'){
-      document.getElementById('gateMsg').textContent = 'Loading…';
-    }else{
-      document.getElementById('gateMsg').textContent = 'Loading…';
+    await renderAuthState();
+    if (session) {
+      await loadUserPlan();
+      await loadHistory();
+      await checkStatus();
     }
+  }catch(err){
+    console.error('Dashboard init failed:', err);
+    const gate = document.getElementById('gate');
+    const app = document.getElementById('app');
+    if (gate) gate.hidden = false;
+    if (app) app.hidden = true;
+    const msg = document.getElementById('gateMsg');
+    if (msg) msg.textContent = 'Loading…';
   }
 }
 
@@ -1382,6 +1706,7 @@ window.applyBoardTemplate = applyBoardTemplate;
 window.toggleHandbook = toggleHandbook;
 window.sendBoardToEmployee = sendBoardToEmployee;
 window.updateBoardProgress = updateBoardProgress;
+window.deleteHistoryItem = deleteHistoryItem;
 window.switchPulseTab = switchPulseTab;
 window.addPulseEmployee = addPulseEmployee;
 window.updatePulseEmp = updatePulseEmp;
