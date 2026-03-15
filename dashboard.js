@@ -492,7 +492,7 @@ async function loadSettings(){
 function switchTab(tab){
   // Plan-based access control
   if (tab === 'pulse') {
-    const planPill = document.getElementById('planPill');
+    const planPill = document.getElementById('sidebarPlan');
     const currentPlan = (planPill?.textContent || '').toLowerCase();
     if (currentPlan === 'starter' || currentPlan === '') {
       // Show upgrade prompt instead
@@ -640,6 +640,13 @@ async function loadUserPlan() {
     const statusEl = document.getElementById('planStatus');
     if (planEl) planEl.textContent = planName;
     if (statusEl) statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+
+    const sidebarPlanEl = document.getElementById('sidebarPlan');
+    if (sidebarPlanEl) {
+      sidebarPlanEl.textContent = planName.toUpperCase();
+      sidebarPlanEl.style.background = plan === 'growth' ? 'rgba(99,102,241,0.15)' : plan === 'scale' ? 'rgba(0,229,160,0.15)' : 'rgba(255,107,107,0.15)';
+      sidebarPlanEl.style.color = plan === 'growth' ? '#6366f1' : plan === 'scale' ? '#00b894' : '#FF6B6B';
+    }
   } catch(e) {
     const planEl = document.getElementById('currentPlan');
     if (planEl) planEl.textContent = 'Starter';
@@ -709,7 +716,7 @@ async function renderAuthState(){
     }
 
     if (subData.plan) {
-      const planPill = document.getElementById('planPill');
+      const planPill = document.getElementById('sidebarPlan');
       if (planPill) planPill.textContent = subData.plan.charAt(0).toUpperCase() + subData.plan.slice(1);
     }
   } catch(e) {
