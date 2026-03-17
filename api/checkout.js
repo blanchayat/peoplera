@@ -1,63 +1,122 @@
-const Stripe = require('stripe');
-
-const PRICES = {
-  starter: { monthly: 49, annual: Math.round(49 * 12 * 0.8) },
-  growth: { monthly: 99, annual: Math.round(99 * 12 * 0.8) },
-  scale: { monthly: 199, annual: Math.round(199 * 12 * 0.8) }
-};
-
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
+    return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const key = process.env.STRIPE_SECRET_KEY || '';
-    if (!key) {
-      res.status(500).json({ error: 'Missing STRIPE_SECRET_KEY' });
-      return;
-    }
+    const body =
+      typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
 
-    const stripe = new Stripe(key, { apiVersion: '2024-04-10' });
-
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const plan = String(body.plan || '').toLowerCase();
     const billingCycle = String(body.billingCycle || 'monthly').toLowerCase();
+    const email = String(body.email || '').trim().toLowerCase();
 
-    if (!PRICES[plan]) {
-      res.status(400).json({ error: 'Invalid plan' });
-      return;
+    if (!email) {
+      return res.status(400).json({ error: 'Missing email' });
+    }
+
+    const STORE_ID = process.env.LEMONSQUEEZY_STORE_ID;
+    const API_KEY = process.env.LEMONSQUEEZY_API_KEY;
+
+    if (!STORE_ID || !API_KEY) {
+      return res.status(500).json({ error: 'Missing Lemon Squeezy env vars' });
+    }
+
+    // Buraya kendi Lemon Squeezy variant ID’lerini yaz
+    const VARIANTS = {
+      starter: {
+        monthly: process.env.LEMONSQUEEZY_STARTER_MONTHLY_VARIANT_ID,
+        annual: process.env.LEMONSQUEEZY_STARTER_ANNUAL_VARIANT_ID
+      },
+      growth: {
+        monthly: process.env.LEMONSQUEEZY_GROWTH_MONTHLY_VARIANT_ID,
+        annual: process.env.LEMONSQUEEZY_GROWTH_ANNUAL_VARIANT_ID
+      },
+      scale: {
+        monthly: process.env.LEMONSQUEEZY_SCALE_MONTHLY_VARIANT_ID,
+        annual: process.env.LEMONSQUEEZY_SCALE_ANNUAL_VARIANT_ID
+      }
+    };
+
+    if (!VARIANTS[plan]) {
+      return res.status(400).json({ error: 'Invalid plan' });
     }
     if (billingCycle !== 'monthly' && billingCycle !== 'annual') {
-      res.status(400).json({ error: 'Invalid billingCycle' });
-      return;
+      return res.status(400).json({ error: 'Invalid billingCycle' });
     }
 
-    const amount = PRICES[plan][billingCycle];
-    const interval = billingCycle === 'monthly' ? 'month' : 'year';
-    const origin = (req.headers['x-forwarded-proto'] ? `${req.headers['x-forwarded-proto']}://${req.headers.host}` : `https://${req.headers.host}`);
+    const variantId = VARIANTS[plan][billingCycle];
+    if (!variantId) {
+      return res.status(500).json({ error: 'Missing variant id for selected plan' });
+    }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      success_url: origin + '/dashboard.html?checkout=success',
-      cancel_url: origin + '/pricing.html?checkout=cancel',
-      line_items: [{
-        quantity: 1,
-        price_data: {
-          currency: 'usd',
-          product_data: {
-            name: `Peoplera ${plan.charAt(0).toUpperCase() + plan.slice(1)}`
+    const origin = req.headers['x-forwarded-proto']
+      ? `${req.headers['x-forwarded-proto']}://${req.headers.host}`
+      : `https://${req.headers.host}`;
+
+    const response = await fetch('https://api.lemonsqueezy.com/v1/checkouts', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/vnd.api+json',
+        'Content-Type': 'application/vnd.api+json',
+        'Authorization': `Bearer ${API_KEY}`
+      },
+      body: JSON.stringify({
+        data: {
+          type: 'checkouts',
+          attributes: {
+            checkout_data: {
+              email,
+              custom: {
+                email,
+                plan,
+                billingCycle
+              }
+            },
+            product_options: {
+              redirect_url: `${origin}/dashboard.html?checkout=success`
+            },
+            checkout_options: {
+              embed: false,
+              media: true,
+              logo: true
+            }
           },
-          unit_amount: amount * 100,
-          recurring: { interval }
+          relationships: {
+            store: {
+              data: {
+                type: 'stores',
+                id: String(STORE_ID)
+              }
+            },
+            variant: {
+              data: {
+                type: 'variants',
+                id: String(variantId)
+              }
+            }
+          }
         }
-      }],
-      allow_promotion_codes: true
+      })
     });
 
-    res.status(200).json({ url: session.url });
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('Lemon checkout error:', data);
+      return res.status(500).json({
+        error: data?.errors?.[0]?.detail || 'Checkout failed'
+      });
+    }
+
+    const url = data?.data?.attributes?.url;
+    if (!url) {
+      return res.status(500).json({ error: 'Checkout URL not returned' });
+    }
+
+    return res.status(200).json({ url });
   } catch (err) {
-    res.status(500).json({ error: 'Checkout failed' });
+    console.error('Checkout error:', err);
+    return res.status(500).json({ error: 'Checkout failed' });
   }
 };

@@ -17,6 +17,9 @@ function normalizeCandidate(c){
 }
 
 module.exports = async (req, res) => {
+  const rateLimit = require('./_rateLimit');
+  if (rateLimit(req, res, { max: 10, windowMs: 60000 })) return;
+
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -35,6 +38,19 @@ module.exports = async (req, res) => {
     const authHeader = req.headers.authorization || '';
     if (!authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Authentication required.' });
+    }
+
+    // Subscriber check
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+    const userEmail = user?.email?.toLowerCase();
+    if (userEmail) {
+      const { data: sub } = await supabaseAdmin.from('subscribers').select('status').eq('email', userEmail).eq('status', 'active').maybeSingle();
+      if (!sub) {
+        return res.status(403).json({ error: 'Active subscription required.' });
+      }
     }
 
     const jobDescription = String(body.jobDescription || '').trim();
@@ -64,9 +80,9 @@ module.exports = async (req, res) => {
 
     const system = 'You are Peoplera Hire. You are an enterprise HR analyst. You must be fair, rigorous, and avoid bias. Focus on skills and evidence in the CV text.';
 
-    const user = `Job description:\n${jobDescription}\n\nCandidates (filename + CV text):\n${safeCvs.map((c,i)=>`#${i+1} ${c.filename}\n${c.text}`).join('\n\n')}\n\nTask: Score each candidate 0-100 by match. Provide strengths, weaknesses, and a short recommendation. Return JSON exactly matching the required schema.`;
+    const userPrompt = `Job description:\n${jobDescription}\n\nCandidates (filename + CV text):\n${safeCvs.map((c,i)=>`#${i+1} ${c.filename}\n${c.text}`).join('\n\n')}\n\nTask: Score each candidate 0-100 by match. Provide strengths, weaknesses, and a short recommendation. Return JSON exactly matching the required schema.`;
 
-    const out = await callClaudeJson({ system, user, schemaName: 'hire' });
+    const out = await callClaudeJson({ system, user: userPrompt, schemaName: 'hire' });
 
     const candidates = Array.isArray(out?.candidates) ? out.candidates.map(normalizeCandidate) : [];
     if (!candidates.length) {

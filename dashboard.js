@@ -706,6 +706,8 @@ async function renderAuthState(){
     if (!subRes.ok) return; // If check fails, allow access
     
     const subData = await subRes.json();
+    console.log("SUB DATA:", subData);
+    console.log("SESSION EMAIL:", email);
     
     if (subData.subscribed === false) {
       window.__subChecked = false;

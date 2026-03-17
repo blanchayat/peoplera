@@ -502,6 +502,20 @@
     </div>
   </footer>
 
+  <div id="cookieBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(15,23,42,0.97);backdrop-filter:blur(10px);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.1)">
+    <div style="font-size:13px;color:#cbd5e1;line-height:1.5;max-width:600px">
+      🍪 We use essential cookies to keep you signed in and improve your experience. By continuing, you agree to our <a href="/privacy.html" style="color:#FFD93D;font-weight:700">Privacy Policy</a>.
+    </div>
+    <button onclick="acceptCookies()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:10px;padding:10px 24px;font-weight:900;font-size:13px;color:#0f172a;cursor:pointer;white-space:nowrap">Accept & continue</button>
+  </div>
+  <script>
+  (function(){
+    function acceptCookies(){ localStorage.setItem('cookieConsent','1'); document.getElementById('cookieBanner').style.display='none'; }
+    window.acceptCookies = acceptCookies;
+    if (!localStorage.getItem('cookieConsent')){ document.getElementById('cookieBanner').style.display='flex'; }
+  })();
+  </script>
+
   <script src="/app.js"></script>
 </body>
 </html>

@@ -29,6 +29,9 @@ function normalizeEmployee(e){
 }
 
 module.exports = async (req, res) => {
+  const rateLimit = require('./_rateLimit');
+  if (rateLimit(req, res, { max: 10, windowMs: 60000 })) return;
+
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -39,6 +42,24 @@ module.exports = async (req, res) => {
     const authHeader = req.headers.authorization || '';
     if (!authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Authentication required.' });
+    }
+
+    // Subscriber check
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
+    const userEmail = user?.email?.toLowerCase();
+    if (userEmail) {
+      const { data: sub } = await supabaseAdmin
+        .from('subscribers')
+        .select('plan, status')
+        .eq('email', userEmail)
+        .eq('status', 'active')
+        .maybeSingle();
+      if (!sub || String(sub.plan || '').toLowerCase() === 'starter') {
+        return res.status(403).json({ error: 'Pulse requires a Growth or Scale plan. Please upgrade.' });
+      }
     }
 
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
@@ -68,9 +89,9 @@ module.exports = async (req, res) => {
 
     const system = 'You are Peoplera Pulse. You are an HR analytics expert focused on burnout prevention. Provide defensible risk scoring and actionable recommendations. Also include a "benchmark" field for each employee: compare their burnoutScore to industry average of 35. State if they are above or below average and by how much.';
 
-    const user = `Employee metrics (weekly snapshot):\n${JSON.stringify(safe)}\n\nInstructions:\n- Output one employee object per input employee (match by name).\n- burnoutScore must be 0-100.\n- riskLevel must be low/medium/high/critical.\n- Provide top riskFactors and concrete recommendations for HR intervention.\nReturn JSON exactly matching required schema.`;
+    const userPrompt = `Employee metrics (weekly snapshot):\n${JSON.stringify(safe)}\n\nInstructions:\n- Output one employee object per input employee (match by name).\n- burnoutScore must be 0-100.\n- riskLevel must be low/medium/high/critical.\n- Provide top riskFactors and concrete recommendations for HR intervention.\nReturn JSON exactly matching required schema.`;
 
-    const out = await callClaudeJson({ system, user, schemaName: 'pulse' });
+    const out = await callClaudeJson({ system, user: userPrompt, schemaName: 'pulse' });
 
     const outEmployees = Array.isArray(out?.employees) ? out.employees.map(normalizeEmployee) : [];
     if (!outEmployees.length) {

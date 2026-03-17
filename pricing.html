@@ -11,6 +11,56 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css" />
+
+  <script>
+  window.sbClient = null;
+
+  async function getSupabaseClient() {
+    if (window.sbClient && window.sbClient.auth) return window.sbClient;
+
+    if (!window.supabase || !window.supabase.createClient) {
+      await new Promise((resolve, reject) => {
+        const existing = document.querySelector('script[data-supabase-loader="1"]');
+
+        if (existing) {
+          if (existing.dataset.loaded === '1') {
+            resolve();
+            return;
+          }
+          existing.addEventListener('load', resolve, { once: true });
+          existing.addEventListener('error', () => reject(new Error('Supabase script yüklenemedi.')), { once: true });
+          return;
+        }
+
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+        s.async = true;
+        s.dataset.supabaseLoader = '1';
+        s.onload = () => {
+          s.dataset.loaded = '1';
+          resolve();
+        };
+        s.onerror = () => reject(new Error('Supabase script yüklenemedi.'));
+        document.head.appendChild(s);
+      });
+    }
+
+    if (!window.supabase || !window.supabase.createClient) {
+      throw new Error('Supabase başlatılamadı.');
+    }
+
+    window.sbClient = window.supabase.createClient(
+      "https://dtlzmuzyrcuizrrwmvwk.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0bHptdXp5cmN1aXpycndtdndrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMTk5MjgsImV4cCI6MjA4ODc5NTkyOH0.Y5kUfrc9aQfIfFIH4TiqSIGZlkqnGGIUp5owGnc3G8g"
+    );
+
+    if (!window.sbClient || !window.sbClient.auth) {
+      throw new Error('Supabase auth başlatılamadı.');
+    }
+
+    return window.sbClient;
+  }
+</script>
 </head>
 <body class="home pricing-page">
   <header class="site-nav">
@@ -49,8 +99,8 @@
             <div class="small">Save 20% with annual billing.</div>
           </div>
           <div style="display:flex;gap:10px;align-items:center">
-            <button class="btn" id="billMonthly" aria-pressed="true">Monthly</button>
-            <button class="btn" id="billAnnual" aria-pressed="false">Annual -20%</button>
+            <button class="btn" id="billMonthly" aria-pressed="true" type="button">Monthly</button>
+            <button class="btn" id="billAnnual" aria-pressed="false" type="button">Annual -20%</button>
           </div>
         </div>
 
@@ -66,7 +116,7 @@
         <div class="pricing" id="plans" style="margin-top:16px">
           <article class="panel price-card">
             <div class="badge">Starter</div>
-            <div class="price" data-base="49">$49</div>
+            <div class="price" data-monthly="49" data-annual="470">$49</div>
             <div class="small">Up to 10 employees. Hire + Board.</div>
             <div style="margin-top:12px;display:grid;gap:6px;font-size:13px">
               <div>✓ Peoplera Hire (full access)</div>
@@ -78,12 +128,14 @@
               <div>✓ 14-day free trial</div>
               <div style="opacity:0.35">✗ Pulse not included</div>
             </div>
-            <a class="btn btn-primary" style="width:100%;margin-top:16px" href="https://peoplera.lemonsqueezy.com/checkout/buy/c8198f8f-b394-494e-8d39-2dc7a2bd5cc8" target="_blank">Start free trial</a>
+            <button class="btn btn-primary" style="width:100%;margin-top:16px" data-plan="starter" type="button">
+              Start free trial
+            </button>
           </article>
 
           <article class="panel price-card" style="border-color:rgba(99,102,241,.32)">
             <div class="badge" style="background:rgba(99,102,241,.14);border-color:rgba(99,102,241,.3)">Growth</div>
-            <div class="price" data-base="99">$99</div>
+            <div class="price" data-monthly="99" data-annual="950">$99</div>
             <div class="small">Up to 50 employees. All 3 products.</div>
             <div style="margin-top:14px;display:grid;gap:8px" class="small">
               <div style="font-weight:800;color:var(--text);margin-bottom:4px">Everything in Starter, plus:</div>
@@ -97,12 +149,14 @@
               <div>✓ Downloadable onboarding PDFs</div>
               <div>✓ 14-day free trial</div>
             </div>
-            <a class="btn btn-primary" style="width:100%;margin-top:16px" href="https://peoplera.lemonsqueezy.com/checkout/buy/9b034424-4c0b-4120-97a0-493220f0cef5" target="_blank">Start free trial</a>
+            <button class="btn btn-primary" style="width:100%;margin-top:16px" data-plan="growth" type="button">
+              Start free trial
+            </button>
           </article>
 
           <article class="panel price-card">
             <div class="badge" style="background:rgba(0,229,160,.10);border-color:rgba(0,229,160,.25)">Scale</div>
-            <div class="price" data-base="199">$199</div>
+            <div class="price" data-monthly="199" data-annual="1910">$199</div>
             <div class="small">Unlimited employees. Priority support.</div>
             <div style="margin-top:14px;display:grid;gap:8px" class="small">
               <div style="font-weight:800;color:var(--text);margin-bottom:4px">Everything in Growth, plus:</div>
@@ -115,7 +169,9 @@
               <div>✓ API access</div>
               <div>✓ 14-day free trial</div>
             </div>
-            <a class="btn btn-primary" style="width:100%;margin-top:16px" href="https://peoplera.lemonsqueezy.com/checkout/buy/db4d5058-326f-499f-a4e5-31ffdeb59ee6" target="_blank">Start free trial</a>
+            <button class="btn btn-primary" style="width:100%;margin-top:16px" data-plan="scale" type="button">
+              Start free trial
+            </button>
           </article>
 
           <article class="panel price-card">
@@ -139,12 +195,17 @@
 
         <div class="panel pad fade-in" style="margin-top:16px;text-align:center">
           <div style="font-weight:800">Not sure which plan is right for you?</div>
-          <div class="small" style="margin-top:6px">Start with the 14-day free trial on any plan. No credit card required to explore. <a href="/dashboard.html" style="color:var(--accent);font-weight:800">Try it free →</a></div>
+          <div class="small" style="margin-top:6px">
+            Start with the 14-day free trial on any plan. No credit card required to explore.
+            <a href="/dashboard.html" style="color:var(--accent);font-weight:800">Try it free →</a>
+          </div>
         </div>
 
         <div class="panel pad" style="margin-top:16px;color:var(--muted);line-height:1.6">
           <div style="font-weight:900;color:var(--text)">Notes</div>
-          <div class="small" style="margin-top:6px">Trials are for product evaluation. Billing starts after checkout confirmation. You can cancel anytime.</div>
+          <div class="small" style="margin-top:6px">
+            Trials are for product evaluation. Billing starts after checkout confirmation. You can cancel anytime.
+          </div>
         </div>
       </div>
     </section>
@@ -178,7 +239,7 @@
         </div>
         <div class="col">
           <div class="col-title">Legal</div>
-          <a href="/pricing.html">Terms</a>
+          <a href="/terms.html">Terms</a>
           <a href="/privacy.html">Privacy Policy</a>
           <a href="#">Security</a>
         </div>
@@ -190,10 +251,12 @@
       </div>
     </div>
     <div class="container footer-bottom">
-      <div> Peoplera</div>
+      <div>Peoplera</div>
       <div class="footer-social" aria-label="Social links">
         <a href="https://www.linkedin.com/in/nurhayat-yılmaz-841899397" aria-label="LinkedIn">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 6.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM2.8 21V9.2H6V21H2.8ZM9.2 9.2h3.1v1.6h.1c.4-.8 1.6-1.8 3.4-1.8 3.6 0 4.3 2.3 4.3 5.3V21H17v-5.4c0-1.3 0-3-1.9-3s-2.2 1.4-2.2 2.9V21H9.2V9.2Z" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 6.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM2.8 21V9.2H6V21H2.8ZM9.2 9.2h3.1v1.6h.1c.4-.8 1.6-1.8 3.4-1.8 3.6 0 4.3 2.3 4.3 5.3V21H17v-5.4c0-1.3 0-3-1.9-3s-2.2 1.4-2.2 2.9V21H9.2V9.2Z" fill="currentColor"/>
+          </svg>
         </a>
       </div>
       <div class="footer-credit">Built by Nurhayat Yılmaz · AI Automation Specialist</div>
@@ -201,58 +264,129 @@
   </footer>
 
   <script>
-    (function(){
-      const annualDiscount = 0.20;
-      let billingCycle = 'monthly';
-      const prices = Array.from(document.querySelectorAll('.price[data-base]'));
-      const btnMonthly = document.getElementById('billMonthly');
-      const btnAnnual = document.getElementById('billAnnual');
+  (function () {
+    let billingCycle = 'monthly';
 
-      function formatUSD(n){
-        return '$' + String(n);
-      }
+    const prices = Array.from(document.querySelectorAll('.price[data-monthly]'));
+    const btnMonthly = document.getElementById('billMonthly');
+    const btnAnnual = document.getElementById('billAnnual');
 
-      function render(){
-        prices.forEach(el=>{
-          const base = Number(el.getAttribute('data-base'));
-          const shown = billingCycle === 'annual' ? Math.round(base * 12 * (1 - annualDiscount)) : base;
-          el.textContent = formatUSD(shown);
-        });
-        btnMonthly.setAttribute('aria-pressed', billingCycle === 'monthly' ? 'true' : 'false');
-        btnAnnual.setAttribute('aria-pressed', billingCycle === 'annual' ? 'true' : 'false');
-      }
-
-      btnMonthly.addEventListener('click', ()=>{ billingCycle = 'monthly'; render(); });
-      btnAnnual.addEventListener('click', ()=>{ billingCycle = 'annual'; render(); });
-
-      async function checkout(plan, button){
-        const old = button.textContent;
-        button.disabled = true;
-        button.textContent = 'Starting checkout…';
-        try{
-          const res = await fetch('/api/checkout',{
-            method:'POST',
-            headers:{'content-type':'application/json'},
-            body: JSON.stringify({ plan, billingCycle })
-          });
-          const data = await res.json().catch(()=>null);
-          if (!res.ok){
-            throw new Error((data && data.error) ? data.error : 'Checkout failed');
-          }
-          if (!data || !data.url) throw new Error('Checkout URL not returned');
-          window.location.href = data.url;
-        }catch(err){
-          button.disabled = false;
-          button.textContent = old;
-          alert(err && err.message ? err.message : 'Checkout failed');
-        }
-      }
-
-      document.querySelectorAll('button[data-plan]').forEach(btn=>{
-        btn.addEventListener('click', ()=>checkout(btn.getAttribute('data-plan'), btn));
+    function renderPrices() {
+      prices.forEach((el) => {
+        const monthly = el.getAttribute('data-monthly');
+        const annual = el.getAttribute('data-annual');
+        el.textContent = billingCycle === 'annual' ? `$${annual}` : `$${monthly}`;
       });
 
-      render();
+      btnMonthly.setAttribute('aria-pressed', billingCycle === 'monthly' ? 'true' : 'false');
+      btnAnnual.setAttribute('aria-pressed', billingCycle === 'annual' ? 'true' : 'false');
+    }
+
+    btnMonthly.addEventListener('click', () => {
+      billingCycle = 'monthly';
+      renderPrices();
+    });
+
+    btnAnnual.addEventListener('click', () => {
+      billingCycle = 'annual';
+      renderPrices();
+    });
+
+    async function checkout(plan, button) {
+      const oldText = button.textContent;
+      button.disabled = true;
+      button.textContent = 'Starting checkout...';
+
+      try {
+        const sb = await getSupabaseClient();
+        const sessionResult = await sb.auth.getSession();
+        const session = sessionResult?.data?.session;
+
+        if (!session?.user?.email) {
+  window.location.href = '/dashboard.html?login=required';
+  return;
+}
+
+        const res = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            plan,
+            billingCycle,
+            email: session.user.email.toLowerCase()
+          })
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          throw new Error((data && data.error) ? data.error : 'Checkout failed');
+        }
+
+        if (!data || !data.url) {
+          throw new Error('Checkout URL not returned');
+        }
+
+        window.location.href = data.url;
+      } catch (err) {
+        button.disabled = false;
+        button.textContent = oldText;
+        alert(err && err.message ? err.message : 'Checkout failed');
+      }
+    }
+
+    document.querySelectorAll('[data-plan]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        checkout(btn.getAttribute('data-plan'), btn);
+      });
+    });
+
+    renderPrices();
+  })();
+</script>
+
+  <script>
+    (function(){
+      const params = new URLSearchParams(window.location.search);
+
+      if (params.get('reason') === 'no_subscription') {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:linear-gradient(90deg,#FF6B6B,#FFD93D);padding:14px 24px;text-align:center;font-weight:800;font-size:14px;color:#0f172a;box-shadow:0 4px 20px rgba(255,107,107,0.3)';
+        banner.textContent = '🔒 You need an active subscription to access Peoplera. Choose a plan below to get started.';
+        document.body.prepend(banner);
+      }
+
+      if (params.get('reason') === 'cancelled') {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999;background:linear-gradient(90deg,#64748b,#94a3b8);padding:14px 24px;text-align:center;font-weight:800;font-size:14px;color:#ffffff';
+        banner.textContent = '✅ Your subscription has been cancelled. We hope to see you again soon.';
+        document.body.prepend(banner);
+      }
+    })();
+  </script>
+
+  <div id="cookieBanner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(15,23,42,0.97);backdrop-filter:blur(10px);padding:16px 24px;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.1)">
+    <div style="font-size:13px;color:#cbd5e1;line-height:1.5;max-width:600px">
+      🍪 We use essential cookies to keep you signed in and improve your experience. By continuing, you agree to our
+      <a href="/privacy.html" style="color:#FFD93D;font-weight:700">Privacy Policy</a>.
+    </div>
+    <button onclick="acceptCookies()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:10px;padding:10px 24px;font-weight:900;font-size:13px;color:#0f172a;cursor:pointer;white-space:nowrap">
+      Accept & continue
+    </button>
+  </div>
+
+  <script>
+    (function(){
+      function acceptCookies() {
+        localStorage.setItem('cookieConsent', '1');
+        document.getElementById('cookieBanner').style.display = 'none';
+      }
+
+      window.acceptCookies = acceptCookies;
+
+      if (!localStorage.getItem('cookieConsent')) {
+        document.getElementById('cookieBanner').style.display = 'flex';
+      }
     })();
   </script>
 </body>
