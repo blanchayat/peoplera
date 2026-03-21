@@ -298,42 +298,37 @@
   button.textContent = 'Starting checkout...';
 
   try {
-    // Session varsa emaili al, yoksa boş geç - Lemon Squeezy zaten email sorar
     let email = '';
     try {
       const sb = await getSupabaseClient();
       const sessionResult = await sb.auth.getSession();
-      const session = sessionResult?.data?.session;
-      if (session?.user?.email) email = session.user.email.toLowerCase();
+      const s = sessionResult?.data?.session;
+      if (s?.user?.email) email = s.user.email.toLowerCase();
     } catch (_) {}
 
-        const res = await fetch('/api/checkout', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            plan,
-            billingCycle,
-            email: session.user.email.toLowerCase()
-          })
-        });
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ plan, billingCycle, email })
+    });
 
-        const data = await res.json().catch(() => null);
+    const data = await res.json().catch(() => null);
 
-        if (!res.ok) {
-          throw new Error((data && data.error) ? data.error : 'Checkout failed');
-        }
-
-        if (!data || !data.url) {
-          throw new Error('Checkout URL not returned');
-        }
-
-        window.location.href = data.url;
-      } catch (err) {
-        button.disabled = false;
-        button.textContent = oldText;
-        alert(err && err.message ? err.message : 'Checkout failed');
-      }
+    if (!res.ok) {
+      throw new Error((data && data.error) ? data.error : 'Checkout failed');
     }
+
+    if (!data || !data.url) {
+      throw new Error('Checkout URL not returned');
+    }
+
+    window.location.href = data.url;
+  } catch (err) {
+    button.disabled = false;
+    button.textContent = oldText;
+    alert(err && err.message ? err.message : 'Checkout failed');
+  }
+}
 
     document.querySelectorAll('[data-plan]').forEach((btn) => {
       btn.addEventListener('click', () => {
