@@ -7,42 +7,29 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { createClient } = require('@supabase/supabase-js');
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
-    );
-
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const email = String(body.email || '').trim().toLowerCase();
 
-    if (!email) {
-      return res.status(200).json({ subscribed: false });
-    }
-
-    const { data, error } = await supabase
-      .from('subscribers')
-      .select('email, status, plan, created_at')
-      .eq('email', email)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Supabase error:', error);
-      return res.status(200).json({ subscribed: false });
-    }
-
-    const status = data ? data.status : null;
-    const subscribed = !!data && String(status || '').toLowerCase() === 'active';
-
     return res.status(200).json({
-  subscribed,
-  plan: data ? data.plan : null,
-  created_at: data ? data.created_at : null,
-  status,
-  startDate: data ? data.created_at : null
-});
+      subscribed: true,
+      plan: 'early-access',
+      created_at: null,
+      status: 'active',
+      startDate: null,
+      email: email || null,
+      pricingDisabled: true,
+      message: 'Early access is currently free. Pricing is coming soon.'
+    });
   } catch (err) {
     console.error('Check subscription error:', err);
-    return res.status(200).json({ subscribed: false });
+    return res.status(200).json({
+      subscribed: true,
+      plan: 'early-access',
+      created_at: null,
+      status: 'active',
+      startDate: null,
+      pricingDisabled: true,
+      message: 'Early access is currently free. Pricing is coming soon.'
+    });
   }
 };
