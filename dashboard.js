@@ -346,122 +346,51 @@ async function loadSettings(){
       year:'numeric'
     });
 
+    const trialEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', {
+      day:'2-digit',
+      month:'2-digit',
+      year:'numeric'
+    });
+
     const settingsEl = document.getElementById('tab-settings');
     if (!settingsEl) return;
 
-    settingsEl.innerHTML = `
-      <div style="max-width:600px">
+    function cancelSubscription(){
+      window.open('https://app.lemonsqueezy.com/billing','_blank');
+    }
 
-        <div style="background:white;border-radius:20px;padding:24px;border:1px solid rgba(0,0,0,0.08)">
-          
-          <div style="font-weight:900;font-size:12px;color:#FF6B6B;margin-bottom:16px">
-            PROFILE
-          </div>
-
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
-            <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FFD93D);display:flex;align-items:center;justify-content:center;font-weight:900">
-              ${(userEmail[0] || 'U').toUpperCase()}
-            </div>
-            <div>
-              <div style="font-weight:800">${escapeHtml(userEmail)}</div>
-              <div style="font-size:12px;color:#94a3b8">Signed in with Google</div>
-            </div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-
-            <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
-              <div style="font-size:10px;color:#64748b;font-weight:900">STATUS</div>
-              <div style="font-weight:900;margin-top:6px">Early Access</div>
-            </div>
-
-            <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
-              <div style="font-size:10px;color:#64748b;font-weight:900">MEMBER SINCE</div>
-              <div style="font-weight:900;margin-top:6px">${memberSince}</div>
-            </div>
-
-          </div>
-
-          <div style="margin-top:16px;font-size:12px;color:#64748b">
-            You are part of early access. No billing is active.
-          </div>
-
-        </div>
-
-      </div>
-    `;
-  } catch(e){
-    console.warn(e);
-  }
-}
     window.cancelSubscription = cancelSubscription;
 
     settingsEl.innerHTML = `
-  <div style="max-width:700px">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(255,107,107,0.12);border-radius:20px;padding:24px;backdrop-filter:blur(10px)">
-        <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:16px">👤 PROFILE</div>
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-          <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FFD93D);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#0f172a;flex-shrink:0">
-            ${(userEmail?.[0] || 'U').toUpperCase()}
+      <div style="max-width:700px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
+            <div style="font-size:10px;color:#64748b;font-weight:900">STATUS</div>
+            <div style="font-weight:900;margin-top:6px">Early Access</div>
           </div>
-          <div>
-            <div style="font-weight:800;font-size:14px;color:#0f172a">${escapeHtml(userEmail || '')}</div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:2px">Signed in with Google</div>
+          <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
+            <div style="font-size:10px;color:#64748b;font-weight:900">MEMBER SINCE</div>
+            <div style="font-weight:900;margin-top:6px">${memberSince}</div>
           </div>
         </div>
-        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:14px;margin-bottom:10px">
-          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:6px">CURRENT PLAN</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="currentPlan" style="font-family:'Syne',system-ui;font-weight:900;font-size:18px;color:#0f172a">—</span>
-            <span id="planStatus" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);color:#0f172a;font-size:10px;font-weight:900;padding:3px 10px;border-radius:999px">—</span>
+        <div style="margin-top:16px;font-size:12px;color:#64748b">
+          You are part of early access. No billing is active.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+          <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
+            <div style="font-size:10px;color:#64748b;font-weight:900">TRIAL ENDS</div>
+            <div style="font-weight:900;margin-top:6px">${trialEndDate}</div>
+          </div>
+          <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
+            <div style="font-size:10px;color:#64748b;font-weight:900">PLAN</div>
+            <div style="font-weight:900;margin-top:6px">Early Access</div>
           </div>
         </div>
-        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:12px;padding:14px">
-          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:6px">MEMBER SINCE</div>
-          <div style="font-weight:800;font-size:15px;color:#0f172a">${memberSince}</div>
+        <div style="margin-top:16px">
+          <button onclick="cancelSubscription()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);color:#0f172a;padding:10px 20px;border:none;border-radius:10px;font-size:12px;cursor:pointer">Cancel subscription</button>
         </div>
       </div>
-
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(255,107,107,0.12);border-radius:20px;padding:24px;backdrop-filter:blur(10px)">
-        <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:16px">💳 SUBSCRIPTION</div>
-        <div style="background:linear-gradient(135deg,rgba(255,107,107,0.06),rgba(255,217,61,0.06));border:1px solid rgba(255,107,107,0.15);border-radius:12px;padding:16px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-            <div style="font-size:12px;color:#64748b;font-weight:700">Status</div>
-            <span style="background:rgba(0,184,148,0.12);border:1px solid rgba(0,184,148,0.3);color:#00b894;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px">● Active</span>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <div style="font-size:12px;color:#64748b;font-weight:700">Renews</div>
-            <div style="font-size:13px;font-weight:800;color:#0f172a">Monthly</div>
-          </div>
-          <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:space-between">
-            <div style="font-size:12px;color:#64748b;font-weight:700">Free trial ends</div>
-            <div style="font-size:13px;font-weight:800;color:#FF6B6B">${trialEndDate}</div>
-          </div>
-          <div style="margin-top:6px;background:rgba(255,107,107,0.06);border-radius:8px;padding:8px 10px;font-size:11px;color:#64748b;line-height:1.5">
-            💳 You won't be charged until <strong style="color:#0f172a">${trialEndDate}</strong>. Cancel anytime before then for free.
-          </div>
-        </div>
-        <button onclick="window.open('https://app.lemonsqueezy.com/billing','_blank')" style="width:100%;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:12px;font-size:13px;font-weight:800;color:#6366f1;cursor:pointer;margin-bottom:10px">
-          🔗 Manage subscription
-        </button>
-        <button onclick="cancelSubscription()" style="width:100%;background:none;border:none;padding:8px;font-size:12px;font-weight:700;color:#94a3b8;cursor:pointer;text-decoration:underline">
-          Cancel subscription
-        </button>
-      </div>
-
-    </div>
-
-    <div style="margin-top:16px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:14px;padding:16px">
-      <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">💬 SUPPORT</div>
-      <div style="font-size:13px;color:#334155;margin-bottom:8px">Need help? We typically respond within 24 hours.</div>
-      <a href="mailto:support@peoplera.work" style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:800;color:#6366f1;text-decoration:none">
-        ✉ support@peoplera.work
-      </a>
-    </div>
-  </div>
-`;
+    `;
   } catch(e) {
     console.warn('loadSettings error:', e);
   }
@@ -487,7 +416,7 @@ function switchTab(tab){
     overview: 'Overview',
     hire: 'Hire',
     board: 'Board',
-    pulse: 'Pulse',
+    pulse: 'People Risk',
     settings: 'Settings'
   };
 
@@ -533,7 +462,7 @@ let session = null;
 
 function sleep(ms){
   return new Promise(resolve => setTimeout(resolve, ms));
-}
+};
 
 async function waitForSubscription(email, token, {
   maxAttempts = 8,
@@ -752,70 +681,6 @@ async function renderAuthState(){
   const email = session.user?.email || 'Signed in';
   const userPill = document.getElementById('userPill');
   if (userPill) userPill.textContent = email;
-
-  if (window.__subChecked) return;
-  window.__subChecked = true;
-
-  try {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const token = sessionData?.session?.access_token;
-    if (!token) return;
-
-    const subRes = await fetch('/api/check-subscription', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'authorization': 'Bearer ' + token
-      },
-      body: JSON.stringify({ email: email.toLowerCase() })
-    });
-
-    let subData = subRes.ok ? await readJsonSafe(subRes).catch(() => null) : null;
-
-    console.log('SUB DATA:', subData);
-    console.log('SESSION EMAIL:', email);
-
-    if (!subData || subData.subscribed !== true) {
-      const params = new URLSearchParams(window.location.search);
-      const justReturnedFromCheckout =
-        params.get('checkout') === 'success' ||
-        params.get('welcome') === '1';
-
-      if (justReturnedFromCheckout) {
-        showActivationToast('Activating your subscription...');
-
-        const retried = await waitForSubscription(email, token, {
-          maxAttempts: 10,
-          delayMs: 2500
-        });
-
-        hideActivationToast();
-
-        if (retried && retried.subscribed === true) {
-          subData = retried;
-        }
-      }
-    }
-
-    if (!subData || subData.subscribed !== true) {
-  subData = {
-    subscribed: true,
-    plan: 'early-access',
-    status: 'active'
-  };
-}
-
-    if (subData.plan) {
-      const planPill = document.getElementById('sidebarPlan');
-      if (planPill) {
-        planPill.textContent = String(subData.plan).charAt(0).toUpperCase() + String(subData.plan).slice(1);
-      }
-    }
-
-    await loadUserPlan();
-  } catch(e) {
-    console.warn('Subscription check failed, allowing access temporarily:', e);
-  }
 }
 
 async function checkStatus(){
@@ -1481,62 +1346,347 @@ function downloadPulseTemplate() {
   URL.revokeObjectURL(url);
 }
 
+function normalizeRiskLevel(level){
+  const l = String(level || '').toLowerCase();
+  if (l === 'low' || l === 'medium' || l === 'high' || l === 'critical') return l;
+  return 'medium';
+}
+
+function computeCompanyRiskScore(employees){
+  const arr = Array.isArray(employees) ? employees : [];
+  if (!arr.length) return 0;
+  const sum = arr.reduce((acc, e) => acc + (Number(e?.burnoutScore) || 0), 0);
+  return Math.round(sum / arr.length);
+}
+
+function getCompanyTrendSeries(maxWeeks = 8){
+  const items = window.__historyCache?.pulse || [];
+  const sorted = items.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  const series = sorted.slice(Math.max(0, sorted.length - maxWeeks)).map(it => {
+    const emps = Array.isArray(it.employees) ? it.employees : [];
+    return computeCompanyRiskScore(emps);
+  });
+  return series;
+}
+
+function getTrendArrow(current, previous){
+  const c = Number(current);
+  const p = Number(previous);
+  if (!Number.isFinite(c) || !Number.isFinite(p)) return '—';
+  if (c > p + 2) return '↑';
+  if (c < p - 2) return '↓';
+  return '→';
+}
+
+function readJsonLocalStorage(key, fallback){
+  try {
+    const v = localStorage.getItem(key);
+    if (!v) return fallback;
+    return JSON.parse(v);
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJsonLocalStorage(key, value){
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+function computeHeuristicDrivers(e){
+  const drivers = [];
+
+  const weeklyHours = Number(e?.weeklyHours);
+  const afterHours = Number(e?.afterHoursMessages);
+  const sickDays = Number(e?.sickDays);
+  const lastVacation = String(e?.lastVacation || '').trim();
+
+  if (Number.isFinite(weeklyHours) && weeklyHours >= 50) drivers.push('Workload overload');
+  if (Number.isFinite(afterHours) && afterHours >= 10) drivers.push('High after-hours activity');
+  if (Number.isFinite(sickDays) && sickDays >= 3) drivers.push('Rising sick leave signals');
+  if (!lastVacation || lastVacation.toLowerCase() === 'unknown') drivers.push('Missing vacation / recovery data');
+  if (drivers.length === 0) drivers.push('Low recovery');
+
+  return drivers.slice(0, 3);
+}
+
+function computeRecommendedAction(level, drivers){
+  const l = normalizeRiskLevel(level);
+  const ds = Array.isArray(drivers) ? drivers : [];
+  if (l === 'critical' || l === 'high') {
+    if (ds.includes('Workload overload')) return 'Reduce workload temporarily';
+    if (ds.includes('High after-hours activity')) return 'Set after-hours boundaries';
+    return 'Schedule 1:1 this week';
+  }
+  if (l === 'medium') {
+    if (ds.includes('Missing vacation / recovery data')) return 'Clarify recovery and time off plan';
+    return 'Schedule a check-in and monitor';
+  }
+  return 'Keep routine check-ins';
+}
+
+function logRiskAction(employeeName, actionText){
+  const key = 'peoplera_people_risk_actions';
+  const store = readJsonLocalStorage(key, {});
+  store[String(employeeName || '').toLowerCase()] = {
+    action: String(actionText || ''),
+    at: new Date().toISOString()
+  };
+  writeJsonLocalStorage(key, store);
+}
+
+function getLoggedAction(employeeName){
+  const key = 'peoplera_people_risk_actions';
+  const store = readJsonLocalStorage(key, {});
+  return store[String(employeeName || '').toLowerCase()] || null;
+}
+
+function renderTrendBars(series, accent = '#FF6B6B'){
+  const arr = Array.isArray(series) ? series : [];
+  if (!arr.length) return '<div style="color:#94a3b8;font-size:12px">No trend history yet. Run analysis weekly to build a trend.</div>';
+  const max = Math.max(1, ...arr);
+  return `
+    <div style="display:flex;align-items:flex-end;gap:6px;height:70px;padding:10px 0">
+      ${arr.map((v, i) => {
+        const h = Math.max(4, Math.round((v / max) * 70));
+        const isLast = i === arr.length - 1;
+        return `<div title="Week ${i + 1}: ${v}/100" style="flex:1;min-width:10px;background:${isLast ? accent : 'rgba(255,107,107,0.25)'};height:${h}px;border-radius:6px"></div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
 function renderPulse(employees){
   const out = document.getElementById('pulseOut');
-  const rows = employees.slice().sort((a,b)=>(b.burnoutScore||0)-(a.burnoutScore||0));
-  const atRisk = rows.filter(e=>['high','critical'].includes(String(e.riskLevel||'').toLowerCase())).length;
+  if (!out) return;
+
+  const rows = (Array.isArray(employees) ? employees : []).slice().map(e => ({
+    ...e,
+    riskLevel: normalizeRiskLevel(e?.riskLevel)
+  })).sort((a, b) => (Number(b?.burnoutScore) || 0) - (Number(a?.burnoutScore) || 0));
+
+  const companyScore = computeCompanyRiskScore(rows);
+  const atRiskCount = rows.filter(e => ['medium','high','critical'].includes(normalizeRiskLevel(e.riskLevel))).length;
+  const atRiskPct = rows.length ? Math.round((atRiskCount / rows.length) * 100) : 0;
+
   const statEl = document.getElementById('statAtRisk');
-  if(statEl) statEl.textContent = String(atRisk);
+  if (statEl) {
+    const hi = rows.filter(e => ['high','critical'].includes(normalizeRiskLevel(e.riskLevel))).length;
+    statEl.textContent = String(hi);
+  }
+
+  const prevCompany = readJsonLocalStorage('peoplera_people_risk_prev_company', null);
+  const companyTrendArrow = getTrendArrow(companyScore, prevCompany?.score);
+  writeJsonLocalStorage('peoplera_people_risk_prev_company', { score: companyScore, at: new Date().toISOString() });
+
+  const prevMap = readJsonLocalStorage('peoplera_people_risk_prev_employees', {});
+  const nextMap = {};
 
   const colorMap = { low:'#00e5a0', medium:'#FFD93D', high:'#FF6B6B', critical:'#ff3b3b' };
 
-  out.innerHTML = `
-    <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead>
-          <tr style="border-bottom:1px solid rgba(0,0,0,0.08)">
-            <th style="text-align:left;padding:10px 12px;font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:0.08em">NAME</th>
-            <th style="text-align:center;padding:10px 12px;font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:0.08em">SCORE</th>
-            <th style="text-align:center;padding:10px 12px;font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:0.08em">LEVEL</th>
-            <th style="text-align:left;padding:10px 12px;font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:0.08em">TOP FACTORS</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map((e) => {
-            const lvl = String(e.riskLevel||'medium').toLowerCase();
-            const color = colorMap[lvl] || '#FFD93D';
-            const score = e.burnoutScore || 0;
-            const factors = Array.isArray(e.riskFactors) ? e.riskFactors : [];
-            const dataAttr = `data-employee='${JSON.stringify(e).replace(/'/g,"&#39;")}'`;
-            return `
-              <tr style="border-bottom:1px solid rgba(0,0,0,0.06);transition:background 0.2s" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
-                <td style="padding:14px 12px">
-                  <span ${dataAttr} onclick="showEmployeeCard(this)" style="font-weight:800;font-family:'Syne',system-ui;cursor:pointer;color:#0f172a;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.2);text-underline-offset:3px">${escapeHtml(e.name||'')}</span>
-                </td>
-                <td style="padding:14px 12px;text-align:center">
-                  <div style="display:inline-flex;flex-direction:column;align-items:center;gap:4px">
-                    <span style="font-family:'Syne',system-ui;font-weight:900;font-size:20px;color:${color}">${score}</span>
-                    <div style="width:48px;height:4px;background:rgba(0,0,0,0.08);border-radius:4px;overflow:hidden">
-                      <div style="height:100%;width:${score}%;background:${color};border-radius:4px"></div>
-                    </div>
-                  </div>
-                </td>
-                <td style="padding:14px 12px;text-align:center">
-                  <span style="background:${color}22;border:1px solid ${color}55;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:900;color:${color};font-family:'Syne',system-ui;text-transform:uppercase;letter-spacing:0.05em">${lvl}</span>
-                </td>
-                <td style="padding:14px 12px;color:#64748b;line-height:1.5">${factors.slice(0,2).map(f=>escapeHtml(f)).join(' · ')}</td>
-              </tr>
-            `;
-          }).join('')}
-        </tbody>
-      </table>
-    </div>
+  const enriched = rows.map(e => {
+    const name = String(e?.name || '').trim() || 'Employee';
+    const score = Number(e?.burnoutScore) || 0;
+    const prev = prevMap[String(name).toLowerCase()];
+    const arrow = getTrendArrow(score, prev?.score);
+    nextMap[String(name).toLowerCase()] = { score, at: new Date().toISOString() };
 
-    <div id="employeeModal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);align-items:center;justify-content:center" onclick="if(event.target===this)closeEmployeeCard()">
-      <div id="employeeCard" style="background:#ffffff;border:1px solid rgba(0,0,0,0.1);border-radius:20px;padding:28px;width:min(480px,92vw);position:relative;box-shadow:0 32px 80px rgba(0,0,0,0.5)">
-        <button onclick="closeEmployeeCard()" style="position:absolute;top:16px;right:16px;background:rgba(0,0,0,0.08);border:none;border-radius:8px;width:30px;height:30px;color:#0f172a;font-size:16px;cursor:pointer">✕</button>
-        <div id="employeeCardContent"></div>
+    const lvl = normalizeRiskLevel(e?.riskLevel);
+    const drivers = (Array.isArray(e?.riskFactors) && e.riskFactors.length)
+      ? e.riskFactors.slice(0, 3)
+      : computeHeuristicDrivers(e);
+    const topDriver = drivers[0] || '—';
+    const recommendedAction = computeRecommendedAction(lvl, drivers);
+    const logged = getLoggedAction(name);
+
+    return {
+      raw: e,
+      name,
+      score,
+      lvl,
+      color: colorMap[lvl] || '#FFD93D',
+      arrow,
+      drivers,
+      topDriver,
+      recommendedAction,
+      logged
+    };
+  });
+
+  writeJsonLocalStorage('peoplera_people_risk_prev_employees', nextMap);
+
+  const driverCounts = {};
+  for (const e of enriched) {
+    if (!e.topDriver) continue;
+    driverCounts[e.topDriver] = (driverCounts[e.topDriver] || 0) + 1;
+  }
+  const topDriver = Object.entries(driverCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+
+  const trendSeries = getCompanyTrendSeries(8);
+  const prevSeriesValue = trendSeries.length >= 2 ? trendSeries[trendSeries.length - 2] : null;
+  const seriesArrow = prevSeriesValue == null ? companyTrendArrow : getTrendArrow(trendSeries[trendSeries.length - 1], prevSeriesValue);
+
+  const high = enriched.filter(e => ['high','critical'].includes(e.lvl));
+  const medium = enriched.filter(e => e.lvl === 'medium');
+  const low = enriched.filter(e => e.lvl === 'low');
+
+  const rising = enriched.filter(e => e.arrow === '↑' && ['medium','high','critical'].includes(e.lvl));
+  const teamHint = high.length
+    ? 'Highest concentration in high-risk cohort.'
+    : (medium.length ? 'Medium-risk cohort needs attention this week.' : 'No immediate hotspots detected.');
+
+  const weeklyBrief = `${rising.length || high.length || medium.length ? (rising.length ? `${rising.length} employee(s) show rising risk` : `${high.length + medium.length} employee(s) are at elevated risk`) : 'No elevated risk detected'} driven by ${topDriver.toLowerCase()}. ${teamHint}`;
+
+  const totalSickDays = enriched.reduce((acc, e) => acc + (Number(e.raw?.sickDays) || 0), 0);
+  const highSick = enriched.filter(e => (Number(e.raw?.sickDays) || 0) >= 3);
+  const missingVacation = enriched.filter(e => {
+    const v = String(e.raw?.lastVacation || '').trim();
+    return !v || v.toLowerCase() === 'unknown';
+  });
+
+  const employeeCard = (e) => {
+    const actionState = e.logged ? `
+      <div style="margin-top:10px;font-size:12px;font-weight:800;color:#00b894">Action logged</div>
+    ` : `
+      <button onclick="logPeopleRiskAction('${String(e.name).replace(/'/g, "\\'")}', '${String(e.recommendedAction).replace(/'/g, "\\'")}')" style="margin-top:10px;background:${e.color}15;border:1px solid ${e.color}44;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:900;color:${e.color};cursor:pointer;width:100%">Mark as action taken</button>
+    `;
+
+    return `
+      <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-left:3px solid ${e.color};border-radius:14px;padding:14px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:14px;color:#0f172a">${escapeHtml(e.name)}</div>
+            <div style="margin-top:4px;font-size:12px;color:#64748b">Top driver: <span style="font-weight:800;color:#0f172a">${escapeHtml(e.topDriver)}</span></div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:20px;color:${e.color};line-height:1">${e.score}</div>
+            <div style="font-size:10px;color:#94a3b8">/100</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px">
+          <span style="background:${e.color}22;border:1px solid ${e.color}55;border-radius:8px;padding:4px 10px;font-size:10px;font-weight:900;color:${e.color};font-family:'Syne',system-ui;text-transform:uppercase;letter-spacing:0.05em">${e.lvl}</span>
+          <div style="font-size:12px;font-weight:900;color:#0f172a">Trend: <span style="color:${e.arrow === '↑' ? '#FF6B6B' : e.arrow === '↓' ? '#00b894' : '#64748b'}">${e.arrow}</span></div>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#64748b;line-height:1.6">
+          <div style="font-size:10px;font-weight:900;color:#94a3b8;letter-spacing:0.08em;margin-bottom:6px">DRIVERS</div>
+          ${e.drivers.slice(0, 3).map(d => `<span style="display:inline-block;margin:0 6px 6px 0;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.08);border-radius:999px;padding:3px 10px;font-size:11px;color:#334155;font-weight:800">${escapeHtml(d)}</span>`).join('')}
+        </div>
+        <div style="margin-top:10px;background:${e.color}0F;border:1px solid ${e.color}22;border-radius:12px;padding:10px 12px">
+          <div style="font-size:10px;font-weight:900;color:${e.color};letter-spacing:0.08em;margin-bottom:6px">RECOMMENDED ACTION</div>
+          <div style="font-size:12px;font-weight:800;color:#0f172a">${escapeHtml(e.recommendedAction)}</div>
+        </div>
+        ${actionState}
       </div>
+    `;
+  };
+
+  window.logPeopleRiskAction = function(name, action){
+    logRiskAction(name, action);
+    renderPulse(employees);
+  };
+
+  out.innerHTML = `
+    <div style="display:grid;gap:12px">
+
+      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
+        <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">WEEKLY PEOPLE RISK BRIEF</div>
+        <div style="font-size:13px;color:#0f172a;font-weight:800;line-height:1.5">${escapeHtml(weeklyBrief)}</div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.18);border-radius:14px;padding:12px">
+          <div style="font-size:10px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em">COMPANY RISK SCORE</div>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:8px">
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:28px;color:#FF6B6B">${companyScore}</div>
+            <div style="font-size:12px;font-weight:900;color:#0f172a">${companyTrendArrow}</div>
+          </div>
+        </div>
+
+        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.18);border-radius:14px;padding:12px">
+          <div style="font-size:10px;font-weight:900;color:#6366f1;letter-spacing:0.08em">% AT RISK</div>
+          <div style="font-family:'Syne',system-ui;font-weight:900;font-size:28px;color:#6366f1;margin-top:8px">${atRiskPct}%</div>
+          <div style="font-size:11px;color:#64748b;margin-top:2px;font-weight:800">Medium + High</div>
+        </div>
+
+        <div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.18);border-radius:14px;padding:12px">
+          <div style="font-size:10px;font-weight:900;color:#00b894;letter-spacing:0.08em">TOP RISK DRIVER</div>
+          <div style="font-size:13px;font-weight:900;color:#0f172a;margin-top:10px">${escapeHtml(topDriver)}</div>
+        </div>
+
+        <div style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
+          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em">RISK TREND</div>
+          <div style="font-size:22px;font-weight:900;color:#0f172a;margin-top:8px">${seriesArrow}</div>
+          <div style="font-size:11px;color:#94a3b8;font-weight:800;margin-top:2px">Last weeks</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em">BURNOUT TREND</div>
+            <div style="font-size:12px;color:#64748b;margin-top:2px;font-weight:700">4–8 week trend</div>
+          </div>
+          <div style="font-size:12px;color:#94a3b8;font-weight:800">Score over time</div>
+        </div>
+        ${renderTrendBars(trendSeries)}
+      </div>
+
+      <div style="display:grid;gap:12px">
+        <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-top:2px">TEAM HOTSPOTS</div>
+
+        ${high.length ? `
+          <div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;color:#FF6B6B;margin-bottom:8px">High risk</div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${high.map(employeeCard).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${medium.length ? `
+          <div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;color:#FFD93D;margin-bottom:8px">Medium risk</div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${medium.map(employeeCard).join('')}</div>
+          </div>
+        ` : ''}
+
+        ${low.length ? `
+          <div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;color:#00b894;margin-bottom:8px">Low risk</div>
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">${low.map(employeeCard).join('')}</div>
+          </div>
+        ` : ''}
+      </div>
+
+      <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
+        <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:10px">SICK LEAVE SIGNALS</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
+            <div style="font-size:10px;font-weight:900;color:#94a3b8;letter-spacing:0.08em">TOTAL SICK DAYS</div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:22px;color:#0f172a;margin-top:8px">${totalSickDays}</div>
+          </div>
+          <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.18);border-radius:14px;padding:12px">
+            <div style="font-size:10px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em">HIGH SICK DAYS (≥3)</div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:22px;color:#FF6B6B;margin-top:8px">${highSick.length}</div>
+          </div>
+          <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.18);border-radius:14px;padding:12px">
+            <div style="font-size:10px;font-weight:900;color:#6366f1;letter-spacing:0.08em">MISSING VACATION DATA</div>
+            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:22px;color:#6366f1;margin-top:8px">${missingVacation.length}</div>
+          </div>
+        </div>
+        ${highSick.length ? `
+          <div style="margin-top:12px;font-size:12px;color:#64748b">
+            <div style="font-weight:900;color:#0f172a;margin-bottom:6px">Employees with high sick days</div>
+            ${highSick.map(e => `<div style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.06)"><span style="font-weight:900">${escapeHtml(e.name)}</span> · ${Number(e.raw?.sickDays) || 0} sick day(s)</div>`).join('')}
+          </div>
+        ` : ''}
+        ${missingVacation.length ? `
+          <div style="margin-top:12px;font-size:12px;color:#64748b">
+            <div style="font-weight:900;color:#0f172a;margin-bottom:6px">Missing vacation data</div>
+            ${missingVacation.map(e => `<div style="padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.06)"><span style="font-weight:900">${escapeHtml(e.name)}</span> · lastVacation unknown</div>`).join('')}
+          </div>
+        ` : ''}
+      </div>
+
     </div>
   `;
 }
@@ -1619,13 +1769,28 @@ async function runPulse(){
     });
 
     if (!data || !Array.isArray(data.employees)) throw new Error('Invalid AI response');
-    pulseLast = data;
-    renderPulse(data.employees);
+    const inputByName = {};
+    for (const e of employeesInput) {
+      const k = String(e?.name || '').toLowerCase();
+      if (k) inputByName[k] = e;
+    }
+
+    const mergedEmployees = data.employees.map(e => {
+      const k = String(e?.name || '').toLowerCase();
+      const metrics = inputByName[k] || {};
+      return {
+        ...metrics,
+        ...e
+      };
+    });
+
+    pulseLast = { ...data, employees: mergedEmployees };
+    renderPulse(mergedEmployees);
 
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
       if (s) {
-        const result = data;
+        const result = { ...data, employees: mergedEmployees };
         const atRisk = result.employees.filter(e => ['high','critical'].includes(String(e.riskLevel||'').toLowerCase())).length;
         await supabase.from('pulse_results').insert({
           user_id: s.user.id,
@@ -1640,7 +1805,7 @@ async function runPulse(){
       }
     } catch(e) { console.warn('Save pulse result failed', e); }
 
-    addFeed('Pulse', `Generated weekly burnout report for ${data.employees.length} employee(s).`);
+    addFeed('People Risk', `Generated weekly people risk report for ${mergedEmployees.length} employee(s).`);
 
     msg.textContent = 'Done.';
   }catch(err){
