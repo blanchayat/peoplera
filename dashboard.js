@@ -48,7 +48,7 @@ function download(filename, content, type){
 async function extractPdfText(file){
   const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.mjs');
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.6.82/build/pdf.worker.mjs';
-  
+
   const buf = await file.arrayBuffer();
   const doc = await pdfjsLib.getDocument({ data: buf }).promise;
   let out = '';
@@ -61,7 +61,6 @@ async function extractPdfText(file){
 }
 
 function parseCsvText(text){
-  // Minimal CSV parser supporting quoted values.
   const rows = [];
   let row = [];
   let cur = '';
@@ -122,7 +121,6 @@ function mapEmployeeRows(csvRows){
 async function apiFetch(path, { method='POST', body=null, accessToken=null } = {}){
   const headers = { 'content-type':'application/json' };
 
-  // Refresh session if needed
   if (supabase && !accessToken) {
     const { data } = await supabase.auth.getSession();
     if (data?.session) {
@@ -145,13 +143,13 @@ function renderHistory(containerId, items, type) {
   const el = document.getElementById(containerId);
   if (!el) return;
   if (!items || items.length === 0) { el.innerHTML = ''; return; }
-  
+
   const colorMap = { hire: '#6366f1', board: '#00b894', pulse: '#FF6B6B' };
   const color = colorMap[type];
 
   window.__historyCache = window.__historyCache || {};
   window.__historyCache[type] = items;
-  
+
   el.innerHTML = `
     <div style="border-top:1px solid rgba(0,0,0,0.08);padding-top:16px;margin-top:8px">
       <div style="font-size:11px;font-weight:900;color:${color};letter-spacing:0.08em;margin-bottom:10px">🕐 RECENT ANALYSES</div>
@@ -171,7 +169,7 @@ function renderHistory(containerId, items, type) {
             preview = `${total} employees · ${at} at risk`;
           }
           return `
-            <div 
+            <div
               style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:10px;padding:10px 14px;transition:all 0.2s"
               onmouseover="this.style.background='rgba(${type==='hire'?'99,102,241':type==='board'?'0,184,148':'255,107,107'},0.06)';this.style.borderColor='${color}44'"
               onmouseout="this.style.background='rgba(0,0,0,0.02)';this.style.borderColor='rgba(0,0,0,0.07)'">
@@ -181,7 +179,7 @@ function renderHistory(containerId, items, type) {
               </div>
               <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
                 <button onclick="loadHistoryItem('${type}', ${idx})" style="font-size:10px;font-weight:800;color:${color};background:${color}15;border:none;border-radius:6px;padding:5px 10px;cursor:pointer">Load →</button>
-                <button onclick="deleteHistoryItem('${type}', ${idx}, '${item.id}')" 
+                <button onclick="deleteHistoryItem('${type}', ${idx}, '${item.id}')"
                   style="background:none;border:none;padding:2px 6px;font-size:14px;cursor:pointer;color:#94a3b8"
                   onmouseover="this.style.color='#FF6B6B'" onmouseout="this.style.color='#94a3b8'">🗑</button>
               </div>
@@ -222,7 +220,6 @@ async function loadHistory() {
     const { data: { session: s } } = await supabase.auth.getSession();
     if (!s) return;
 
-    // Load last hire result
     const { data: hireData } = await supabase
       .from('hire_results')
       .select('*')
@@ -235,7 +232,6 @@ async function loadHistory() {
     }
     if (hireData) renderHistory('hireHistory', hireData, 'hire');
 
-    // Load last board result
     const { data: boardData } = await supabase
       .from('board_results')
       .select('*')
@@ -247,7 +243,6 @@ async function loadHistory() {
     }
     if (boardData) renderHistory('boardHistory', boardData, 'board');
 
-    // Load last pulse result
     const { data: pulseData } = await supabase
       .from('pulse_results')
       .select('*')
@@ -258,7 +253,6 @@ async function loadHistory() {
       renderPulse(pulseData[0].employees);
       document.getElementById('statAtRisk').textContent = String(pulseData[0].at_risk_count || 0);
 
-      // Update at-risk preview on overview
       const atRiskEmps = (pulseData[0].employees || [])
         .filter(e => ['high','critical'].includes(String(e.riskLevel||'').toLowerCase()))
         .slice(0, 3);
@@ -316,7 +310,6 @@ async function clearBoard(){
 async function clearPulse(){
   document.getElementById('pulseOut').innerHTML = '';
   document.getElementById('statAtRisk').textContent = '0';
-  // Reload history after clearing view
   try {
     const { data: { session: s } } = await supabase.auth.getSession();
     if (!s) return;
@@ -343,84 +336,70 @@ async function loadSettings(){
   try {
     const { data: { session: s } } = await supabase.auth.getSession();
     const u = s?.user || null;
-    const email = u?.email || '';
-    const userEmail = email;
 
-    const createdAt = u?.created_at ? String(u.created_at) : new Date().toISOString();
-    const trialEnd = new Date(createdAt);
-    trialEnd.setDate(trialEnd.getDate() + 14);
-    const trialEndDate = trialEnd.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
-    const memberSince = new Date(createdAt).toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const userEmail = u?.email || '';
+    const createdAt = u?.created_at || new Date().toISOString();
+
+    const memberSince = new Date(createdAt).toLocaleDateString('en-GB', {
+      day:'2-digit',
+      month:'2-digit',
+      year:'numeric'
+    });
 
     const settingsEl = document.getElementById('tab-settings');
     if (!settingsEl) return;
 
-    async function cancelSubscription() {
-      // Show confirmation modal
-      const modal = document.createElement('div');
-      modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px';
-      modal.innerHTML = `
-        <div style="background:#ffffff;border-radius:24px;padding:32px;width:min(440px,92vw);box-shadow:0 32px 80px rgba(0,0,0,0.3)">
-          <div style="text-align:center;margin-bottom:24px">
-            <div style="font-size:48px;margin-bottom:12px">⚠️</div>
-            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:20px;color:#0f172a;margin-bottom:8px">Cancel your subscription?</div>
-            <div style="font-size:13px;color:#64748b;line-height:1.6">
-              You will lose access to all Peoplera features at the end of your current billing period. Your data will be retained for 30 days after cancellation.
+    settingsEl.innerHTML = `
+      <div style="max-width:600px">
+
+        <div style="background:white;border-radius:20px;padding:24px;border:1px solid rgba(0,0,0,0.08)">
+          
+          <div style="font-weight:900;font-size:12px;color:#FF6B6B;margin-bottom:16px">
+            PROFILE
+          </div>
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+            <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FFD93D);display:flex;align-items:center;justify-content:center;font-weight:900">
+              ${(userEmail[0] || 'U').toUpperCase()}
+            </div>
+            <div>
+              <div style="font-weight:800">${escapeHtml(userEmail)}</div>
+              <div style="font-size:12px;color:#94a3b8">Signed in with Google</div>
             </div>
           </div>
-          <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.15);border-radius:12px;padding:14px;margin-bottom:20px">
-            <div style="font-size:12px;color:#64748b;line-height:1.6">
-              <div style="margin-bottom:4px">❌ You will lose access to Hire, Board and Pulse</div>
-              <div style="margin-bottom:4px">❌ Onboarding plans will no longer be generated</div>
-              <div>✅ Your data is retained for 30 days</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+
+            <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
+              <div style="font-size:10px;color:#64748b;font-weight:900">STATUS</div>
+              <div style="font-weight:900;margin-top:6px">Early Access</div>
             </div>
+
+            <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
+              <div style="font-size:10px;color:#64748b;font-weight:900">MEMBER SINCE</div>
+              <div style="font-weight:900;margin-top:6px">${memberSince}</div>
+            </div>
+
           </div>
-          <div style="display:grid;gap:10px">
-            <button id="confirmCancel" style="width:100%;background:rgba(255,59,59,0.1);border:1px solid rgba(255,59,59,0.3);border-radius:12px;padding:13px;font-size:13px;font-weight:800;color:#ff3b3b;cursor:pointer">
-              Yes, cancel my subscription
-            </button>
-            <button id="dismissCancel" style="width:100%;background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:13px;font-size:13px;font-weight:900;color:#0f172a;cursor:pointer">
-              Keep my subscription →
-            </button>
+
+          <div style="margin-top:16px;font-size:12px;color:#64748b">
+            You are part of early access. No billing is active.
           </div>
+
         </div>
-      `;
-      document.body.appendChild(modal);
 
-      // Dismiss
-      document.getElementById('dismissCancel').onclick = () => modal.remove();
-      modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
-
-      // Confirm cancel
-      document.getElementById('confirmCancel').onclick = async () => {
-        const btn = document.getElementById('confirmCancel');
-        btn.textContent = 'Cancelling…';
-        btn.disabled = true;
-        try {
-          const { data: { session: s } } = await supabase.auth.getSession();
-          const res = await fetch('/api/cancel-subscription', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + s.access_token }
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Cancel failed');
-          modal.remove();
-          await supabase.auth.signOut();
-          window.location.href = '/pricing.html?reason=cancelled';
-        } catch(e) {
-          btn.textContent = 'Yes, cancel my subscription';
-          btn.disabled = false;
-          alert('Cancellation failed: ' + e.message);
-        }
-      };
-    }
+      </div>
+    `;
+  } catch(e){
+    console.warn(e);
+  }
+}
     window.cancelSubscription = cancelSubscription;
 
     settingsEl.innerHTML = `
   <div style="max-width:700px">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-      
-      <!-- Profile Card -->
+
       <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(255,107,107,0.12);border-radius:20px;padding:24px;backdrop-filter:blur(10px)">
         <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:16px">👤 PROFILE</div>
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
@@ -445,7 +424,6 @@ async function loadSettings(){
         </div>
       </div>
 
-      <!-- Subscription Card -->
       <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(255,107,107,0.12);border-radius:20px;padding:24px;backdrop-filter:blur(10px)">
         <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:16px">💳 SUBSCRIPTION</div>
         <div style="background:linear-gradient(135deg,rgba(255,107,107,0.06),rgba(255,217,61,0.06));border:1px solid rgba(255,107,107,0.15);border-radius:12px;padding:16px;margin-bottom:16px">
@@ -490,40 +468,29 @@ async function loadSettings(){
 }
 
 function switchTab(tab){
-  // Plan-based access control
-  if (tab === 'pulse') {
-    const planPill = document.getElementById('sidebarPlan');
-    const currentPlan = (planPill?.textContent || '').toLowerCase();
-    if (currentPlan === 'starter' || currentPlan === '') {
-      // Show upgrade prompt instead
-      document.querySelectorAll('.module').forEach(m => m.classList.remove('on'));
-      const pulseTab = document.getElementById('tab-pulse');
-      if (pulseTab) {
-        pulseTab.classList.add('on');
-        pulseTab.innerHTML = `
-          <div style="max-width:500px;margin:60px auto;text-align:center;padding:40px;background:rgba(255,255,255,0.8);border:1px solid rgba(255,107,107,0.15);border-radius:24px;backdrop-filter:blur(10px)">
-            <div style="font-size:48px;margin-bottom:16px">🔒</div>
-            <div style="font-family:'Syne',system-ui;font-weight:900;font-size:22px;color:#0f172a;margin-bottom:8px">Pulse is a Growth feature</div>
-            <div style="font-size:14px;color:#64748b;line-height:1.6;margin-bottom:24px">Upgrade to Growth or Scale to unlock weekly burnout risk reports, employee monitoring, and HR intervention recommendations.</div>
-            <a href="/pricing.html" style="display:inline-block;background:linear-gradient(90deg,#FF6B6B,#FFD93D);color:#0f172a;font-weight:900;font-size:14px;padding:14px 32px;border-radius:999px;text-decoration:none">Upgrade plan →</a>
-          </div>
-        `;
-      }
-      document.querySelectorAll('.nav-item').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('data-tab') === 'pulse');
-      });
-      document.getElementById('pageTitle').textContent = 'Pulse';
-      return;
-    }
-  }
-  document.querySelectorAll('.nav-item').forEach(b=>{
+  document.querySelectorAll('.nav-item').forEach(b => {
     b.classList.toggle('active', b.getAttribute('data-tab') === tab);
   });
-  document.querySelectorAll('.nav-item[data-section]').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.module').forEach(m=>m.classList.remove('on'));
+
+  document.querySelectorAll('.nav-item[data-section]').forEach(b => {
+    b.classList.remove('active');
+  });
+
+  document.querySelectorAll('.module').forEach(m => {
+    m.classList.remove('on');
+  });
+
   const t = document.getElementById('tab-' + tab);
   if (t) t.classList.add('on');
-  const titleMap = { overview:'Overview', hire:'Hire', board:'Board', pulse:'Pulse', settings:'Settings' };
+
+  const titleMap = {
+    overview: 'Overview',
+    hire: 'Hire',
+    board: 'Board',
+    pulse: 'Pulse',
+    settings: 'Settings'
+  };
+
   document.getElementById('pageTitle').textContent = titleMap[tab] || 'Dashboard';
 
   if (tab === 'settings') {
@@ -564,34 +531,115 @@ function riskClass(level){
 let supabase = null;
 let session = null;
 
+function sleep(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForSubscription(email, token, {
+  maxAttempts = 8,
+  delayMs = 2500
+} = {}) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const subRes = await fetch('/api/check-subscription', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({ email: String(email || '').toLowerCase() })
+      });
+
+      const subData = await readJsonSafe(subRes).catch(() => null);
+
+      if (subRes.ok && subData && subData.subscribed === true) {
+        return subData;
+      }
+    } catch (e) {
+      console.warn('waitForSubscription attempt failed:', e);
+    }
+
+    if (i < maxAttempts - 1) {
+      await sleep(delayMs);
+    }
+  }
+
+  return { subscribed: false };
+}
+
+function showActivationToast(message = 'Activating your subscription...'){
+  let el = document.getElementById('activationToast');
+  if (el) return el;
+
+  el = document.createElement('div');
+  el.id = 'activationToast';
+  el.style.cssText = [
+    'position:fixed',
+    'top:24px',
+    'right:24px',
+    'z-index:9999',
+    'background:linear-gradient(90deg,#FF6B6B,#FFD93D)',
+    'color:#0f172a',
+    'padding:14px 18px',
+    'border-radius:14px',
+    'font-weight:900',
+    'font-size:13px',
+    'box-shadow:0 12px 36px rgba(255,107,107,0.28)'
+  ].join(';');
+  el.textContent = message;
+  document.body.appendChild(el);
+  return el;
+}
+
+function hideActivationToast(){
+  const el = document.getElementById('activationToast');
+  if (el) el.remove();
+}
+
 async function initSupabase(){
   if (!window.supabaseLib && window.supabase && typeof window.supabase.createClient === 'function') {
     window.supabaseLib = window.supabase;
   }
+
   const supabaseLib = window.supabaseLib || window.supabase;
+  if (!supabaseLib || typeof supabaseLib.createClient !== 'function') {
+    throw new Error('Supabase library not loaded');
+  }
+
   const res = await fetch('/api/public-config');
   const data = await readJsonSafe(res);
   if (!res.ok) throw new Error((data && data.error) ? data.error : 'Failed to load config');
   if (!data.supabaseUrl || !data.supabaseAnonKey) throw new Error('CONFIG_MISSING');
+
   supabase = supabaseLib.createClient(data.supabaseUrl, data.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' }
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'implicit'
+    }
   });
 
-  window.supabase = supabase;
   window.supabaseClient = supabase;
 
   const { data: sData } = await supabase.auth.getSession();
   session = sData.session;
 
-  supabase.auth.onAuthStateChange((_event, newSession) => {
+  supabase.auth.onAuthStateChange(async (_event, newSession) => {
     session = newSession;
+
     if (_event === 'SIGNED_OUT') {
       window.__subChecked = false;
-      document.getElementById('gate').hidden = false;
-      document.getElementById('app').hidden = true;
-    } else if (_event === 'SIGNED_IN') {
+      const gate = document.getElementById('gate');
+      const app = document.getElementById('app');
+      if (gate) gate.hidden = false;
+      if (app) app.hidden = true;
+      return;
+    }
+
+    if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION') {
       window.__subChecked = false;
-      renderAuthState();
+      await renderAuthState();
     }
   });
 
@@ -616,25 +664,32 @@ async function logout(){
 async function loadUserPlan() {
   try {
     const { data: { session: s } } = await supabase.auth.getSession();
-    if (!s) return;
-    
-    const { data } = await supabase
-      .from('user_plans')
-      .select('plan, status')
-      .eq('email', s.user.email)
-      .single();
+    if (!s?.user?.email) return;
+
+    const email = String(s.user.email || '').toLowerCase();
+
+    const { data, error } = await supabase
+      .from('subscribers')
+      .select('plan, status, created_at')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('loadUserPlan error:', error);
+      return;
+    }
 
     const planNames = {
-      'starter': 'Starter',
-      'growth': 'Growth', 
-      'scale': 'Scale',
-      'enterprise': 'Enterprise',
-      'free': 'Free Trial'
+      starter: 'Starter',
+      growth: 'Growth',
+      scale: 'Scale',
+      enterprise: 'Enterprise',
+      free: 'Free Trial'
     };
 
-    const plan = data?.plan || 'free';
+    const plan = String(data?.plan || 'starter').toLowerCase();
+    const status = String(data?.status || 'active');
     const planName = planNames[plan] || 'Starter';
-    const status = data?.status || 'active';
 
     const planEl = document.getElementById('currentPlan');
     const statusEl = document.getElementById('planStatus');
@@ -644,28 +699,36 @@ async function loadUserPlan() {
     const sidebarPlanEl = document.getElementById('sidebarPlan');
     if (sidebarPlanEl) {
       sidebarPlanEl.textContent = planName.toUpperCase();
-      sidebarPlanEl.style.background = plan === 'growth' ? 'rgba(99,102,241,0.15)' : plan === 'scale' ? 'rgba(0,229,160,0.15)' : 'rgba(255,107,107,0.15)';
-      sidebarPlanEl.style.color = plan === 'growth' ? '#6366f1' : plan === 'scale' ? '#00b894' : '#FF6B6B';
+      sidebarPlanEl.style.background =
+        plan === 'growth'
+          ? 'rgba(99,102,241,0.15)'
+          : plan === 'scale'
+          ? 'rgba(0,229,160,0.15)'
+          : 'rgba(255,107,107,0.15)';
+      sidebarPlanEl.style.color =
+        plan === 'growth'
+          ? '#6366f1'
+          : plan === 'scale'
+          ? '#00b894'
+          : '#FF6B6B';
     }
   } catch(e) {
-    const planEl = document.getElementById('currentPlan');
-    if (planEl) planEl.textContent = 'Starter';
+    console.warn('loadUserPlan failed:', e);
   }
 }
 
 async function renderAuthState(){
   const gate = document.getElementById('gate');
   const app = document.getElementById('app');
-  
+
   if (!session){
-    gate.hidden = false;
-    app.hidden = true;
+    if (gate) gate.hidden = false;
+    if (app) app.hidden = true;
     return;
   }
 
-  // Show app immediately — no flicker
-  gate.hidden = true;
-  app.hidden = false;
+  if (gate) gate.hidden = true;
+  if (app) app.hidden = false;
 
   if (window.__showWelcome) {
     window.__showWelcome = false;
@@ -678,14 +741,18 @@ async function renderAuthState(){
         <div style="font-size:12px;color:#0f172a;opacity:0.7;margin-top:4px">Your subscription is active. Let's get started.</div>
       `;
       document.body.appendChild(toast);
-      setTimeout(() => { toast.style.transition = 'opacity 0.5s'; toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
+      setTimeout(() => {
+        toast.style.transition = 'opacity 0.5s';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+      }, 4000);
     }, 1000);
   }
 
-  const email = session.user && session.user.email ? session.user.email : 'Signed in';
-  document.getElementById('userPill').textContent = email;
+  const email = session.user?.email || 'Signed in';
+  const userPill = document.getElementById('userPill');
+  if (userPill) userPill.textContent = email;
 
-  // Only check subscription once per page load
   if (window.__subChecked) return;
   window.__subChecked = true;
 
@@ -696,33 +763,58 @@ async function renderAuthState(){
 
     const subRes = await fetch('/api/check-subscription', {
       method: 'POST',
-      headers: { 
-        'content-type': 'application/json', 
-        'authorization': 'Bearer ' + token 
+      headers: {
+        'content-type': 'application/json',
+        'authorization': 'Bearer ' + token
       },
       body: JSON.stringify({ email: email.toLowerCase() })
     });
-    
-    if (!subRes.ok) return; // If check fails, allow access
-    
-    const subData = await subRes.json();
-    console.log("SUB DATA:", subData);
-    console.log("SESSION EMAIL:", email);
-    
-    if (subData.subscribed === false) {
-      window.__subChecked = false;
-      gate.hidden = false;
-      app.hidden = true;
-      window.location.href = '/pricing.html?reason=no_subscription';
-      return;
+
+    let subData = subRes.ok ? await readJsonSafe(subRes).catch(() => null) : null;
+
+    console.log('SUB DATA:', subData);
+    console.log('SESSION EMAIL:', email);
+
+    if (!subData || subData.subscribed !== true) {
+      const params = new URLSearchParams(window.location.search);
+      const justReturnedFromCheckout =
+        params.get('checkout') === 'success' ||
+        params.get('welcome') === '1';
+
+      if (justReturnedFromCheckout) {
+        showActivationToast('Activating your subscription...');
+
+        const retried = await waitForSubscription(email, token, {
+          maxAttempts: 10,
+          delayMs: 2500
+        });
+
+        hideActivationToast();
+
+        if (retried && retried.subscribed === true) {
+          subData = retried;
+        }
+      }
     }
+
+    if (!subData || subData.subscribed !== true) {
+  subData = {
+    subscribed: true,
+    plan: 'early-access',
+    status: 'active'
+  };
+}
 
     if (subData.plan) {
       const planPill = document.getElementById('sidebarPlan');
-      if (planPill) planPill.textContent = subData.plan.charAt(0).toUpperCase() + subData.plan.slice(1);
+      if (planPill) {
+        planPill.textContent = String(subData.plan).charAt(0).toUpperCase() + String(subData.plan).slice(1);
+      }
     }
+
+    await loadUserPlan();
   } catch(e) {
-    console.warn('Subscription check failed, allowing access:', e);
+    console.warn('Subscription check failed, allowing access temporarily:', e);
   }
 }
 
@@ -735,8 +827,8 @@ async function checkStatus(){
     const { data } = await supabase.auth.getSession();
     const token = data?.session?.access_token;
     if (!token) { aEl.textContent = 'Not authenticated'; return; }
-    const res = await fetch('/api/hire', { 
-      method:'POST', 
+    const res = await fetch('/api/hire', {
+      method:'POST',
       headers:{'content-type':'application/json', 'authorization': 'Bearer ' + token},
       body: JSON.stringify({ ping: true })
     });
@@ -746,7 +838,6 @@ async function checkStatus(){
   }
 }
 
-// ── INTERVIEW ──────────────────────────────────────────
 async function runInterview(){
   const name = document.getElementById('interviewCandidateName')?.value?.trim();
   const weaknesses = document.getElementById('interviewWeaknesses')?.value?.trim();
@@ -795,7 +886,6 @@ async function runInterview(){
   }
 }
 
-// ── ROI CALCULATOR ─────────────────────────────────────
 async function runROI(){
   const candidatesAnalyzed = Number(document.getElementById('roiCandidates')?.value || 0);
   const onboardingPlansGenerated = Number(document.getElementById('roiPlans')?.value || 0);
@@ -855,7 +945,6 @@ async function runROI(){
   }
 }
 
-// ── EMAIL WEEKLY REPORT ────────────────────────────────
 async function sendWeeklyReport(userEmail, pulseEmployees, atRiskCount){
   if (!userEmail || !pulseEmployees) return;
   const criticalList = pulseEmployees
@@ -889,7 +978,6 @@ async function sendWeeklyReport(userEmail, pulseEmployees, atRiskCount){
   } catch(e) { console.warn('Email send failed', e); }
 }
 
-// Hire
 let hireLast = null;
 let hireCsvRows = [];
 
@@ -976,7 +1064,6 @@ async function runHire(){
     const candidates = data.candidates.slice().sort((a,b)=>(b.matchScore||0)-(a.matchScore||0));
     renderHireDetail(candidates);
 
-    // Save hire result to Supabase
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
       if (s) {
@@ -990,11 +1077,9 @@ async function runHire(){
       }
     } catch(e) { console.warn('Save hire result failed', e); }
 
-    // stats + feed
     document.getElementById('statCandidates').textContent = String(candidates.length);
     addFeed('Hire', `Analyzed ${candidates.length} candidate(s) against the job description.`);
 
-    // export
     hireCsvRows = [ ['name','matchScore','recommendation','strengths','weaknesses'] ].concat(
       candidates.map(c=>[
         c.name || '',
@@ -1014,7 +1099,6 @@ async function runHire(){
   }
 }
 
-// Board
 let boardLast = null;
 
 function applyBoardTemplate(role, dept, context) {
@@ -1209,7 +1293,6 @@ async function runBoard(){
     boardLast = data;
     renderBoardPlan(plan);
 
-    // Save board result to Supabase
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
       if (s) {
@@ -1313,10 +1396,7 @@ function downloadBoardPdf(data){
   doc.save('peoplera-onboarding-plan.pdf');
 }
 
-// Pulse
 let pulseLast = null;
-
-// ── PULSE MANUAL ENTRY ─────────────────────────────────
 let pulseEmployees = [];
 
 function switchPulseTab(tab) {
@@ -1409,7 +1489,6 @@ function renderPulse(employees){
   if(statEl) statEl.textContent = String(atRisk);
 
   const colorMap = { low:'#00e5a0', medium:'#FFD93D', high:'#FF6B6B', critical:'#ff3b3b' };
-  const fontMap = { low:'Syne', medium:'Syne', high:'Syne', critical:'Syne' };
 
   out.innerHTML = `
     <div style="overflow-x:auto">
@@ -1423,12 +1502,11 @@ function renderPulse(employees){
           </tr>
         </thead>
         <tbody>
-          ${rows.map((e,idx) => {
+          ${rows.map((e) => {
             const lvl = String(e.riskLevel||'medium').toLowerCase();
             const color = colorMap[lvl] || '#FFD93D';
             const score = e.burnoutScore || 0;
             const factors = Array.isArray(e.riskFactors) ? e.riskFactors : [];
-            const recs = Array.isArray(e.recommendations) ? e.recommendations : [];
             const dataAttr = `data-employee='${JSON.stringify(e).replace(/'/g,"&#39;")}'`;
             return `
               <tr style="border-bottom:1px solid rgba(0,0,0,0.06);transition:background 0.2s" onmouseover="this.style.background='rgba(0,0,0,0.02)'" onmouseout="this.style.background='transparent'">
@@ -1454,7 +1532,6 @@ function renderPulse(employees){
       </table>
     </div>
 
-    <!-- Employee detail modal -->
     <div id="employeeModal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);align-items:center;justify-content:center" onclick="if(event.target===this)closeEmployeeCard()">
       <div id="employeeCard" style="background:#ffffff;border:1px solid rgba(0,0,0,0.1);border-radius:20px;padding:28px;width:min(480px,92vw);position:relative;box-shadow:0 32px 80px rgba(0,0,0,0.5)">
         <button onclick="closeEmployeeCard()" style="position:absolute;top:16px;right:16px;background:rgba(0,0,0,0.08);border:none;border-radius:8px;width:30px;height:30px;color:#0f172a;font-size:16px;cursor:pointer">✕</button>
@@ -1492,11 +1569,11 @@ function showEmployeeCard(el){
     </div>
     <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.12);border-radius:12px;padding:14px;margin-bottom:12px">
       <div style="font-size:10px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">⚠ RISK FACTORS</div>
-      ${factors.map(f=>`<div style=\"font-size:13px;color:#334155;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06)\">${escapeHtml(f)}</div>`).join('')}
+      ${factors.map(f=>`<div style="font-size:13px;color:#334155;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06)">${escapeHtml(f)}</div>`).join('')}
     </div>
     <div style="background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.12);border-radius:12px;padding:14px">
       <div style="font-size:10px;font-weight:900;color:#00e5a0;letter-spacing:0.08em;margin-bottom:8px">→ RECOMMENDATIONS</div>
-      ${recs.map(r=>`<div style=\"font-size:13px;color:#334155;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06)\">${escapeHtml(r)}</div>`).join('')}
+      ${recs.map(r=>`<div style="font-size:13px;color:#334155;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.06)">${escapeHtml(r)}</div>`).join('')}
     </div>
   `;
   const modal = document.getElementById('employeeModal');
@@ -1545,7 +1622,6 @@ async function runPulse(){
     pulseLast = data;
     renderPulse(data.employees);
 
-    // Save pulse result to Supabase
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
       if (s) {
@@ -1557,7 +1633,6 @@ async function runPulse(){
           at_risk_count: atRisk
         });
 
-        // Send weekly report email
         const { data: { session: emailSession } } = await supabase.auth.getSession();
         if (emailSession?.user?.email) {
           await sendWeeklyReport(emailSession.user.email, result.employees, atRisk);
@@ -1662,7 +1737,6 @@ function wireUi(){
     const cvList = document.getElementById('cvList');
     if (cvDrop && cvFiles && cvList) initDrop(cvDrop, cvFiles, cvList);
 
-    // Initialize feed with a couple of realistic events
     addFeed('Security', 'Session-protected dashboard initialized.');
   } catch(e) {
     console.warn('wireUi error:', e);
@@ -1670,12 +1744,9 @@ function wireUi(){
 }
 
 async function boot(){
-  // Welcome message after payment
   const urlParams = new URLSearchParams(window.location.search);
+
   if (urlParams.get('welcome') === '1') {
-    // Remove param from URL without reload
-    window.history.replaceState({}, '', '/dashboard.html');
-    // Show welcome toast after app loads
     window.__showWelcome = true;
   }
 
@@ -1683,13 +1754,18 @@ async function boot(){
 
   const gateMsg = document.getElementById('gateMsg');
   if (gateMsg) gateMsg.textContent = 'Loading…';
+
   try{
     await initSupabase();
     await renderAuthState();
+
     if (session) {
-      await loadUserPlan();
       await loadHistory();
       await checkStatus();
+    }
+
+    if (urlParams.get('welcome') === '1') {
+      window.history.replaceState({}, '', '/dashboard.html');
     }
   }catch(err){
     console.error('Dashboard init failed:', err);
@@ -1697,8 +1773,7 @@ async function boot(){
     const app = document.getElementById('app');
     if (gate) gate.hidden = false;
     if (app) app.hidden = true;
-    const msg = document.getElementById('gateMsg');
-    if (msg) msg.textContent = 'Loading…';
+    if (gateMsg) gateMsg.textContent = 'Loading…';
   }
 }
 
