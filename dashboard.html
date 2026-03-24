@@ -30,11 +30,11 @@
       </a>
 
       <h1 class="gate-title">Welcome back</h1>
-      <div class="gate-sub">Sign in with Google to access Hire, Board, and Pulse.</div>
+      <div class="gate-sub">Sign in with Google to access Hire, Board, Pulse, Interview, and ROI.</div>
 
       <button class="btn btn-primary gate-btn" id="btnLogin" style="width:100%">Continue with Google</button>
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">
-        By signing in, you agree to our <a href="/privacy.html" style="color:var(--accent)">Privacy Policy</a>. 
+        By signing in, you agree to our <a href="/privacy.html" style="color:var(--accent)">Privacy Policy</a>.
         Your data is stored in EU servers and never sold to third parties.
       </div>
       <div id="gateMsg" class="gate-msg"></div>
@@ -53,8 +53,8 @@
           </svg>
         </button>
       </div>
+
       <div class="pill" id="userPill">Signed in</div>
-      <span id="sidebarPlan" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);color:#0f172a;font-size:10px;font-weight:900;padding:3px 8px;border-radius:999px;margin-left:6px;text-transform:uppercase"></span>
 
       <div class="side-nav" style="margin-top:12px">
         <button class="nav-item active" data-tab="overview">Overview</button>
@@ -72,8 +72,9 @@
 
       <div class="panel" style="margin-top:14px;padding:12px;border-radius:16px;background:rgba(255,255,255,.04)">
         <div style="font-weight:900">Quick actions</div>
-        <div class="small" style="margin-top:8px;display:grid;gap:10px">
-          <a class="btn" href="/pricing.html" style="display:inline-flex;justify-content:center">Manage plan</a>
+        <div class="small" style="margin-top:8px;display:grid;gap:8px">
+          <button class="btn" onclick="showSection('hire')" style="display:inline-flex;justify-content:center">Analyze candidates</button>
+          <button class="btn" onclick="showSection('pulse')" style="display:inline-flex;justify-content:center">Check burnout signals</button>
         </div>
       </div>
     </aside>
@@ -81,7 +82,10 @@
     <main class="main">
       <div class="container">
         <div class="topbar">
-          <h1 id="pageTitle">Overview</h1>
+          <div>
+            <h1 id="pageTitle">Overview</h1>
+            <div style="font-size:13px;color:#64748b;margin-top:4px">AI-powered hiring and burnout insights for modern teams</div>
+          </div>
           <div class="row">
             <span class="pill" id="statusPill">AI ready</span>
             <span class="pill" id="supabaseStatus">Loading…</span>
@@ -97,7 +101,13 @@
               </div>
             </div>
 
-            <!-- Stat cards -->
+            <div class="panel" style="margin-top:12px;padding:14px 16px;border-radius:16px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.14)">
+              <div style="font-weight:900;color:#0f172a">Peoplera works alongside your HR system</div>
+              <div class="small" style="margin-top:6px;color:#64748b">
+                Use Peoplera for better hiring decisions, faster onboarding, and earlier burnout detection — without replacing your existing tools.
+              </div>
+            </div>
+
             <div class="grid3" style="margin-top:16px">
               <div class="panel stat" onclick="showSection('hire')" style="cursor:pointer;border-left:3px solid #6366f1;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="display:flex;align-items:center;justify-content:space-between">
@@ -127,7 +137,6 @@
               </div>
             </div>
 
-            <!-- Quick actions row -->
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px">
               <div onclick="showSection('hire')" style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(99,102,241,0.12)'" onmouseout="this.style.background='rgba(99,102,241,0.06)'">
                 <div style="font-size:22px;margin-bottom:6px">🎯</div>
@@ -151,12 +160,10 @@
               </div>
             </div>
 
-            <!-- Recent activity + At-risk preview -->
             <div class="two-col" style="margin-top:12px">
               <div class="panel feed">
                 <div style="font-weight:900;font-size:14px;margin-bottom:4px">Recent activity</div>
-                <div id="feedList">
-                </div>
+                <div id="feedList"></div>
               </div>
 
               <div class="panel" style="padding:16px">
@@ -211,7 +218,6 @@
                 <button onclick="clearHire()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
               </div>
 
-              <!-- Hire history -->
               <div id="hireHistory" style="margin-top:20px"></div>
               <div id="hireMsg" class="small" style="color:var(--muted)"></div>
             </div>
@@ -302,7 +308,6 @@
                 <button onclick="clearBoard()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
               </div>
 
-              <!-- Board history -->
               <div id="boardHistory" style="margin-top:20px"></div>
               <div id="boardMsg" class="small" style="color:var(--muted)"></div>
             </div>
@@ -338,19 +343,16 @@
 
           <div class="two-col" style="margin-top:12px">
             <div class="panel pad">
-              <!-- Tab switcher -->
               <div style="display:flex;gap:8px;margin-bottom:16px">
                 <button id="pulseTabManual" onclick="switchPulseTab('manual')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #FF6B6B;background:rgba(255,107,107,0.1);font-weight:800;font-size:12px;color:#FF6B6B;cursor:pointer">👤 Add manually</button>
                 <button id="pulseTabCsv" onclick="switchPulseTab('csv')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid rgba(0,0,0,0.1);background:transparent;font-weight:800;font-size:12px;color:#64748b;cursor:pointer">📂 Upload CSV</button>
               </div>
 
-              <!-- Manual entry panel -->
               <div id="pulseManualPanel" style="margin-bottom:16px">
                 <div id="pulseEmployeeList" style="display:grid;gap:10px;margin-bottom:12px"></div>
                 <button onclick="addPulseEmployee()" style="width:100%;padding:10px;border-radius:10px;border:2px dashed rgba(255,107,107,0.3);background:transparent;font-weight:800;font-size:12px;color:#FF6B6B;cursor:pointer">+ Add employee</button>
               </div>
 
-              <!-- CSV upload panel -->
               <div id="pulseCsvPanel" style="display:none;margin-bottom:16px">
                 <div style="background:rgba(255,107,107,0.04);border:1px solid rgba(255,107,107,0.12);border-radius:10px;padding:12px;margin-bottom:12px;font-size:12px;color:#64748b;line-height:1.6">
                   💡 <strong>How it works:</strong> Download the CSV template below, fill in your employee data (one row per employee), then upload it here. All columns except "name" are optional.
@@ -384,7 +386,6 @@
                 <button onclick="clearPulse()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:8px 16px;color:#FF6B6B;font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
               </div>
 
-              <!-- Pulse history -->
               <div id="pulseHistory" style="margin-top:20px"></div>
               <div id="pulseMsg" class="small" style="color:var(--muted)"></div>
             </div>
@@ -399,12 +400,13 @@
         <section id="tab-settings" class="module">
           <div class="panel pad">
             <div style="font-family:Syne;font-weight:800;font-size:18px">Settings</div>
-            <div class="small" style="margin-top:6px">Manage your profile and subscription.</div>
+            <div class="small" style="margin-top:6px">Manage your profile and account details.</div>
           </div>
 
-          <div class="two-col" style="margin-top:12px">
+          <div style="margin-top:12px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px">
             <div class="panel pad">
               <div style="font-weight:900">Profile</div>
+
               <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
                 <img id="settingsAvatar" src="" alt="Profile" style="width:44px;height:44px;border-radius:999px;border:1px solid rgba(0,0,0,0.12);object-fit:cover;background:rgba(0,0,0,0.04)" />
                 <div style="min-width:0">
@@ -413,56 +415,37 @@
                 </div>
               </div>
 
-              <div style="margin-top:14px;display:grid;gap:10px">
+              <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px">
                 <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.18);border-radius:14px;padding:12px">
-                  <div style="font-size:11px;font-weight:900;color:#6366f1;letter-spacing:0.08em">CURRENT PLAN</div>
-                  <div style="font-family:'Syne',system-ui;font-weight:900;font-size:20px;color:#0f172a" id="currentPlan">Starter</div>
-                  <div style="margin-top:6px">
-                    <span id="planStatus" style="background:rgba(0,184,148,0.12);border:1px solid rgba(0,184,148,0.25);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:900;color:#00b894">Active</span>
-                  </div>
+                  <div style="font-size:11px;font-weight:900;color:#6366f1;letter-spacing:0.08em">ACCOUNT STATUS</div>
+                  <div style="font-family:'Syne',system-ui;font-weight:900;font-size:20px;color:#0f172a;margin-top:8px">Active</div>
+                  <div class="small" style="margin-top:6px">Early access account</div>
                 </div>
+
                 <div style="background:rgba(0,229,160,0.06);border:1px solid rgba(0,229,160,0.18);border-radius:14px;padding:12px">
-                  <div style="font-size:11px;font-weight:900;color:#00b894;letter-spacing:0.08em">SUBSCRIPTION START</div>
-                  <div id="settingsStartDate" style="margin-top:6px;font-weight:900;color:#0f172a">—</div>
+                  <div style="font-size:11px;font-weight:900;color:#00b894;letter-spacing:0.08em">MEMBER SINCE</div>
+                  <div id="settingsMemberSince" style="margin-top:8px;font-weight:900;color:#0f172a">—</div>
+                </div>
+              </div>
+
+              <div style="margin-top:14px;background:rgba(255,255,255,0.04);border:1px solid rgba(15,23,42,0.08);border-radius:14px;padding:14px">
+                <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">ACCOUNT NOTE</div>
+                <div class="small" style="color:#64748b">
+                  Peoplera is currently in early access. Your dashboard access is active, and pricing is not shown here.
                 </div>
               </div>
             </div>
 
-            <div class="panel pad">
-              <div style="font-weight:900">Subscription</div>
-
-              <div style="margin-top:12px;display:grid;gap:10px">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-                  <div>
-                    <div style="font-size:11px;font-weight:900;color:#94a3b8;letter-spacing:0.08em">STATUS</div>
-                    <div id="settingsStatus" style="margin-top:6px;font-weight:900;color:#0f172a">—</div>
-                  </div>
-                  <div>
-                    <div style="font-size:11px;font-weight:900;color:#94a3b8;letter-spacing:0.08em">MEMBER SINCE</div>
-                    <div id="settingsMemberSince" style="margin-top:6px;font-weight:900;color:#0f172a">—</div>
-                  </div>
-                </div>
-              </div>
-
-              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
-                <a id="btnManageSub" class="btn" href="https://peoplera.lemonsqueezy.com/billing" target="_blank" style="display:inline-flex;justify-content:center">Manage subscription</a>
-                <button id="btnCancelSub" class="btn" style="background:rgba(255,107,107,0.12);border:1px solid rgba(255,107,107,0.30);color:#FF6B6B;font-weight:900">Cancel subscription</button>
-              </div>
-
-              <div id="settingsMsg" class="small" style="margin-top:10px;color:var(--muted)"></div>
+            <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:14px;padding:16px">
+              <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">💬 SUPPORT</div>
+              <div style="font-size:13px;color:#334155;margin-bottom:8px">Need help? We typically respond within 24 hours.</div>
+              <a href="mailto:support@peoplera.work" style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:800;color:#6366f1;text-decoration:none">
+                ✉ support@peoplera.work
+              </a>
             </div>
-          </div>
-
-          <div style="margin-top:16px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:14px;padding:16px">
-            <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">💬 SUPPORT</div>
-            <div style="font-size:13px;color:#334155;margin-bottom:8px">Need help? We typically respond within 24 hours.</div>
-            <a href="mailto:support@peoplera.work" style="display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:800;color:#6366f1;text-decoration:none">
-              ✉ support@peoplera.work
-            </a>
           </div>
         </section>
 
-        <!-- INTERVIEW MODULE -->
         <div class="module" id="mod-interview">
           <div style="padding:0 24px">
             <div class="topbar">
@@ -499,7 +482,6 @@
           </div>
         </div>
 
-        <!-- ROI MODULE -->
         <div class="module" id="mod-roi">
           <div style="padding:0 24px">
             <div class="topbar">
@@ -529,7 +511,7 @@
                       <input id="roiSalary" type="number" value="60000" min="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
                     </div>
                     <div>
-                      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Your Peoplera plan cost ($/mo)</div>
+                      <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Estimated monthly value from Peoplera</div>
                       <input id="roiPlanCost" type="number" value="99" min="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(99,102,241,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box">
                     </div>
                   </div>
