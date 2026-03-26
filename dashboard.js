@@ -5,6 +5,61 @@ async function readJsonSafe(res){
   try { return JSON.parse(t); } catch { return { raw: t }; }
 }
 
+function setPulseManualEmployees(list){
+  const arr = Array.isArray(list) ? list : [];
+  const panel = document.getElementById('pulseManualPanel');
+  const listEl = document.getElementById('pulseEmployeeList');
+  if (!panel || !listEl) return;
+
+  switchPulseTab('manual');
+  listEl.innerHTML = '';
+  pulseEmployees = [];
+
+  for (const e of arr) {
+    addPulseEmployee();
+    const idx = pulseEmployees.length - 1;
+
+    const write = (field, value) => {
+      const input = listEl.querySelector(`input[data-idx="${idx}"][data-field="${field}"]`);
+      if (!input) return;
+      input.value = value == null ? '' : String(value);
+      updatePulseEmp(input);
+    };
+
+    write('name', e?.name || '');
+    write('weeklyHours', e?.weeklyHours ?? '');
+    write('weekendHours', e?.weekendHours ?? '');
+    write('afterHoursMessages', e?.afterHoursMessages ?? '');
+    write('sickDays', e?.sickDays ?? '');
+    write('lastVacation', e?.lastVacation ?? '');
+  }
+}
+
+function buildPulseDemoEmployees(){
+  return [
+    { name: 'Alex Kim', weeklyHours: 68, weekendHours: 10, afterHoursMessages: 28, sickDays: 3, lastVacation: '9 months ago' },
+    { name: 'Maya Chen', weeklyHours: 62, weekendHours: 8, afterHoursMessages: 20, sickDays: 2, lastVacation: '7 months ago' },
+    { name: 'Omar Hassan', weeklyHours: 54, weekendHours: 4, afterHoursMessages: 12, sickDays: 1, lastVacation: '4 months ago' },
+    { name: 'Sofia Rossi', weeklyHours: 48, weekendHours: 2, afterHoursMessages: 8, sickDays: 0, lastVacation: '2 months ago' },
+    { name: 'Daniel Weber', weeklyHours: 40, weekendHours: 0, afterHoursMessages: 3, sickDays: 0, lastVacation: '1 month ago' },
+    { name: 'Lina Novak', weeklyHours: 36, weekendHours: 0, afterHoursMessages: 1, sickDays: 0, lastVacation: '3 weeks ago' }
+  ];
+}
+
+function buildDemoTrendSeries(lastScore, weeks = 6){
+  const end = Number.isFinite(Number(lastScore)) ? Number(lastScore) : 55;
+  const n = Math.max(4, Math.min(8, Number(weeks) || 6));
+  const start = Math.max(20, Math.min(80, end + 10));
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const noise = (i === n - 1) ? 0 : (Math.sin(i * 1.7) * 2);
+    const v = Math.round((start * (1 - t)) + (end * t) + noise);
+    out.push(Math.max(0, Math.min(100, v)));
+  }
+  return out;
+}
+
 function setBusy(btn, busyText){
   const old = btn.textContent;
   btn.disabled = true;
@@ -13,6 +68,55 @@ function setBusy(btn, busyText){
     btn.disabled = false;
     btn.textContent = old;
   };
+}
+
+function showPulseToast(title, detail){
+  const existing = document.getElementById('pulseToast');
+  if (existing) existing.remove();
+
+  const toast = document.createElement('div');
+  toast.id = 'pulseToast';
+  toast.style.cssText = 'position:fixed;top:18px;right:18px;z-index:9999;background:rgba(255,255,255,0.92);backdrop-filter:blur(10px);border:1px solid rgba(0,0,0,0.10);border-radius:14px;padding:12px 14px;box-shadow:0 14px 40px rgba(15,23,42,0.12);max-width:320px';
+  toast.innerHTML = `
+    <div style="font-size:11px;font-weight:900;color:#0f172a">${escapeHtml(title || '')}</div>
+    <div style="font-size:12px;color:#64748b;margin-top:2px;font-weight:700;line-height:1.35">${escapeHtml(detail || '')}</div>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.transition = 'opacity 0.35s, transform 0.35s';
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-4px)';
+    setTimeout(() => toast.remove(), 400);
+  }, 3400);
+}
+
+function pulseDemoCtaHtml(){
+  return `
+    <div style="margin-bottom:14px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px 14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="min-width:200px">
+          <div style="font-size:11px;font-weight:900;color:#334155">Demo analysis generated</div>
+          <div style="font-size:12px;color:#64748b;margin-top:3px;font-weight:700;line-height:1.4">This is a sample report based on demo data. Upload your own metrics to generate a real weekly brief.</div>
+        </div>
+        <button onclick="pulseCtaUploadOwnData()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 14px;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap">Upload your own data</button>
+      </div>
+    </div>
+  `;
+}
+
+function pulseCtaUploadOwnData(){
+  setPulseDemoActive(false);
+  switchPulseTab('csv');
+  const panel = document.getElementById('pulseCsvPanel');
+  if (panel && panel.scrollIntoView) {
+    panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  const card = panel?.querySelector('label');
+  if (card) {
+    const old = card.style.boxShadow;
+    card.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.22)';
+    setTimeout(() => { card.style.boxShadow = old; }, 1200);
+  }
 }
 
 function escapeHtml(s){
@@ -328,6 +432,7 @@ async function clearBoard(){
 }
 
 async function clearPulse(){
+  setPulseDemoActive(false);
   document.getElementById('pulseOut').innerHTML = '';
   document.getElementById('statAtRisk').textContent = '0';
   try {
@@ -366,27 +471,15 @@ async function loadSettings(){
       year:'numeric'
     });
 
-    const trialEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', {
-      day:'2-digit',
-      month:'2-digit',
-      year:'numeric'
-    });
-
     const settingsEl = document.getElementById('tab-settings');
     if (!settingsEl) return;
-
-    function cancelSubscription(){
-      window.open('https://app.lemonsqueezy.com/billing','_blank');
-    }
-
-    window.cancelSubscription = cancelSubscription;
 
     settingsEl.innerHTML = `
       <div style="max-width:700px">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
           <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
             <div style="font-size:10px;color:#64748b;font-weight:900">STATUS</div>
-            <div style="font-weight:900;margin-top:6px">Early Access</div>
+            <div style="font-weight:900;margin-top:6px">Free access</div>
           </div>
           <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
             <div style="font-size:10px;color:#64748b;font-weight:900">MEMBER SINCE</div>
@@ -394,25 +487,88 @@ async function loadSettings(){
           </div>
         </div>
         <div style="margin-top:16px;font-size:12px;color:#64748b">
-          You are part of early access. No billing is active.
+          Plan: <strong>Free access</strong> · Billing: <strong>Not active</strong>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
           <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
-            <div style="font-size:10px;color:#64748b;font-weight:900">TRIAL ENDS</div>
-            <div style="font-weight:900;margin-top:6px">${trialEndDate}</div>
+            <div style="font-size:10px;color:#64748b;font-weight:900">PLAN</div>
+            <div style="font-weight:900;margin-top:6px">Free access</div>
           </div>
           <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
-            <div style="font-size:10px;color:#64748b;font-weight:900">PLAN</div>
-            <div style="font-weight:900;margin-top:6px">Early Access</div>
+            <div style="font-size:10px;color:#64748b;font-weight:900">BILLING</div>
+            <div style="font-weight:900;margin-top:6px">Not active</div>
           </div>
-        </div>
-        <div style="margin-top:16px">
-          <button onclick="cancelSubscription()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);color:#0f172a;padding:10px 20px;border:none;border-radius:10px;font-size:12px;cursor:pointer">Cancel subscription</button>
         </div>
       </div>
     `;
   } catch(e) {
     console.warn('loadSettings error:', e);
+  }
+}
+
+async function runPulseDemo(){
+  const btn = document.getElementById('btnPulseDemo');
+  const reset = setBusy(btn, 'Loading demo…');
+  const msg = document.getElementById('pulseMsg');
+  if (msg) msg.textContent = '';
+
+  try {
+    const hasRealPulseHistory = Array.isArray(window.__historyCache?.pulse) && window.__historyCache.pulse.length > 0;
+    if (hasRealPulseHistory) {
+      const ok = confirm('You already have People Risk analyses in this account. Run a demo analysis without overwriting your real data?');
+      if (!ok) return;
+    }
+
+    const demoEmployees = buildPulseDemoEmployees();
+    setPulseManualEmployees(demoEmployees);
+    setPulseDemoActive(true);
+
+    document.getElementById('pulseOut').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px">⏳ Running sample analysis…</div>';
+
+    const rows = parseCsvText([
+      'name,weekly hours,weekend hours,after-hours messages,sick days,last vacation',
+      ...demoEmployees.map(e => `${e.name||''},${e.weeklyHours||0},${e.weekendHours||0},${e.afterHoursMessages||0},${e.sickDays||0},${e.lastVacation||'unknown'}`)
+    ].join('\n'));
+
+    const employeesInput = mapEmployeeRows(rows);
+
+    const data = await apiFetch('/api/pulse', {
+      method:'POST',
+      accessToken: (await supabase.auth.getSession()).data?.session?.access_token,
+      body: { employees: employeesInput }
+    });
+
+    if (!data || !Array.isArray(data.employees)) throw new Error('Invalid AI response');
+
+    const inputByName = {};
+    for (const e of employeesInput) {
+      const k = String(e?.name || '').toLowerCase();
+      if (k) inputByName[k] = e;
+    }
+
+    const mergedEmployees = data.employees.map(e => {
+      const k = String(e?.name || '').toLowerCase();
+      const metrics = inputByName[k] || {};
+      return { ...metrics, ...e };
+    });
+
+    const demoCompanyScore = computeCompanyRiskScore(mergedEmployees);
+    setPulseDemoActive(true, { series: buildDemoTrendSeries(demoCompanyScore, 6) });
+
+    pulseLast = { ...data, employees: mergedEmployees };
+    renderPulse(mergedEmployees);
+
+    renderAIInsights();
+    renderPulseTrend();
+
+    showPulseToast('Demo analysis generated', 'This is a sample report based on demo data.');
+
+    if (msg) msg.textContent = 'Sample analysis ready.';
+  } catch(err) {
+    if (msg) msg.textContent = err && err.message ? err.message : 'Demo failed';
+    setPulseDemoActive(false);
+  } finally {
+    reset();
   }
 }
 
@@ -622,38 +778,16 @@ async function loadUserPlan() {
       return;
     }
 
-    const planNames = {
-      starter: 'Starter',
-      growth: 'Growth',
-      scale: 'Scale',
-      enterprise: 'Enterprise',
-      free: 'Free Trial'
-    };
-
-    const plan = String(data?.plan || 'starter').toLowerCase();
-    const status = String(data?.status || 'active');
-    const planName = planNames[plan] || 'Starter';
-
     const planEl = document.getElementById('currentPlan');
     const statusEl = document.getElementById('planStatus');
-    if (planEl) planEl.textContent = planName;
-    if (statusEl) statusEl.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    if (planEl) planEl.textContent = 'Free access';
+    if (statusEl) statusEl.textContent = 'Not active';
 
     const sidebarPlanEl = document.getElementById('sidebarPlan');
     if (sidebarPlanEl) {
-      sidebarPlanEl.textContent = planName.toUpperCase();
-      sidebarPlanEl.style.background =
-        plan === 'growth'
-          ? 'rgba(99,102,241,0.15)'
-          : plan === 'scale'
-          ? 'rgba(0,229,160,0.15)'
-          : 'rgba(255,107,107,0.15)';
-      sidebarPlanEl.style.color =
-        plan === 'growth'
-          ? '#6366f1'
-          : plan === 'scale'
-          ? '#00b894'
-          : '#FF6B6B';
+      sidebarPlanEl.textContent = 'FREE ACCESS';
+      sidebarPlanEl.style.background = 'rgba(0,0,0,0.06)';
+      sidebarPlanEl.style.color = '#0f172a';
     }
   } catch(e) {
     console.warn('loadUserPlan failed:', e);
@@ -681,7 +815,7 @@ async function renderAuthState(){
       toast.innerHTML = `
         <div style="font-size:24px;margin-bottom:6px">🎉</div>
         <div style="font-family:'Syne',system-ui;font-weight:900;font-size:16px;color:#0f172a">Welcome to Peoplera!</div>
-        <div style="font-size:12px;color:#0f172a;opacity:0.7;margin-top:4px">Your subscription is active. Let's get started.</div>
+        <div style="font-size:12px;color:#0f172a;opacity:0.7;margin-top:4px">You're signed in. Let's get started.</div>
       `;
       document.body.appendChild(toast);
       setTimeout(() => {
@@ -783,8 +917,8 @@ function renderAIInsights(){
   const series = getCompanyTrendSeries(8);
   const last = series[series.length - 1];
   const prev = series[series.length - 2];
-  const lastScore = Number(last?.avgScore || 0);
-  const prevScore = Number(prev?.avgScore || 0);
+  const lastScore = Number(last || 0);
+  const prevScore = Number(prev || 0);
   const delta = (last && prev) ? (lastScore - prevScore) : null;
 
   const insights = [];
@@ -840,21 +974,30 @@ function renderAIInsights(){
     trend: { c: '#00b894', bg: 'rgba(0,184,148,0.07)', bd: 'rgba(0,184,148,0.16)' }
   };
 
-  out.innerHTML = insights.slice(0, 5).map(it => {
+  const list = insights.slice(0, 5);
+  const primary = list[0];
+
+  const renderCard = (it, { primary = false } = {}) => {
     const p = palette[it.kind] || palette.suggestion;
     return `
-      <div style="background:${p.bg};border:1px solid ${p.bd};border-radius:14px;padding:14px 14px;display:flex;gap:12px;align-items:flex-start">
-        <div style="width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.06);display:grid;place-items:center;flex-shrink:0">${it.icon}</div>
-        <div style="min-width:0">
-          <div style="font-weight:900;color:#0f172a;line-height:1.25">${escapeHtml(it.title)}</div>
-          <div class="small" style="margin-top:4px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(it.detail)}</div>
+      <div style="background:${p.bg};border:${primary ? '1.5px' : '1px'} solid ${p.bd};border-radius:16px;padding:${primary ? '16px 16px' : '14px 14px'};display:flex;gap:12px;align-items:flex-start">
+        <div style="width:${primary ? '38px' : '34px'};height:${primary ? '38px' : '34px'};border-radius:14px;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.06);display:grid;place-items:center;flex-shrink:0">${it.icon}</div>
+        <div style="min-width:0;flex:1">
+          ${primary ? `<div style=\"font-size:10px;font-weight:900;color:${p.c};letter-spacing:0.10em;margin-bottom:6px\">PRIMARY INSIGHT</div>` : ''}
+          <div style="font-weight:900;color:#0f172a;line-height:1.25;font-size:${primary ? '14px' : '13px'}">${escapeHtml(it.title)}</div>
+          <div class="small" style="margin-top:6px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(it.detail)}</div>
         </div>
         <div style="flex-shrink:0">
           <span style="background:${p.c}18;border:1px solid ${p.c}33;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:900;color:${p.c};letter-spacing:0.06em">${escapeHtml(it.kind.toUpperCase())}</span>
         </div>
       </div>
     `;
-  }).join('');
+  };
+
+  out.innerHTML = [
+    renderCard(primary, { primary: true }),
+    ...list.slice(1).map(it => renderCard(it, { primary: false }))
+  ].join('');
 }
 
 async function sendWeeklyReport(userEmail, pulseEmployees, atRiskCount){
@@ -1311,6 +1454,16 @@ function downloadBoardPdf(data){
 let pulseLast = null;
 let pulseEmployees = [];
 
+let pulseDemoActive = false;
+let pulseDemoSeries = null;
+
+function setPulseDemoActive(active, { series = null } = {}){
+  pulseDemoActive = Boolean(active);
+  pulseDemoSeries = pulseDemoActive ? (Array.isArray(series) ? series : pulseDemoSeries) : null;
+  const badge = document.getElementById('pulseDemoBadge');
+  if (badge) badge.style.display = pulseDemoActive ? 'inline-flex' : 'none';
+}
+
 function switchPulseTab(tab) {
   const manual = document.getElementById('pulseManualPanel');
   const csv = document.getElementById('pulseCsvPanel');
@@ -1407,6 +1560,10 @@ function computeCompanyRiskScore(employees){
 }
 
 function getCompanyTrendSeries(maxWeeks = 8){
+  if (pulseDemoActive && Array.isArray(pulseDemoSeries) && pulseDemoSeries.length) {
+    return pulseDemoSeries.slice(Math.max(0, pulseDemoSeries.length - maxWeeks));
+  }
+
   const items = window.__historyCache?.pulse || [];
   const sorted = items.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
   const series = sorted.slice(Math.max(0, sorted.length - maxWeeks)).map(it => {
@@ -1474,6 +1631,7 @@ function computeRecommendedAction(level, drivers){
 }
 
 function logRiskAction(employeeName, actionText){
+  if (pulseDemoActive) return;
   const key = 'peoplera_people_risk_actions';
   const store = readJsonLocalStorage(key, {});
   store[String(employeeName || '').toLowerCase()] = {
@@ -1567,7 +1725,9 @@ function renderPulse(employees){
 
   const prevCompany = readJsonLocalStorage('peoplera_people_risk_prev_company', null);
   const companyTrendArrow = getTrendArrow(companyScore, prevCompany?.score);
-  writeJsonLocalStorage('peoplera_people_risk_prev_company', { score: companyScore, at: new Date().toISOString() });
+  if (!pulseDemoActive) {
+    writeJsonLocalStorage('peoplera_people_risk_prev_company', { score: companyScore, at: new Date().toISOString() });
+  }
 
   const prevMap = readJsonLocalStorage('peoplera_people_risk_prev_employees', {});
   const nextMap = {};
@@ -1603,7 +1763,9 @@ function renderPulse(employees){
     };
   });
 
-  writeJsonLocalStorage('peoplera_people_risk_prev_employees', nextMap);
+  if (!pulseDemoActive) {
+    writeJsonLocalStorage('peoplera_people_risk_prev_employees', nextMap);
+  }
 
   const driverCounts = {};
   for (const e of enriched) {
@@ -1677,7 +1839,7 @@ function renderPulse(employees){
 
   out.innerHTML = `
     <div style="display:grid;gap:12px">
-
+      ${pulseDemoActive ? pulseDemoCtaHtml() : ''}
       <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
         <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">WEEKLY PEOPLE RISK BRIEF</div>
         <div style="font-size:13px;color:#0f172a;font-weight:800;line-height:1.5">${escapeHtml(weeklyBrief)}</div>
@@ -1824,6 +1986,7 @@ function closeEmployeeCard(){
 }
 
 async function runPulse(){
+  setPulseDemoActive(false);
   const btn = document.getElementById('btnPulse');
   const reset = setBusy(btn, 'Analyzing…');
   const msg = document.getElementById('pulseMsg');
@@ -2034,6 +2197,7 @@ async function boot(){
 window.runHire = runHire;
 window.runBoard = runBoard;
 window.runPulse = runPulse;
+window.runPulseDemo = runPulseDemo;
 window.clearHire = clearHire;
 window.clearBoard = clearBoard;
 window.clearPulse = clearPulse;

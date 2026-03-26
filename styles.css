@@ -321,6 +321,10 @@ h1,h2,h3,.h1,.section h2,.price,.step .num,.stat .value{
   .h1{font-size:clamp(2.2rem, 8vw, 3.2rem)}
 }
 
+@media (max-width: 960px){
+  .pulse-two-col{grid-template-columns:1fr !important;gap:24px !important}
+ }
+
 body.home{
   --home-bg:#ffffff;
   --home-alt:#f8f9fa;

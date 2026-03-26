@@ -44,24 +44,6 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: 'Authentication required.' });
     }
 
-    // Subscriber check
-    const { createClient } = require('@supabase/supabase-js');
-    const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY);
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-    const userEmail = user?.email?.toLowerCase();
-    if (userEmail) {
-      const { data: sub } = await supabaseAdmin
-        .from('subscribers')
-        .select('plan, status')
-        .eq('email', userEmail)
-        .eq('status', 'active')
-        .maybeSingle();
-      if (!sub || String(sub.plan || '').toLowerCase() === 'starter') {
-        return res.status(403).json({ error: 'Pulse requires a Growth or Scale plan. Please upgrade.' });
-      }
-    }
-
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
     const employees = Array.isArray(body.employees) ? body.employees : [];
 
