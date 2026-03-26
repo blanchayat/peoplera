@@ -142,7 +142,24 @@ async function apiFetch(path, { method='POST', body=null, accessToken=null } = {
 function renderHistory(containerId, items, type) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  if (!items || items.length === 0) { el.innerHTML = ''; return; }
+  if (!items || items.length === 0) {
+    const emptyCopy = type === 'pulse'
+      ? 'Run People Risk to generate your first weekly report. Your recent analyses will appear here for quick loading and comparison.'
+      : type === 'hire'
+      ? 'Analyze candidates to generate your first shortlist. Your recent analyses will appear here for quick review.'
+      : type === 'board'
+      ? 'Generate an onboarding plan to start tracking progress. Recent plans will appear here for quick reuse.'
+      : 'Run an analysis to see history here.';
+    el.innerHTML = `
+      <div style="background:rgba(0,0,0,0.02);border:1px dashed rgba(0,0,0,0.14);border-radius:14px;padding:14px">
+        <div style="font-weight:900;color:#0f172a">No recent activity yet</div>
+        <div class="small" style="margin-top:6px;color:#64748b;font-weight:700;line-height:1.5">${escapeHtml(emptyCopy)}</div>
+      </div>
+    `;
+    renderAIInsights();
+    renderPulseTrend();
+    return;
+  }
 
   const colorMap = { hire: '#6366f1', board: '#00b894', pulse: '#FF6B6B' };
   const color = colorMap[type];
@@ -189,6 +206,9 @@ function renderHistory(containerId, items, type) {
       </div>
     </div>
   `;
+
+  renderAIInsights();
+  renderPulseTrend();
 }
 
 async function deleteHistoryItem(type, idx, id) {
@@ -440,12 +460,6 @@ function showSection(section){
     document.querySelectorAll('.module').forEach(m => m.classList.remove('on'));
     document.getElementById('mod-interview')?.classList.add('on');
     document.getElementById('pageTitle').textContent = 'Interview';
-  }
-  if (section === 'roi') {
-    document.querySelectorAll('.module').forEach(m => m.classList.remove('on'));
-    document.getElementById('mod-roi')?.classList.add('on');
-    document.getElementById('pageTitle').textContent = 'ROI Calculator';
-    runROI();
   }
 }
 
@@ -751,63 +765,96 @@ async function runInterview(){
   }
 }
 
-async function runROI(){
-  const candidatesAnalyzed = Number(document.getElementById('roiCandidates')?.value || 0);
-  const onboardingPlansGenerated = Number(document.getElementById('roiPlans')?.value || 0);
-  const employeesMonitored = Number(document.getElementById('roiEmployees')?.value || 0);
-  const avgSalary = Number(document.getElementById('roiSalary')?.value || 60000);
-  const planCost = Number(document.getElementById('roiPlanCost')?.value || 99);
-  const out = document.getElementById('roiOut');
+function renderAIInsights(){
+  const out = document.getElementById('aiInsightsOut');
+  if (!out) return;
 
-  out.innerHTML = '<div style="color:#64748b;font-size:13px">Calculating…</div>';
+  const latestEmployees = Array.isArray(window.__lastPulseEmployees)
+    ? window.__lastPulseEmployees
+    : (Array.isArray(window.__historyCache?.pulse) && window.__historyCache.pulse[0]?.employees)
+    ? window.__historyCache.pulse[0].employees
+    : [];
 
-  try {
-    const res = await fetch('/api/roi', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ candidatesAnalyzed, onboardingPlansGenerated, employeesMonitored, planCost, avgSalary })
+  const emps = Array.isArray(latestEmployees) ? latestEmployees : [];
+  const overHours = emps.filter(e => Number(e?.weeklyHours || e?.weekly_hours || 0) >= 50).length;
+  const highRisk = emps.filter(e => ['high','critical'].includes(String(e?.riskLevel || '').toLowerCase())).length;
+  const teamSize = emps.length;
+
+  const series = getCompanyTrendSeries(8);
+  const last = series[series.length - 1];
+  const prev = series[series.length - 2];
+  const lastScore = Number(last?.avgScore || 0);
+  const prevScore = Number(prev?.avgScore || 0);
+  const delta = (last && prev) ? (lastScore - prevScore) : null;
+
+  const insights = [];
+
+  if (teamSize > 0 && highRisk > 0) {
+    insights.push({
+      kind: 'warning',
+      icon: '⚠️',
+      title: `${highRisk} ${highRisk === 1 ? 'employee is' : 'employees are'} at high risk`,
+      detail: 'Review hotspots and assign interventions this week.'
     });
-    const d = await res.json();
+  }
 
-    const fmt = (n) => '$' + Number(n || 0).toLocaleString();
-    const roiColor = d.roi >= 100 ? '#00b894' : d.roi >= 0 ? '#FFD93D' : '#FF6B6B';
+  if (teamSize > 0 && overHours > 0) {
+    insights.push({
+      kind: 'warning',
+      icon: '⏱️',
+      title: `${overHours} ${overHours === 1 ? 'employee shows' : 'employees show'} overtime signals`,
+      detail: 'Consider reducing weekly hours or rotating load across the team.'
+    });
+  }
 
-    out.innerHTML = `
-      <div style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:16px;padding:24px;margin-bottom:12px;text-align:center">
-        <div style="font-size:11px;font-weight:900;color:#00b894;letter-spacing:0.08em;margin-bottom:8px">ESTIMATED MONTHLY ROI</div>
-        <div style="font-family:'Syne',system-ui;font-weight:900;font-size:52px;color:${roiColor};line-height:1">${d.roi}%</div>
-        <div style="font-size:13px;color:#64748b;margin-top:4px">Total value: ${fmt(d.totalValue)} vs ${fmt(planCost)} plan cost</div>
-      </div>
+  if (delta !== null) {
+    const dir = delta > 0 ? 'increased' : 'decreased';
+    const magnitude = Math.abs(delta);
+    insights.push({
+      kind: 'trend',
+      icon: delta > 0 ? '📈' : '📉',
+      title: `Burnout risk ${dir} ${magnitude.toFixed(0)} pts this week`,
+      detail: 'Track the top drivers and validate against team changes.'
+    });
+  }
 
-      <div style="display:grid;gap:8px">
-        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:13px;color:#334155">🎯 Bad hire cost prevented</div>
-          <div style="font-weight:900;font-size:14px;color:#00b894">${fmt(d.badHireCostPrevented)}</div>
-        </div>
-        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:13px;color:#334155">📋 Onboarding time saved</div>
-          <div style="font-weight:900;font-size:14px;color:#6366f1">${fmt(d.onboardingTimeSaved)}</div>
-        </div>
-        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:13px;color:#334155">🔥 Burnout prevention value</div>
-          <div style="font-weight:900;font-size:14px;color:#FF6B6B">${fmt(d.burnoutPreventionValue)}</div>
-        </div>
-        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.07);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center">
-          <div style="font-size:13px;color:#334155">⏱ HR time saved</div>
-          <div style="font-weight:900;font-size:14px;color:#FFD93D">${fmt(d.hrTimeSaved)}</div>
-        </div>
-      </div>
+  insights.push({
+    kind: 'suggestion',
+    icon: '🧠',
+    title: 'Run a weekly People Risk brief',
+    detail: 'Standardize 1 action per hotspot to show measurable progress.'
+  });
 
-      <div style="margin-top:12px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);border-radius:12px;padding:14px;text-align:center">
-        <div style="font-size:12px;color:#64748b">Share this with your CFO 👇</div>
-        <div style="font-family:'Syne',system-ui;font-weight:900;font-size:15px;color:#0f172a;margin-top:6px">
-          "Peoplera delivers ${fmt(d.totalValue)}/mo in value for just ${fmt(planCost)}/mo"
+  while (insights.length < 3) {
+    insights.push({
+      kind: 'suggestion',
+      icon: '✅',
+      title: 'Add more signals to improve accuracy',
+      detail: 'Include weekend hours, after-hours messages, and sick days.'
+    });
+  }
+
+  const palette = {
+    warning: { c: '#FF6B6B', bg: 'rgba(255,107,107,0.08)', bd: 'rgba(255,107,107,0.18)' },
+    suggestion: { c: '#6366f1', bg: 'rgba(99,102,241,0.07)', bd: 'rgba(99,102,241,0.16)' },
+    trend: { c: '#00b894', bg: 'rgba(0,184,148,0.07)', bd: 'rgba(0,184,148,0.16)' }
+  };
+
+  out.innerHTML = insights.slice(0, 5).map(it => {
+    const p = palette[it.kind] || palette.suggestion;
+    return `
+      <div style="background:${p.bg};border:1px solid ${p.bd};border-radius:14px;padding:14px 14px;display:flex;gap:12px;align-items:flex-start">
+        <div style="width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.06);display:grid;place-items:center;flex-shrink:0">${it.icon}</div>
+        <div style="min-width:0">
+          <div style="font-weight:900;color:#0f172a;line-height:1.25">${escapeHtml(it.title)}</div>
+          <div class="small" style="margin-top:4px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(it.detail)}</div>
+        </div>
+        <div style="flex-shrink:0">
+          <span style="background:${p.c}18;border:1px solid ${p.c}33;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:900;color:${p.c};letter-spacing:0.06em">${escapeHtml(it.kind.toUpperCase())}</span>
         </div>
       </div>
     `;
-  } catch(e) {
-    out.innerHTML = '<div style="color:#FF6B6B;font-size:13px">Error: ' + e.message + '</div>';
-  }
+  }).join('');
 }
 
 async function sendWeeklyReport(userEmail, pulseEmployees, atRiskCount){
@@ -1444,7 +1491,7 @@ function getLoggedAction(employeeName){
 
 function renderTrendBars(series, accent = '#FF6B6B'){
   const arr = Array.isArray(series) ? series : [];
-  if (!arr.length) return '<div style="color:#94a3b8;font-size:12px">No trend history yet. Run analysis weekly to build a trend.</div>';
+  if (!arr.length) return '<div style="color:#64748b;font-size:12px;font-weight:700;line-height:1.5">Run weekly analysis to unlock People Risk trend tracking. After 2+ runs, you\'ll see direction, stability, and progress over time.</div>';
   const max = Math.max(1, ...arr);
   return `
     <div style="display:flex;align-items:flex-end;gap:6px;height:70px;padding:10px 0">
@@ -1457,9 +1504,51 @@ function renderTrendBars(series, accent = '#FF6B6B'){
   `;
 }
 
+function renderPulseTrend(){
+  const el = document.getElementById('pulseTrendOut');
+  if (!el) return;
+
+  const series = getCompanyTrendSeries(8);
+  const last = series[series.length - 1];
+  const prev = series[series.length - 2];
+  const arrow = (series.length >= 2) ? getTrendArrow(last, prev) : '—';
+
+  let badge = { text: 'Not enough data yet', bg: 'rgba(100,116,139,0.12)', bd: 'rgba(100,116,139,0.22)', c: '#64748b' };
+  if (arrow === '↑') badge = { text: 'Worsening', bg: 'rgba(255,107,107,0.10)', bd: 'rgba(255,107,107,0.22)', c: '#FF6B6B' };
+  if (arrow === '↓') badge = { text: 'Improving', bg: 'rgba(0,184,148,0.10)', bd: 'rgba(0,184,148,0.22)', c: '#00b894' };
+  if (arrow === '→') badge = { text: 'Stable', bg: 'rgba(99,102,241,0.08)', bd: 'rgba(99,102,241,0.18)', c: '#6366f1' };
+
+  const lastLabel = Number.isFinite(Number(last)) ? `${Number(last)}/100` : '—';
+  const delta = (series.length >= 2) ? (Number(last) - Number(prev)) : null;
+  const deltaLabel = (delta === null || !Number.isFinite(delta)) ? '—' : (delta === 0 ? '0' : (delta > 0 ? `+${delta.toFixed(0)}` : `${delta.toFixed(0)}`));
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em">COMPANY PEOPLE RISK</div>
+        <div style="margin-top:6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+          <div style="font-family:'Syne',system-ui;font-weight:900;font-size:28px;color:#0f172a">${escapeHtml(lastLabel)}</div>
+          <div style="font-size:12px;font-weight:900;color:${delta > 0 ? '#FF6B6B' : delta < 0 ? '#00b894' : '#64748b'}">${escapeHtml(deltaLabel)} this week</div>
+        </div>
+      </div>
+      <span style="background:${badge.bg};border:1px solid ${badge.bd};border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;color:${badge.c}">${escapeHtml(badge.text)}</span>
+    </div>
+
+    <div style="margin-top:12px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em">8-WEEK TREND</div>
+        <div style="font-size:12px;color:#94a3b8;font-weight:800">Direction: <span style="color:${arrow === '↑' ? '#FF6B6B' : arrow === '↓' ? '#00b894' : '#64748b'}">${escapeHtml(arrow)}</span></div>
+      </div>
+      <div style="margin-top:6px">${renderTrendBars(series)}</div>
+    </div>
+  `;
+}
+
 function renderPulse(employees){
   const out = document.getElementById('pulseOut');
   if (!out) return;
+
+  window.__lastPulseEmployees = Array.isArray(employees) ? employees : [];
 
   const rows = (Array.isArray(employees) ? employees : []).slice().map(e => ({
     ...e,
@@ -1950,7 +2039,6 @@ window.clearBoard = clearBoard;
 window.clearPulse = clearPulse;
 window.showSection = showSection;
 window.runInterview = runInterview;
-window.runROI = runROI;
 window.applyBoardTemplate = applyBoardTemplate;
 window.toggleHandbook = toggleHandbook;
 window.sendBoardToEmployee = sendBoardToEmployee;
