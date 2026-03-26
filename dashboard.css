@@ -86,10 +86,19 @@ body {
   padding:16px;
 }
 .side-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:12px}
-.side-nav{display:grid;gap:8px;margin-top:10px}
+.side-nav{display:grid;gap:6px;margin-top:10px}
+.nav-section-label{
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:0.12em;
+  color:#94a3b8;
+  padding:10px 10px 6px;
+}
+.nav-left{display:flex;align-items:center;gap:10px;min-width:0}
+.nav-ic{width:18px;display:inline-flex;align-items:center;justify-content:center;opacity:0.9}
 .nav-item{
   display:flex;align-items:center;justify-content:space-between;
-  padding:10px 12px;border-radius:14px;
+  padding:9px 10px;border-radius:12px;
   border:1px solid transparent;
   font-weight:800;
   font-size:13px;
@@ -98,8 +107,8 @@ body {
   position:relative;
   transition:background .15s ease, color .15s ease, padding-left .15s ease;
 }
-.nav-item:hover{padding-left:14px}
-.nav-item.active{padding-left:14px}
+.nav-item:hover{padding-left:12px}
+.nav-item.active{padding-left:12px}
 
 .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;font-weight:900;font-size:12px}
 .main{

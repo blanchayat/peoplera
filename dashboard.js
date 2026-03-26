@@ -102,6 +102,8 @@ function pulseDemoCtaHtml(){
       </div>
     </div>
   `;
+
+  renderWorkforceInsights();
 }
 
 function pulseCtaUploadOwnData(){
@@ -248,7 +250,7 @@ function renderHistory(containerId, items, type) {
   if (!el) return;
   if (!items || items.length === 0) {
     const emptyCopy = type === 'pulse'
-      ? 'Run People Risk to generate your first weekly report. Your recent analyses will appear here for quick loading and comparison.'
+      ? 'Run Burnout Intelligence to generate your first weekly report. Your recent analyses will appear here for quick loading and comparison.'
       : type === 'hire'
       ? 'Analyze candidates to generate your first shortlist. Your recent analyses will appear here for quick review.'
       : type === 'board'
@@ -264,6 +266,9 @@ function renderHistory(containerId, items, type) {
     renderPulseTrend();
     return;
   }
+
+  const decision = computeDecisionEngine(emps, getCompanyTrendSeries(8));
+  window.__lastDecisionEngine = decision;
 
   const colorMap = { hire: '#6366f1', board: '#00b894', pulse: '#FF6B6B' };
   const color = colorMap[type];
@@ -397,6 +402,7 @@ async function loadHistory() {
       }
     }
     if (pulseData) renderHistory('pulseHistory', pulseData, 'pulse');
+    renderWorkforceInsights();
   } catch(e) { console.warn('Load history failed', e); }
 }
 
@@ -515,7 +521,7 @@ async function runPulseDemo(){
   try {
     const hasRealPulseHistory = Array.isArray(window.__historyCache?.pulse) && window.__historyCache.pulse.length > 0;
     if (hasRealPulseHistory) {
-      const ok = confirm('You already have People Risk analyses in this account. Run a demo analysis without overwriting your real data?');
+      const ok = confirm('You already have Burnout Intelligence analyses in this account. Run a demo analysis without overwriting your real data?');
       if (!ok) return;
     }
 
@@ -590,9 +596,9 @@ function switchTab(tab){
 
   const titleMap = {
     overview: 'Overview',
-    hire: 'Hire',
-    board: 'Board',
-    pulse: 'People Risk',
+    hire: 'Hiring Intelligence',
+    board: 'Workforce Insights',
+    pulse: 'Burnout Intelligence',
     settings: 'Settings'
   };
 
@@ -601,9 +607,21 @@ function switchTab(tab){
   if (tab === 'settings') {
     loadSettings();
   }
+
+  if (tab === 'board') {
+    renderWorkforceInsights();
+  }
 }
 
 function showSection(section){
+  if (section === 'candidate') {
+    document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+    const nav = document.querySelector(`.nav-item[data-section="candidate"]`);
+    if (nav) nav.classList.add('active');
+    switchTab('hire');
+    return;
+  }
+
   if (['overview','hire','board','pulse','settings'].includes(section)) {
     switchTab(section);
     return;
@@ -615,7 +633,7 @@ function showSection(section){
   if (section === 'interview') {
     document.querySelectorAll('.module').forEach(m => m.classList.remove('on'));
     document.getElementById('mod-interview')?.classList.add('on');
-    document.getElementById('pageTitle').textContent = 'Interview';
+    document.getElementById('pageTitle').textContent = 'AI Interview';
   }
 }
 
@@ -921,7 +939,33 @@ function renderAIInsights(){
   const prevScore = Number(prev || 0);
   const delta = (last && prev) ? (lastScore - prevScore) : null;
 
+  const decision = computeDecisionEngine(emps, series);
+  window.__lastDecisionEngine = decision;
+
   const insights = [];
+
+  // Primary insight: translate decision-engine signal into business-relevant output.
+  if (decision?.inputs?.teamSize) {
+    const riskWord = decision.status?.label ? `${decision.status.label} risk` : 'risk';
+    insights.push({
+      kind: 'trend',
+      icon: '🏷️',
+      title: `Company burnout score: ${decision.score}/100 (${riskWord})`,
+      detail: `${decision.predictionText} Estimated productivity at risk: ~${decision.productivityAtRiskWeekly.toLocaleString()} per week.`
+    });
+  }
+
+  if (decision?.inputs?.teamSize) {
+    const lvl = decision?.sickLeaveRisk?.level || 'Low';
+    const affected = Number(decision?.sickLeaveAffected) || 0;
+    const horizon = Number(decision?.sickLeaveHorizonDays) || 30;
+    insights.push({
+      kind: 'warning',
+      icon: '🏥',
+      title: `Potential sick leave risk: ${lvl} (next ${horizon} days)`,
+      detail: affected ? `${affected} employee(s) potentially at risk. Use early interventions and manager check-ins to reduce escalation.` : 'Directional estimate based on current signals. Add sick days + workload metrics for higher confidence.'
+    });
+  }
 
   if (teamSize > 0 && highRisk > 0) {
     insights.push({
@@ -955,7 +999,7 @@ function renderAIInsights(){
   insights.push({
     kind: 'suggestion',
     icon: '🧠',
-    title: 'Run a weekly People Risk brief',
+    title: 'Run a weekly Burnout Intelligence brief',
     detail: 'Standardize 1 action per hotspot to show measurable progress.'
   });
 
@@ -998,6 +1042,173 @@ function renderAIInsights(){
     renderCard(primary, { primary: true }),
     ...list.slice(1).map(it => renderCard(it, { primary: false }))
   ].join('');
+}
+
+function renderWorkforceInsights(){
+  const el = document.getElementById('workforceInsightsOut');
+  if (!el) return;
+
+  const latestEmployees = Array.isArray(window.__lastPulseEmployees)
+    ? window.__lastPulseEmployees
+    : (Array.isArray(window.__historyCache?.pulse) && window.__historyCache.pulse[0]?.employees)
+    ? window.__historyCache.pulse[0].employees
+    : [];
+
+  const emps = Array.isArray(latestEmployees) ? latestEmployees : [];
+  if (!emps.length) {
+    el.innerHTML = `
+      <div style="background:rgba(0,0,0,0.02);border:1px dashed rgba(0,0,0,0.14);border-radius:14px;padding:14px">
+        <div style="font-weight:900;color:#0f172a">No burnout intelligence yet</div>
+        <div class="small" style="margin-top:6px;color:#64748b;font-weight:700;line-height:1.5">Run Burnout Intelligence to generate your first workforce snapshot. After each run, this panel summarizes hotspots, workload imbalance, and risk clusters.</div>
+      </div>
+    `;
+    return;
+  }
+
+  const level = (l) => {
+    const v = String(l || '').toLowerCase();
+    if (v === 'low' || v === 'medium' || v === 'high' || v === 'critical') return v;
+    return 'medium';
+  };
+
+  const normHours = (e) => Number(e?.weeklyHours || e?.weekly_hours || 0);
+  const normAfter = (e) => Number(e?.afterHoursMessages || e?.after_hours_messages || 0);
+  const normSick = (e) => Number(e?.sickDays || e?.sick_days || 0);
+
+  const counts = { low:0, medium:0, high:0, critical:0 };
+  for (const e of emps) counts[level(e?.riskLevel)]++;
+
+  const overtime = emps.filter(e => normHours(e) >= 55);
+  const afterHours = emps.filter(e => normAfter(e) >= 10);
+  const sickSignals = emps.filter(e => normSick(e) >= 3);
+  const highCluster = emps.filter(e => ['high','critical'].includes(level(e?.riskLevel)));
+
+  const byDriver = {};
+  for (const e of emps) {
+    const drivers = Array.isArray(e?.heuristicDrivers) ? e.heuristicDrivers : (Array.isArray(e?.drivers) ? e.drivers : []);
+    for (const d of drivers) {
+      const k = String(d || '').trim();
+      if (!k) continue;
+      byDriver[k] = (byDriver[k] || 0) + 1;
+    }
+  }
+  const topDrivers = Object.entries(byDriver).sort((a,b)=>b[1]-a[1]).slice(0, 3);
+
+  const hours = emps.map(normHours).filter(n => Number.isFinite(n) && n > 0);
+  const maxH = hours.length ? Math.max(...hours) : 0;
+  const minH = hours.length ? Math.min(...hours) : 0;
+  const imbalance = (maxH && minH) ? (maxH - minH) : 0;
+
+  const card = (title, body, accent) => `
+    <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-left:3px solid ${accent};border-radius:14px;padding:14px">
+      <div style="font-size:10px;font-weight:900;color:${accent};letter-spacing:0.10em;margin-bottom:8px">${escapeHtml(title)}</div>
+      <div style="font-size:13px;color:#0f172a;font-weight:800;line-height:1.5">${body}</div>
+    </div>
+  `;
+
+  const distBar = (() => {
+    const total = Math.max(1, emps.length);
+    const seg = (n, c) => `<div style="height:10px;width:${Math.round((n/total)*100)}%;background:${c}"></div>`;
+    return `
+      <div style="background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">TEAM RISK DISTRIBUTION</div>
+          <div style="font-size:12px;color:#64748b;font-weight:800">${emps.length} employees</div>
+        </div>
+        <div style="margin-top:10px;display:flex;overflow:hidden;border-radius:999px;border:1px solid rgba(0,0,0,0.06)">
+          ${seg(counts.low, 'rgba(0,229,160,0.9)')}
+          ${seg(counts.medium, 'rgba(255,217,61,0.9)')}
+          ${seg(counts.high, 'rgba(255,107,107,0.85)')}
+          ${seg(counts.critical, 'rgba(255,59,59,0.85)')}
+        </div>
+        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#64748b;font-weight:800">
+          <span>Low: ${counts.low}</span>
+          <span>Medium: ${counts.medium}</span>
+          <span>High: ${counts.high}</span>
+          <span>Critical: ${counts.critical}</span>
+        </div>
+      </div>
+    `;
+  })();
+
+  const hotspotText = highCluster.length
+    ? `${highCluster.length} hotspot ${highCluster.length === 1 ? 'employee is' : 'employees are'} in high/critical risk. Prioritize workload adjustments and manager check-ins this week.`
+    : 'No high/critical hotspots detected. Maintain weekly monitoring and protect recovery time.';
+
+  const imbalanceText = imbalance >= 12
+    ? `Workload spread is ${imbalance}h (min ${minH}h → max ${maxH}h). Consider rebalancing work across roles or adding coverage during peak weeks.`
+    : `Workload spread is ${imbalance}h (min ${minH}h → max ${maxH}h). Distribution looks relatively stable.`;
+
+  const clusterSignals = [
+    overtime.length ? `${overtime.length} with overtime (55h+)` : '',
+    afterHours.length ? `${afterHours.length} with after-hours activity` : '',
+    sickSignals.length ? `${sickSignals.length} with sick-leave signals` : ''
+  ].filter(Boolean);
+  const clustersText = clusterSignals.length
+    ? `Signals: ${clusterSignals.join(' · ')}.`
+    : 'No major signal clusters detected beyond baseline levels.';
+
+  const driversText = topDrivers.length
+    ? topDrivers.map(([k,v]) => `${escapeHtml(k)} (${v})`).join(' · ')
+    : 'Not enough driver data yet — run Burnout Intelligence again after adding more employee signals.';
+
+  const businessImpact = `~${decision.productivityAtRiskWeekly.toLocaleString()} / week at productivity risk · ${decision.sickLeaveExposureDays} sick-leave day(s) exposure (next 2–4 weeks)`;
+  const sickLeaveModule = `${escapeHtml(decision?.sickLeaveRisk?.level || 'Low')} potential sick leave risk · ${Number(decision?.sickLeaveAffected) || 0} employee(s) potentially at risk (next ${Number(decision?.sickLeaveHorizonDays) || 30} days)`;
+  const nextActions = Array.isArray(decision.actions) ? decision.actions.slice(0, 2) : [];
+  const plans = computeStrategicActionPlans(emps, decision);
+  const planHighlights = Array.isArray(plans) ? plans.slice(0, 2) : [];
+
+  el.innerHTML = `
+    <div style="display:grid;gap:12px">
+      ${distBar}
+
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        ${card('BUSINESS IMPACT', escapeHtml(businessImpact), '#FF6B6B')}
+        ${card('RISK PREDICTION', escapeHtml(decision.predictionText), '#6366f1')}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        ${card('COMPANY BURNOUT SCORE', `${escapeHtml(String(decision.score))}/100 · ${escapeHtml(decision.status.label)} risk`, '#0f172a')}
+        ${card('SICK LEAVE RISK', escapeHtml(sickLeaveModule), '#00b894')}
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+        ${card('BURNOUT HOTSPOTS', escapeHtml(hotspotText), '#FF6B6B')}
+        ${card('WORKLOAD IMBALANCE', escapeHtml(imbalanceText), '#6366f1')}
+        ${card('HIGH-RISK CLUSTERS', escapeHtml(clustersText), '#00b894')}
+        ${card('TOP DRIVERS', driversText, '#8b5cf6')}
+      </div>
+
+      ${nextActions.length ? `
+        <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:14px">
+          <div style="font-size:10px;font-weight:900;color:#0f172a;letter-spacing:0.10em;margin-bottom:8px">NEXT BEST ACTIONS</div>
+          <div style="display:grid;gap:8px">
+            ${nextActions.map(a => `<div style="font-size:12px;color:#334155;font-weight:800;line-height:1.45">- ${escapeHtml(a)}</div>`).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${planHighlights.length ? `
+        <div style="background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">STRATEGIC ACTION PLANS</div>
+            <div style="font-size:12px;color:#64748b;font-weight:800">Manager-ready plans</div>
+          </div>
+          <div style="margin-top:10px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+            ${planHighlights.map(p => `
+              <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                  <div style="font-weight:900;color:#0f172a">${escapeHtml(p.title)}</div>
+                  <span style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.10);border-radius:999px;padding:4px 10px;font-size:10px;font-weight:900;color:#334155;white-space:nowrap">${escapeHtml(p.timeframe || '')}</span>
+                </div>
+                <div class="small" style="margin-top:6px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(p.explanation || '')}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
 }
 
 async function sendWeeklyReport(userEmail, pulseEmployees, atRiskCount){
@@ -1559,6 +1770,187 @@ function computeCompanyRiskScore(employees){
   return Math.round(sum / arr.length);
 }
 
+function classifyCompanyRisk(score){
+  const s = Number(score);
+  if (!Number.isFinite(s)) return { label: '—', tone: '#64748b', bg: 'rgba(100,116,139,0.10)', bd: 'rgba(100,116,139,0.22)' };
+  if (s >= 70) return { label: 'High', tone: '#FF6B6B', bg: 'rgba(255,107,107,0.10)', bd: 'rgba(255,107,107,0.22)' };
+  if (s >= 45) return { label: 'Medium', tone: '#b45309', bg: 'rgba(255,217,61,0.18)', bd: 'rgba(255,217,61,0.35)' };
+  return { label: 'Low', tone: '#00b894', bg: 'rgba(0,184,148,0.10)', bd: 'rgba(0,184,148,0.22)' };
+}
+
+function computeDecisionEngine(employees, trendSeries){
+  const emps = Array.isArray(employees) ? employees : [];
+  const series = Array.isArray(trendSeries) ? trendSeries : [];
+  const score = computeCompanyRiskScore(emps);
+  const status = classifyCompanyRisk(score);
+
+  const level = (l) => {
+    const v = String(l || '').toLowerCase();
+    if (v === 'low' || v === 'medium' || v === 'high' || v === 'critical') return v;
+    return 'medium';
+  };
+  const high = emps.filter(e => ['high','critical'].includes(level(e?.riskLevel)));
+  const medium = emps.filter(e => level(e?.riskLevel) === 'medium');
+
+  const overtime = emps.filter(e => Number(e?.weeklyHours || e?.weekly_hours || 0) >= 55);
+  const afterHours = emps.filter(e => Number(e?.afterHoursMessages || e?.after_hours_messages || 0) >= 10);
+  const sickSignals = emps.filter(e => Number(e?.sickDays || e?.sick_days || 0) >= 3);
+
+  const sickLeaveAffected = Math.max(sickSignals.length, Math.round(high.length * 0.5));
+  const sickLeaveRisk = (() => {
+    if (!emps.length) return { level: 'Low', color: '#00b894' };
+    const x = (sickSignals.length / emps.length) * 100;
+    const y = (high.length / emps.length) * 100;
+    const z = (overtime.length / emps.length) * 100;
+    const composite = (x * 0.5) + (y * 0.35) + (z * 0.15);
+    if (composite >= 22) return { level: 'High', color: '#FF6B6B' };
+    if (composite >= 12) return { level: 'Medium', color: '#b45309' };
+    return { level: 'Low', color: '#00b894' };
+  })();
+
+  const last = series[series.length - 1];
+  const prev = series[series.length - 2];
+  const delta = (Number.isFinite(Number(last)) && Number.isFinite(Number(prev))) ? (Number(last) - Number(prev)) : 0;
+
+  // Business impact — heuristic, intentionally conservative.
+  // Assume a generic fully-loaded cost per employee per week and map risk to productivity at-risk.
+  const costPerEmployeeWeek = 1500; // currency-neutral ~€/$
+  const productivityRiskFactor = Math.min(0.35, Math.max(0, (high.length * 0.22 + medium.length * 0.08) / Math.max(1, emps.length)));
+  const productivityAtRiskWeekly = Math.round(costPerEmployeeWeek * emps.length * productivityRiskFactor);
+  const sickLeaveExposureDays = Math.round((sickSignals.length * 1.5) + (high.length * 0.5));
+
+  // Risk prediction — project 2 weeks ahead based on recent delta + workload pressure.
+  const overtimePct = emps.length ? (overtime.length / emps.length) : 0;
+  const projectedDelta = Math.round((delta * 2) + (overtimePct * 12) + (afterHours.length ? 4 : 0));
+  const projectedScore = Math.max(0, Math.min(100, score + projectedDelta));
+  const predictedPct = Math.max(-25, Math.min(35, Math.round((projectedScore - score))));
+
+  const actions = [];
+  if (overtime.length) actions.push(`Reduce workload for the overtime cohort (55h+) by 10–15 hours this week (${overtime.length} impacted).`);
+  if (afterHours.length) actions.push(`Set after-hours boundaries (quiet hours) and review on-call load (${afterHours.length} showing after-hours activity).`);
+  if (high.length) actions.push(`Run manager 1:1 interventions for high/critical risk employees within 7 days (${high.length} impacted).`);
+  if (sickSignals.length) actions.push(`Review sick leave signals and offer support plan (check workload, recovery time) (${sickSignals.length} impacted).`);
+  if (!actions.length) actions.push('Maintain weekly monitoring and protect recovery time. Standardize one proactive action per team.');
+
+  const uniqueActions = Array.from(new Set(actions)).slice(0, 4);
+
+  const predictionText = predictedPct === 0
+    ? 'Risk is projected to remain stable over the next 2 weeks if conditions stay the same.'
+    : predictedPct > 0
+    ? `Risk is projected to increase by ~${predictedPct} points over the next 2 weeks if conditions continue.`
+    : `Risk is projected to decrease by ~${Math.abs(predictedPct)} points over the next 2 weeks if conditions continue.`;
+
+  return {
+    score,
+    status,
+    productivityAtRiskWeekly,
+    sickLeaveExposureDays,
+    sickLeaveRisk,
+    sickLeaveAffected,
+    sickLeaveHorizonDays: 30,
+    predictionText,
+    projectedScore,
+    actions: uniqueActions,
+    inputs: {
+      teamSize: emps.length,
+      highCount: high.length,
+      mediumCount: medium.length,
+      overtimeCount: overtime.length
+    }
+  };
+}
+
+function computeStrategicActionPlans(employees, decision){
+  const emps = Array.isArray(employees) ? employees : [];
+  const d = decision || computeDecisionEngine(emps, getCompanyTrendSeries(8));
+
+  const level = (l) => {
+    const v = String(l || '').toLowerCase();
+    if (v === 'low' || v === 'medium' || v === 'high' || v === 'critical') return v;
+    return 'medium';
+  };
+
+  const high = emps.filter(e => ['high','critical'].includes(level(e?.riskLevel)));
+  const medium = emps.filter(e => level(e?.riskLevel) === 'medium');
+  const overtime = emps.filter(e => Number(e?.weeklyHours || e?.weekly_hours || 0) >= 55);
+  const afterHours = emps.filter(e => Number(e?.afterHoursMessages || e?.after_hours_messages || 0) >= 10);
+  const sickSignals = emps.filter(e => Number(e?.sickDays || e?.sick_days || 0) >= 3);
+
+  const hasHotspots = high.length > 0;
+  const hasOvertime = overtime.length > 0;
+  const hasAfterHours = afterHours.length > 0;
+  const hasSick = sickSignals.length > 0;
+
+  const plans = [
+    {
+      key: 'recovery',
+      title: 'Burnout Recovery Plan',
+      timeframe: 'This week',
+      explanation: hasHotspots
+        ? `Stabilize the highest-risk cohort (${high.length} employee(s)) by reducing pressure and creating recovery time.`
+        : 'Protect recovery time and prevent hotspots from emerging.',
+      actions: [
+        hasHotspots ? `Reduce workload for high/critical employees by removing or deferring 1–2 deliverables (${high.length} impacted).` : 'Protect focus time: cap meetings and create 2 recovery blocks per week.',
+        hasOvertime ? `Cut overtime in the 55h+ cohort by reassigning tasks (${overtime.length} impacted).` : 'Avoid new scope increases until next weekly check-in.',
+        'Confirm priority list with managers: what to pause, what to ship, what to delegate.',
+        'Add a short manager check-in cadence (10 minutes) to validate recovery and blockers.'
+      ].filter(Boolean).slice(0, 4)
+    },
+    {
+      key: 'productivity',
+      title: 'Productivity Protection Plan',
+      timeframe: 'Next 2 weeks',
+      explanation: `Maintain output while lowering burnout pressure by simplifying scope and stabilizing workload distribution.`,
+      actions: [
+        'Defer non-critical work: pick 1–2 tasks per team to pause until next cycle.',
+        hasAfterHours ? `Introduce quiet hours + async norms to reduce after-hours load (${afterHours.length} impacted).` : 'Standardize an async-first norm to reduce context switching.',
+        'Move high-risk work off single points of failure: pair ownership for critical tasks.',
+        'Track one metric weekly (burnout score + sick-leave signals) to validate progress.'
+      ].filter(Boolean).slice(0, 4)
+    },
+    {
+      key: 'sickleave',
+      title: 'Sick Leave Prevention Plan',
+      timeframe: 'This week',
+      explanation: `Potential sick leave risk is ${escapeHtml(d.sickLeaveRisk?.level || 'Low')} over the next ${Number(d.sickLeaveHorizonDays) || 30} days. Intervene early and document actions.`,
+      actions: [
+        hasSick ? `Review sick-leave signals and offer support plan (${sickSignals.length} impacted).` : 'Review recovery signals and confirm coverage plan for peak weeks.',
+        'Ensure coverage for high-pressure roles: identify backup owners for critical work.',
+        'Encourage time-off planning for high-pressure team members (set dates, not intentions).',
+        'Flag escalations early: rising sick days + overtime should trigger manager intervention.'
+      ].filter(Boolean).slice(0, 4)
+    },
+    {
+      key: 'manager',
+      title: 'Manager Coaching Plan',
+      timeframe: 'This week',
+      explanation: 'Equip managers with a simple 1:1 playbook focused on workload, boundaries, and recovery.',
+      actions: [
+        'In 1:1s: ask what feels unsustainable, what can be paused, and what support is missing.',
+        'Avoid: “just push through” language; focus on scope tradeoffs and resource constraints.',
+        hasAfterHours ? 'Watch this week: after-hours patterns, slack escalation, and weekend work.' : 'Watch this week: overload signals (hours, context switching, missed breaks).',
+        'Close the loop: pick one action per hotspot and confirm it’s completed next check-in.'
+      ].filter(Boolean).slice(0, 4)
+    },
+    {
+      key: 'rebalance',
+      title: 'Team Rebalance Plan',
+      timeframe: 'Next 2 weeks',
+      explanation: hasOvertime || hasHotspots
+        ? 'Reduce concentration risk by redistributing workload away from hotspots and overtime clusters.'
+        : 'Keep workload distribution stable and prevent new clusters.',
+      actions: [
+        hasOvertime ? `Shift work from the overtime cohort to lower-risk capacity (${overtime.length} impacted).` : 'Audit workload distribution across roles; identify bottlenecks.',
+        (high.length || medium.length) ? `Reassign 10–20% of tasks from elevated-risk employees (${high.length + medium.length} impacted).` : 'Maintain steady load; prevent sudden scope increases.',
+        'Add a “coverage map” for critical work: primary + backup owner for each key deliverable.',
+        `If current workload continues: ${escapeHtml(d.predictionText)}`
+      ].filter(Boolean).slice(0, 4)
+    }
+  ];
+
+  return plans;
+}
+
 function getCompanyTrendSeries(maxWeeks = 8){
   if (pulseDemoActive && Array.isArray(pulseDemoSeries) && pulseDemoSeries.length) {
     return pulseDemoSeries.slice(Math.max(0, pulseDemoSeries.length - maxWeeks));
@@ -1649,7 +2041,7 @@ function getLoggedAction(employeeName){
 
 function renderTrendBars(series, accent = '#FF6B6B'){
   const arr = Array.isArray(series) ? series : [];
-  if (!arr.length) return '<div style="color:#64748b;font-size:12px;font-weight:700;line-height:1.5">Run weekly analysis to unlock People Risk trend tracking. After 2+ runs, you\'ll see direction, stability, and progress over time.</div>';
+  if (!arr.length) return '<div style="color:#64748b;font-size:12px;font-weight:700;line-height:1.5">Run weekly analysis to unlock Burnout Intelligence trend tracking. After 2+ runs, you\'ll see direction, stability, and progress over time.</div>';
   const max = Math.max(1, ...arr);
   return `
     <div style="display:flex;align-items:flex-end;gap:6px;height:70px;padding:10px 0">
@@ -1683,7 +2075,7 @@ function renderPulseTrend(){
   el.innerHTML = `
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div>
-        <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em">COMPANY PEOPLE RISK</div>
+        <div style="font-size:11px;font-weight:900;color:#64748b;letter-spacing:0.08em">COMPANY BURNOUT INTELLIGENCE</div>
         <div style="margin-top:6px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
           <div style="font-family:'Syne',system-ui;font-weight:900;font-size:28px;color:#0f172a">${escapeHtml(lastLabel)}</div>
           <div style="font-size:12px;font-weight:900;color:${delta > 0 ? '#FF6B6B' : delta < 0 ? '#00b894' : '#64748b'}">${escapeHtml(deltaLabel)} this week</div>
@@ -1789,6 +2181,11 @@ function renderPulse(employees){
 
   const weeklyBrief = `${rising.length || high.length || medium.length ? (rising.length ? `${rising.length} employee(s) show rising risk` : `${high.length + medium.length} employee(s) are at elevated risk`) : 'No elevated risk detected'} driven by ${topDriver.toLowerCase()}. ${teamHint}`;
 
+  const decision = computeDecisionEngine(rows, trendSeries);
+  window.__lastDecisionEngine = decision;
+  const plans = computeStrategicActionPlans(rows, decision);
+  window.__lastActionPlans = plans;
+
   const totalSickDays = enriched.reduce((acc, e) => acc + (Number(e.raw?.sickDays) || 0), 0);
   const highSick = enriched.filter(e => (Number(e.raw?.sickDays) || 0) >= 3);
   const missingVacation = enriched.filter(e => {
@@ -1840,9 +2237,73 @@ function renderPulse(employees){
   out.innerHTML = `
     <div style="display:grid;gap:12px">
       ${pulseDemoActive ? pulseDemoCtaHtml() : ''}
+
+      <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">DECISION ENGINE</div>
+            <div style="margin-top:8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+              <div style="font-family:'Syne',system-ui;font-weight:900;font-size:28px;color:#0f172a">${decision.score}/100</div>
+              <span style="background:${decision.status.bg};border:1px solid ${decision.status.bd};border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;color:${decision.status.tone}">${escapeHtml(decision.status.label)} risk</span>
+            </div>
+          </div>
+          <div style="min-width:240px;flex:1">
+            <div style="display:grid;gap:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+                <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em">BUSINESS IMPACT</div>
+                <div style="font-size:12px;color:#0f172a;font-weight:900">~${decision.productivityAtRiskWeekly.toLocaleString()} / week</div>
+              </div>
+              <div style="font-size:12px;color:#64748b;font-weight:700;line-height:1.45">Estimated productivity at risk · Sick-leave exposure: <span style="font-weight:900;color:#0f172a">${decision.sickLeaveExposureDays}</span> day(s) (next 2–4 weeks)</div>
+              <div style="font-size:11px;font-weight:900;color:#6366f1;letter-spacing:0.08em;margin-top:4px">RISK PREDICTION</div>
+              <div style="font-size:12px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(decision.predictionText)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
+          <div style="font-size:10px;font-weight:900;color:#0f172a;letter-spacing:0.10em;margin-bottom:8px">ACTION RECOMMENDATIONS</div>
+          <div style="display:grid;gap:8px">
+            ${(decision.actions || []).slice(0, 4).map(a => `<div style=\"font-size:12px;color:#334155;font-weight:800;line-height:1.45\">- ${escapeHtml(a)}</div>`).join('')}
+          </div>
+        </div>
+
+        <div style="margin-top:12px;background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.18);border-radius:14px;padding:12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div>
+              <div style="font-size:10px;font-weight:900;color:#00b894;letter-spacing:0.10em;margin-bottom:6px">SICK LEAVE RISK PREDICTION</div>
+              <div style="font-size:12px;color:#64748b;font-weight:700;line-height:1.45">Potential sick leave risk over the next ${Number(decision?.sickLeaveHorizonDays) || 30} days.</div>
+            </div>
+            <span style="background:${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}18;border:1px solid ${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}33;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;color:${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}">${escapeHtml(decision?.sickLeaveRisk?.level || 'Low')} risk</span>
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:#0f172a;font-weight:900">${Number(decision?.sickLeaveAffected) || 0} employee(s) potentially at risk</div>
+          <div style="margin-top:6px;font-size:12px;color:#64748b;font-weight:700;line-height:1.45">Directional estimate based on current burnout + workload + sick-leave signals. Use early interventions and manager check-ins to reduce escalation.</div>
+        </div>
+      </div>
+
       <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
-        <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">WEEKLY PEOPLE RISK BRIEF</div>
+        <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">WEEKLY BURNOUT INTELLIGENCE BRIEF</div>
         <div style="font-size:13px;color:#0f172a;font-weight:800;line-height:1.5">${escapeHtml(weeklyBrief)}</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.70);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">STRATEGIC ACTION PLANS</div>
+          <div style="font-size:12px;color:#64748b;font-weight:800">5 plans generated from this analysis</div>
+        </div>
+        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+          ${(Array.isArray(plans) ? plans : []).map(p => `
+            <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                <div style="font-family:'Syne',system-ui;font-weight:900;color:#0f172a">${escapeHtml(p.title)}</div>
+                <span style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.10);border-radius:999px;padding:4px 10px;font-size:10px;font-weight:900;color:#334155;white-space:nowrap">${escapeHtml(p.timeframe || '')}</span>
+              </div>
+              <div class="small" style="margin-top:6px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(p.explanation || '')}</div>
+              <div style="margin-top:10px;display:grid;gap:6px">
+                ${(Array.isArray(p.actions) ? p.actions : []).slice(0, 4).map(a => `<div style=\"font-size:12px;color:#334155;font-weight:800;line-height:1.45\">- ${escapeHtml(a)}</div>`).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
@@ -2057,7 +2518,7 @@ async function runPulse(){
       }
     } catch(e) { console.warn('Save pulse result failed', e); }
 
-    addFeed('People Risk', `Generated weekly people risk report for ${mergedEmployees.length} employee(s).`);
+    addFeed('Burnout Intelligence', `Generated weekly burnout intelligence report for ${mergedEmployees.length} employee(s).`);
 
     msg.textContent = 'Done.';
   }catch(err){

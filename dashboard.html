@@ -30,7 +30,7 @@
       </a>
 
       <h1 class="gate-title">Welcome back</h1>
-      <div class="gate-sub">Sign in with Google to access Hire, Board, Pulse, and Interview.</div>
+      <div class="gate-sub">Sign in with Google to access Burnout Intelligence, Hiring Intelligence, Workforce Insights, and AI Interview.</div>
 
       <button class="btn btn-primary gate-btn" id="btnLogin" style="width:100%">Continue with Google</button>
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.6">
@@ -57,22 +57,18 @@
       <div class="pill" id="userPill">Signed in</div>
 
       <div class="side-nav" style="margin-top:12px">
-        <button class="nav-item active" data-tab="overview">Overview</button>
-        <button class="nav-item" data-tab="hire">Hire</button>
-        <button class="nav-item" data-tab="board">Board</button>
-        <button class="nav-item" data-tab="pulse">People Risk</button>
-        <button class="nav-item" data-tab="settings">Settings</button>
-        <div class="nav-item" data-section="interview" onclick="showSection('interview')">
-          <span>🎤 Interview</span>
-        </div>
-      </div>
+        <div class="nav-section-label">CORE</div>
+        <button class="nav-item active" data-tab="overview"><span class="nav-left"><span class="nav-ic">⌂</span><span>Overview</span></span></button>
+        <button class="nav-item" data-tab="pulse"><span class="nav-left"><span class="nav-ic">💓</span><span>Burnout Intelligence</span></span></button>
+        <button class="nav-item" data-tab="hire"><span class="nav-left"><span class="nav-ic">🎯</span><span>Hiring Intelligence</span></span></button>
+        <button class="nav-item" data-tab="board"><span class="nav-left"><span class="nav-ic">📊</span><span>Workforce Insights</span></span></button>
 
-      <div class="panel" style="margin-top:14px;padding:12px;border-radius:16px;background:rgba(255,255,255,.04)">
-        <div style="font-weight:900">Quick actions</div>
-        <div class="small" style="margin-top:8px;display:grid;gap:8px">
-          <button class="btn" onclick="showSection('hire')" style="display:inline-flex;justify-content:center">Analyze candidates</button>
-          <button class="btn" onclick="showSection('pulse')" style="display:inline-flex;justify-content:center">Check people risk</button>
-        </div>
+        <div class="nav-section-label" style="margin-top:12px">TOOLS</div>
+        <div class="nav-item" data-section="candidate" onclick="showSection('candidate')"><span class="nav-left"><span class="nav-ic">🧾</span><span>Candidate Analysis</span></span></div>
+        <div class="nav-item" data-section="interview" onclick="showSection('interview')"><span class="nav-left"><span class="nav-ic">🎤</span><span>AI Interview</span></span></div>
+
+        <div class="nav-section-label" style="margin-top:12px">SYSTEM</div>
+        <button class="nav-item" data-tab="settings"><span class="nav-left"><span class="nav-ic">⚙</span><span>Settings</span></span></button>
       </div>
     </aside>
 
@@ -81,7 +77,7 @@
         <div class="topbar">
           <div>
             <h1 id="pageTitle">Overview</h1>
-            <div style="font-size:13px;color:#64748b;margin-top:4px">AI-powered hiring and burnout insights for modern teams</div>
+            <div style="font-size:13px;color:#64748b;margin-top:4px">AI workforce intelligence layer for modern teams — designed to work alongside your existing HR tools</div>
           </div>
           <div class="row">
             <span class="pill" id="statusPill">AI ready</span>
@@ -101,7 +97,12 @@
             <div class="panel" style="margin-top:12px;padding:14px 16px;border-radius:16px;background:rgba(99,102,241,0.05);border:1px solid rgba(99,102,241,0.14)">
               <div style="font-weight:900;color:#0f172a">Peoplera works alongside your HR system</div>
               <div class="small" style="margin-top:6px;color:#64748b">
-                Use Peoplera for better hiring decisions, faster onboarding, and earlier burnout detection — without replacing your existing tools.
+                Use Peoplera for workforce risk detection, manager-ready action plans, and earlier burnout signals — without replacing payroll, compliance, or your HRIS.
+              </div>
+              <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+                <span style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;color:#334155">Built to fit modern HR workflows</span>
+                <span style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;color:#334155">Works alongside HR stacks (e.g. Personio, AFAS, Nmbrs)</span>
+                <span style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;color:#334155">Not a system of record</span>
               </div>
             </div>
 
@@ -112,7 +113,7 @@
                   <div style="width:32px;height:32px;background:rgba(99,102,241,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">🎯</div>
                 </div>
                 <div class="value" id="statCandidates" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#6366f1;margin-top:8px">0</div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Click to view Hire →</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Click to view Hiring Intelligence →</div>
               </div>
 
               <div class="panel stat" style="border-left:3px solid #00b894">
@@ -121,7 +122,7 @@
                   <div style="width:32px;height:32px;background:rgba(0,184,148,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">👥</div>
                 </div>
                 <div class="value" id="statEmployees" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#00b894;margin-top:8px">0</div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Tracked via People Risk</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Tracked via Burnout Intelligence</div>
               </div>
 
               <div class="panel stat" onclick="showSection('pulse')" style="cursor:pointer;border-left:3px solid #FF6B6B;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
@@ -130,24 +131,24 @@
                   <div style="width:32px;height:32px;background:rgba(255,107,107,0.1);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px">⚠️</div>
                 </div>
                 <div class="value" id="statAtRisk" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#FF6B6B;margin-top:8px">0</div>
-                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Click to view People Risk →</div>
+                <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:600">Click to view Burnout Intelligence →</div>
               </div>
             </div>
 
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px">
               <div onclick="showSection('hire')" style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(99,102,241,0.12)'" onmouseout="this.style.background='rgba(99,102,241,0.06)'">
                 <div style="font-size:22px;margin-bottom:6px">🎯</div>
-                <div style="font-size:12px;font-weight:800;color:#6366f1">Hire</div>
+                <div style="font-size:12px;font-weight:800;color:#6366f1">Hiring Intelligence</div>
                 <div style="font-size:10px;color:#94a3b8;margin-top:2px">Analyze CVs</div>
               </div>
               <div onclick="showSection('board')" style="background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(0,184,148,0.12)'" onmouseout="this.style.background='rgba(0,184,148,0.06)'">
                 <div style="font-size:22px;margin-bottom:6px">📋</div>
-                <div style="font-size:12px;font-weight:800;color:#00b894">Board</div>
-                <div style="font-size:10px;color:#94a3b8;margin-top:2px">Onboarding plans</div>
+                <div style="font-size:12px;font-weight:800;color:#00b894">Workforce Insights</div>
+                <div style="font-size:10px;color:#94a3b8;margin-top:2px">Trends & hotspots</div>
               </div>
               <div onclick="showSection('pulse')" style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(255,107,107,0.12)'" onmouseout="this.style.background='rgba(255,107,107,0.06)'">
                 <div style="font-size:22px;margin-bottom:6px">💓</div>
-                <div style="font-size:12px;font-weight:800;color:#FF6B6B">People Risk</div>
+                <div style="font-size:12px;font-weight:800;color:#FF6B6B">Burnout Intelligence</div>
                 <div style="font-size:10px;color:#94a3b8;margin-top:2px">Burnout & absence signals</div>
               </div>
               <div onclick="showSection('interview')" style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:14px;cursor:pointer;transition:all 0.2s;text-align:center" onmouseover="this.style.background='rgba(245,158,11,0.12)'" onmouseout="this.style.background='rgba(245,158,11,0.06)'">
@@ -165,13 +166,13 @@
 
               <div class="panel" style="padding:16px">
                 <div style="font-weight:900;font-size:14px;margin-bottom:12px">⚠ At-risk employees</div>
-                <div id="atRiskPreview" style="color:#94a3b8;font-size:13px">Run People Risk to see at-risk employees here.</div>
+                <div id="atRiskPreview" style="color:#94a3b8;font-size:13px">Run Burnout Intelligence to see at-risk employees here.</div>
                 <div style="margin-top:12px">
                   <div style="font-weight:900;font-size:14px;margin-bottom:10px">🚀 Quick start</div>
                   <div style="display:grid;gap:6px;font-size:12px;color:#64748b">
-                    <div>1) Paste a job description and upload CVs in <span onclick="showSection('hire')" style="color:#6366f1;font-weight:800;cursor:pointer">Hire →</span></div>
-                    <div>2) Add a new employee in <span onclick="showSection('board')" style="color:#00b894;font-weight:800;cursor:pointer">Board →</span></div>
-                    <div>3) Add employees in <span onclick="showSection('pulse')" style="color:#FF6B6B;font-weight:800;cursor:pointer">People Risk →</span> to track risk</div>
+                    <div>1) Paste a job description and upload CVs in <span onclick="showSection('hire')" style="color:#6366f1;font-weight:800;cursor:pointer">Hiring Intelligence →</span></div>
+                    <div>2) Explore team analytics in <span onclick="showSection('board')" style="color:#00b894;font-weight:800;cursor:pointer">Workforce Insights →</span></div>
+                    <div>3) Add employees in <span onclick="showSection('pulse')" style="color:#FF6B6B;font-weight:800;cursor:pointer">Burnout Intelligence →</span> to track risk</div>
                     <div>4) Generate interview questions in <span onclick="showSection('interview')" style="color:#f59e0b;font-weight:800;cursor:pointer">Interview →</span></div>
                   </div>
                 </div>
@@ -182,7 +183,7 @@
 
         <section id="tab-hire" class="module">
           <div class="panel pad">
-            <div style="font-family:Syne;font-weight:800;font-size:18px">Peoplera Hire</div>
+            <div style="font-family:Syne;font-weight:800;font-size:18px">Hiring Intelligence</div>
             <div class="small" style="margin-top:6px">Analyze candidates against a job description and export rankings.</div>
             <div style="background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.1);border-radius:8px;padding:8px 12px;font-size:11px;color:#64748b;margin-top:12px">
               🤖 <strong>AI-powered:</strong> Results are generated by Claude AI and should be used as a guide. Always apply your own judgment before making hiring or HR decisions.
@@ -231,10 +232,20 @@
 
         <section id="tab-board" class="module">
           <div class="panel pad">
-            <div style="font-family:Syne;font-weight:800;font-size:18px">Peoplera Board</div>
-            <div class="small" style="margin-top:6px">Generate a personalized 30-60-90 plan from role + handbook.</div>
+            <div style="font-family:Syne;font-weight:800;font-size:18px">Workforce Insights</div>
+            <div class="small" style="margin-top:6px">Team-level burnout hotspots, workload imbalance, and clusters — powered by your Burnout Intelligence runs.</div>
             <div style="background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.1);border-radius:8px;padding:8px 12px;font-size:11px;color:#64748b;margin-top:12px">
               🤖 <strong>AI-powered:</strong> Results are generated by Claude AI and should be used as a guide. Always apply your own judgment before making hiring or HR decisions.
+            </div>
+          </div>
+
+          <div style="padding:0 24px;margin-top:12px">
+            <div class="panel pad">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+                <div style="font-weight:900">Workforce intelligence snapshot</div>
+                <div class="small" style="font-weight:700">Derived from your latest Burnout Intelligence report</div>
+              </div>
+              <div id="workforceInsightsOut" style="margin-top:14px"></div>
             </div>
           </div>
 
@@ -335,13 +346,13 @@
               <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
                 <div style="min-width:260px;flex:1">
                   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                    <div style="font-family:Syne;font-weight:900;font-size:22px">People Risk</div>
+                    <div style="font-family:Syne;font-weight:900;font-size:22px">Burnout Intelligence</div>
                     <span id="pulseDemoBadge" style="display:none;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.1);border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900;color:#334155">Demo data</span>
                   </div>
-                  <div class="small" style="margin-top:6px">Upload employee metrics and generate a weekly people risk report.</div>
+                  <div class="small" style="margin-top:6px">Upload employee metrics and generate a weekly burnout intelligence report.</div>
                 </div>
                 <div style="flex-shrink:0;display:flex;gap:10px;align-items:center">
-                  <button id="btnPulse" onclick="runPulse()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:14px;padding:14px 26px;font-family:'Syne',system-ui;font-weight:900;font-size:15px;color:#0f172a;cursor:pointer;box-shadow:0 10px 26px rgba(255,107,107,0.28);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 14px 34px rgba(255,107,107,0.34)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 10px 26px rgba(255,107,107,0.28)'">Generate people risk report</button>
+                  <button id="btnPulse" onclick="runPulse()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:14px;padding:14px 26px;font-family:'Syne',system-ui;font-weight:900;font-size:15px;color:#0f172a;cursor:pointer;box-shadow:0 10px 26px rgba(255,107,107,0.28);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 14px 34px rgba(255,107,107,0.34)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 10px 26px rgba(255,107,107,0.28)'">Generate burnout intelligence report</button>
                   <button id="btnPulseDemo" onclick="runPulseDemo()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 16px;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='rgba(0,0,0,0.03)'">Try demo data</button>
                   <button onclick="clearPulse()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:12px;padding:10px 16px;color:#FF6B6B;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
                 </div>
@@ -416,14 +427,14 @@
               <div class="panel pad">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
                   <div style="font-weight:900">AI Insights</div>
-                  <div class="small" style="font-weight:700">Auto-generated signals from your People Risk data</div>
+                  <div class="small" style="font-weight:700">Auto-generated signals from your Burnout Intelligence data</div>
                 </div>
                 <div id="aiInsightsOut" style="margin-top:14px;display:grid;gap:10px"></div>
               </div>
 
               <div class="panel pad">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-                  <div style="font-weight:900">People Risk Trend</div>
+                  <div style="font-weight:900">Burnout Intelligence Trend</div>
                   <div class="small" style="font-weight:700">4–8 week tracking</div>
                 </div>
                 <div id="pulseTrendOut" style="margin-top:14px"></div>
