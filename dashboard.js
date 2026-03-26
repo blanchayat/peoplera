@@ -90,6 +90,31 @@ function showPulseToast(title, detail){
   }, 3400);
 }
 
+function updateNavBurnoutBadge(decision){
+  const badge = document.getElementById('navBurnoutBadge');
+  if (!badge) return;
+
+  const d = decision || window.__lastDecisionEngine || null;
+  const score = Number(d?.score);
+  const label = String(d?.status?.label || '').trim();
+
+  if (!Number.isFinite(score) || !label) {
+    badge.hidden = true;
+    badge.textContent = '—';
+    badge.style.background = 'rgba(0,0,0,0.03)';
+    badge.style.borderColor = 'rgba(0,0,0,0.10)';
+    badge.style.color = '#334155';
+    return;
+  }
+
+  const tone = d?.status?.tone || '#64748b';
+  badge.hidden = false;
+  badge.textContent = `${Math.round(score)} · ${label}`;
+  badge.style.background = `${tone}14`;
+  badge.style.borderColor = `${tone}33`;
+  badge.style.color = tone;
+}
+
 function pulseDemoCtaHtml(){
   return `
     <div style="margin-bottom:14px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px 14px">
@@ -264,11 +289,14 @@ function renderHistory(containerId, items, type) {
     `;
     renderAIInsights();
     renderPulseTrend();
+
+    updateNavBurnoutBadge(window.__lastDecisionEngine);
     return;
   }
 
   const decision = computeDecisionEngine(emps, getCompanyTrendSeries(8));
   window.__lastDecisionEngine = decision;
+  if (type === 'pulse') updateNavBurnoutBadge(decision);
 
   const colorMap = { hire: '#6366f1', board: '#00b894', pulse: '#FF6B6B' };
   const color = colorMap[type];
@@ -441,6 +469,9 @@ async function clearPulse(){
   setPulseDemoActive(false);
   document.getElementById('pulseOut').innerHTML = '';
   document.getElementById('statAtRisk').textContent = '0';
+  window.__lastDecisionEngine = null;
+  window.__lastActionPlans = null;
+  updateNavBurnoutBadge(null);
   try {
     const { data: { session: s } } = await supabase.auth.getSession();
     if (!s) return;
@@ -514,8 +545,8 @@ async function loadSettings(){
 
 async function runPulseDemo(){
   const btn = document.getElementById('btnPulseDemo');
-  const reset = setBusy(btn, 'Loading demo…');
-  const msg = document.getElementById('pulseMsg');
+  let msg = document.getElementById('pulseMsg');
+  if (!btn) return;
   if (msg) msg.textContent = '';
 
   try {
@@ -610,6 +641,10 @@ function switchTab(tab){
 
   if (tab === 'board') {
     renderWorkforceInsights();
+  }
+
+  if (tab === 'pulse') {
+    updateNavBurnoutBadge(window.__lastDecisionEngine);
   }
 }
 
@@ -1131,6 +1166,45 @@ function renderWorkforceInsights(){
     `;
   })();
 
+  const hotspotsList = (() => {
+    const list = highCluster
+      .slice()
+      .sort((a, b) => (Number(b?.burnoutScore) || 0) - (Number(a?.burnoutScore) || 0))
+      .slice(0, 4);
+
+    if (!list.length) return '';
+
+    const badge = (lvl) => {
+      const l = level(lvl);
+      if (l === 'critical') return { t: 'Critical', c: '#FF3B3B', bg: 'rgba(255,59,59,0.10)', bd: 'rgba(255,59,59,0.22)' };
+      if (l === 'high') return { t: 'High', c: '#FF6B6B', bg: 'rgba(255,107,107,0.10)', bd: 'rgba(255,107,107,0.22)' };
+      return { t: 'Medium', c: '#b45309', bg: 'rgba(255,217,61,0.18)', bd: 'rgba(255,217,61,0.35)' };
+    };
+
+    return `
+      <div style="background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">BURNOUT HOTSPOTS</div>
+          <div style="font-size:12px;color:#64748b;font-weight:800">Top ${list.length} at risk</div>
+        </div>
+        <div style="margin-top:10px;display:grid;gap:8px">
+          ${list.map(e => {
+            const b = badge(e?.riskLevel);
+            return `
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.06);border-radius:12px;padding:10px 10px">
+                <div style="min-width:0">
+                  <div style="font-weight:900;color:#0f172a;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(e?.name || 'Employee')}</div>
+                  <div style="margin-top:3px;font-size:11px;color:#64748b;font-weight:800">Score ${Number(e?.burnoutScore) || 0}/100</div>
+                </div>
+                <span style="background:${b.bg};border:1px solid ${b.bd};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900;color:${b.c};white-space:nowrap">${escapeHtml(b.t)}</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  })();
+
   const hotspotText = highCluster.length
     ? `${highCluster.length} hotspot ${highCluster.length === 1 ? 'employee is' : 'employees are'} in high/critical risk. Prioritize workload adjustments and manager check-ins this week.`
     : 'No high/critical hotspots detected. Maintain weekly monitoring and protect recovery time.';
@@ -1161,6 +1235,8 @@ function renderWorkforceInsights(){
   el.innerHTML = `
     <div style="display:grid;gap:12px">
       ${distBar}
+
+      ${hotspotsList}
 
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
         ${card('BUSINESS IMPACT', escapeHtml(businessImpact), '#FF6B6B')}
@@ -2183,6 +2259,7 @@ function renderPulse(employees){
 
   const decision = computeDecisionEngine(rows, trendSeries);
   window.__lastDecisionEngine = decision;
+  updateNavBurnoutBadge(decision);
   const plans = computeStrategicActionPlans(rows, decision);
   window.__lastActionPlans = plans;
 

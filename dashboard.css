@@ -44,8 +44,10 @@ body {
   background: rgba(255,107,107,0.12) !important;
   border-color: rgba(255,107,107,0.25) !important;
   color: #0f172a !important;
-  border-left: 3px solid #FF6B6B !important;
+  border-left: 0 !important;
 }
+
+.nav-item.active::before{background:#FF6B6B}
 
 .panel {
   background: rgba(255,255,255,0.80) !important;
@@ -86,29 +88,71 @@ body {
   padding:16px;
 }
 .side-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;padding-bottom:12px}
-.side-nav{display:grid;gap:6px;margin-top:10px}
+.side-nav{display:grid;gap:4px;margin-top:10px}
 .nav-section-label{
   font-size:10px;
   font-weight:900;
   letter-spacing:0.12em;
   color:#94a3b8;
   padding:10px 10px 6px;
+  margin-top:2px;
 }
 .nav-left{display:flex;align-items:center;gap:10px;min-width:0}
-.nav-ic{width:18px;display:inline-flex;align-items:center;justify-content:center;opacity:0.9}
+.nav-ic{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color:#94a3b8;
+}
+.nav-ic svg{display:block}
+.nav-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:5px 9px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:0.02em;
+  color:#334155;
+  background:rgba(0,0,0,0.03);
+  border:1px solid rgba(0,0,0,0.10);
+  line-height:1;
+}
 .nav-item{
   display:flex;align-items:center;justify-content:space-between;
   padding:9px 10px;border-radius:12px;
   border:1px solid transparent;
-  font-weight:800;
+  font-weight:750;
   font-size:13px;
   cursor:pointer;
   background:transparent;
   position:relative;
-  transition:background .15s ease, color .15s ease, padding-left .15s ease;
+  transition:background .2s ease, color .2s ease, padding-left .2s ease, transform .2s ease, border-color .2s ease;
 }
-.nav-item:hover{padding-left:12px}
-.nav-item.active{padding-left:12px}
+.nav-item:hover{
+  padding-left:12px;
+  transform: translateX(2px);
+}
+.nav-item:hover .nav-ic{color:#64748b}
+.nav-item.active{
+  padding-left:12px;
+  font-weight:850;
+}
+.nav-item.active .nav-ic{color:#0f172a}
+
+.nav-item::before{
+  content:"";
+  position:absolute;
+  left:-1px;
+  top:10px;
+  bottom:10px;
+  width:3px;
+  border-radius:6px;
+  background:transparent;
+}
 
 .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;font-weight:900;font-size:12px}
 .main{
