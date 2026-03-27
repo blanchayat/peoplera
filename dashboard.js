@@ -787,7 +787,7 @@ function renderHistory(containerId, items, type) {
 
 async function deleteHistoryItem(type, idx, id) {
   try {
-    const tableMap = { hire: 'hire_results', board: 'board_results', pulse: 'pulse_results' };
+    const tableMap = { hire: 'hire_results', board: 'board_results', pulse: (window.__pulseHistorySource === 'analysis_history' ? 'analysis_history' : 'pulse_results') };
     const historyIdMap = { hire: 'hireHistory', board: 'boardHistory', pulse: 'pulseHistory' };
     const { data: { session: s } } = await supabase.auth.getSession();
     if (s && id) {
@@ -837,12 +837,18 @@ async function loadHistory() {
     }
     if (boardData) renderHistory('boardHistory', boardData, 'board');
 
-    const { data: pulseData } = await supabase
-      .from('pulse_results')
-      .select('*')
-      .eq('user_id', s.user.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    const pulseHistory = await loadPulseHistoryFromAnalysisHistory(5);
+    const pulseData = pulseHistory && pulseHistory.length ? pulseHistory : (await (async ()=>{
+      const { data } = await supabase
+        .from('pulse_results')
+        .select('*')
+        .eq('user_id', s.user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      window.__pulseHistorySource = 'pulse_results';
+      return data || [];
+    })());
+
     if (pulseData && pulseData[0]) {
       renderPulse(pulseData[0].employees);
       document.getElementById('statAtRisk').textContent = String(pulseData[0].at_risk_count || 0);
@@ -914,13 +920,19 @@ async function clearPulse(){
   try {
     const { data: { session: s } } = await supabase.auth.getSession();
     if (!s) return;
-    const { data: pulseData } = await supabase
-      .from('pulse_results')
-      .select('*')
-      .eq('user_id', s.user.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
-    if (pulseData) renderHistory('pulseHistory', pulseData, 'pulse');
+    const pulseData = await loadPulseHistoryFromAnalysisHistory(5);
+    if (pulseData && pulseData.length) {
+      renderHistory('pulseHistory', pulseData, 'pulse');
+    } else {
+      const { data } = await supabase
+        .from('pulse_results')
+        .select('*')
+        .eq('user_id', s.user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      window.__pulseHistorySource = 'pulse_results';
+      if (data) renderHistory('pulseHistory', data, 'pulse');
+    }
   } catch(e) { console.warn(e); }
 }
 
@@ -2574,6 +2586,90 @@ function writeJsonLocalStorage(key, value){
   } catch {}
 }
 
+function hashStringDjb2(str){
+  let h = 5381;
+  const s = String(str || '');
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h) + s.charCodeAt(i);
+    h = h >>> 0;
+  }
+  return h.toString(16);
+}
+
+function computeAnalysisFingerprint(type, payload){
+  try{
+    return `${String(type||'analysis')}::${hashStringDjb2(JSON.stringify(payload || {}))}`;
+  }catch(e){
+    return `${String(type||'analysis')}::${hashStringDjb2(String(payload || ''))}`;
+  }
+}
+
+async function insertAnalysisHistory(type, payload){
+  try{
+    if (pulseDemoActive) return;
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return;
+
+    const fingerprint = computeAnalysisFingerprint(type, payload);
+    const lastKey = `peoplera_analysis_history_last_fp_${String(type || 'analysis')}`;
+    const lastFp = readJsonLocalStorage(lastKey, null);
+    if (lastFp && String(lastFp) === String(fingerprint)) return;
+
+    const row = {
+      user_id: s.user.id,
+      data: {
+        type: String(type || 'analysis'),
+        fingerprint,
+        ...payload
+      }
+    };
+    await supabase.from('analysis_history').insert(row);
+    writeJsonLocalStorage(lastKey, fingerprint);
+  }catch(e){
+    console.warn('Insert analysis history failed', e);
+  }
+}
+
+async function loadPulseHistoryFromAnalysisHistory(limit = 5){
+  try{
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return null;
+
+    let rows = null;
+    try{
+      const r = await supabase
+        .from('analysis_history')
+        .select('*')
+        .eq('user_id', s.user.id)
+        .contains('data', { type: 'pulse' })
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      rows = r?.data || null;
+    }catch(e){
+      const r = await supabase
+        .from('analysis_history')
+        .select('*')
+        .eq('user_id', s.user.id)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      rows = (r?.data || []).filter(x => String(x?.data?.type || '') === 'pulse');
+    }
+
+    const pulseItems = (Array.isArray(rows) ? rows : []).map(r => ({
+      id: r.id,
+      created_at: r.created_at,
+      employees: r?.data?.employees || [],
+      at_risk_count: r?.data?.at_risk_count || 0
+    }));
+
+    window.__pulseHistorySource = 'analysis_history';
+    return pulseItems;
+  }catch(e){
+    console.warn('Load analysis history failed', e);
+    return null;
+  }
+}
+
 function computeHeuristicDrivers(e){
   const drivers = [];
 
@@ -3120,6 +3216,15 @@ async function runPulse(){
 
     pulseLast = { ...data, employees: mergedEmployees };
     renderPulse(mergedEmployees);
+
+    try{
+      const result = { ...data, employees: mergedEmployees };
+      const atRisk = result.employees.filter(e => ['high','critical'].includes(String(e.riskLevel||'').toLowerCase())).length;
+      await insertAnalysisHistory('pulse', {
+        employees: result.employees,
+        at_risk_count: atRisk
+      });
+    }catch(e){ /* noop */ }
 
     try {
       const { data: { session: s } } = await supabase.auth.getSession();
