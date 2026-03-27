@@ -115,6 +115,244 @@ function updateNavBurnoutBadge(decision){
   badge.style.color = tone;
 }
 
+function buildPulseReportXlsx(){
+  const XLSX = window.XLSX;
+  if (!XLSX || !XLSX.utils) throw new Error('Excel export library not loaded');
+
+  const decision = window.__lastDecisionEngine || null;
+  const employees = Array.isArray(window.__lastPulseEmployees) ? window.__lastPulseEmployees : [];
+  const plans = Array.isArray(window.__lastActionPlans) ? window.__lastActionPlans : [];
+
+  if (!decision || !employees.length) throw new Error('Run Burnout Intelligence to generate a report first');
+
+  const wb = XLSX.utils.book_new();
+
+  const summaryRows = [
+    ['Metric', 'Value'],
+    ['Burnout Score', `${Number(decision.score) || 0} / 100`],
+    ['Risk Level', `${String(decision?.status?.label || '—')}`],
+    ['Sick Leave Risk', `${String(decision?.sickLeaveRisk?.level || 'Low')} · ${Number(decision?.sickLeaveAffected) || 0} employee(s) potentially at risk (next ${Number(decision?.sickLeaveHorizonDays) || 30} days)`],
+    ['Estimated Business Impact', `~${Number(decision?.productivityAtRiskWeekly || 0).toLocaleString()} / week at productivity risk · ${Number(decision?.sickLeaveExposureDays || 0)} sick-leave day(s) exposure (next 2–4 weeks)`]
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  wsSummary['!cols'] = [{ wch: 28 }, { wch: 74 }];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  const norm = {
+    weeklyHours: (e) => Number(e?.weeklyHours || e?.weekly_hours || 0),
+    afterHours: (e) => Number(e?.afterHoursMessages || e?.after_hours_messages || 0),
+    sickDays: (e) => Number(e?.sickDays || e?.sick_days || 0)
+  };
+  const employeesRows = [
+    ['Name', 'Weekly hours', 'Risk level', 'Key flags']
+  ];
+  for (const e of employees) {
+    const weekly = norm.weeklyHours(e);
+    const flags = [];
+    if (weekly >= 55) flags.push('Overtime (55h+)');
+    const lvl = String(e?.riskLevel || '').toLowerCase();
+    if (lvl === 'high' || lvl === 'critical') flags.push('High risk');
+    if (norm.afterHours(e) >= 10) flags.push('After-hours activity');
+    if (norm.sickDays(e) >= 3) flags.push('Sick-leave signal');
+    employeesRows.push([
+      String(e?.name || ''),
+      weekly || 0,
+      String(e?.riskLevel || '—'),
+      flags.join('; ')
+    ]);
+  }
+  const wsEmployees = XLSX.utils.aoa_to_sheet(employeesRows);
+  wsEmployees['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 12 }, { wch: 46 }];
+  XLSX.utils.book_append_sheet(wb, wsEmployees, 'Employees');
+
+  const plansRows = [
+    ['Plan name', 'Description', 'Action items', 'Timeframe']
+  ];
+  for (const p of plans) {
+    const actionLines = (Array.isArray(p?.actions) ? p.actions : []).slice(0, 6).map(a => `- ${String(a || '').trim()}`).filter(Boolean).join('\n');
+    plansRows.push([
+      String(p?.title || ''),
+      String(p?.explanation || ''),
+      actionLines,
+      String(p?.timeframe || '')
+    ]);
+  }
+  const wsPlans = XLSX.utils.aoa_to_sheet(plansRows);
+  wsPlans['!cols'] = [{ wch: 28 }, { wch: 64 }, { wch: 54 }, { wch: 16 }];
+  XLSX.utils.book_append_sheet(wb, wsPlans, 'Action Plans');
+
+  return wb;
+}
+
+function exportPulseReportXlsx(){
+  const XLSX = window.XLSX;
+  if (!XLSX || !XLSX.writeFile) {
+    alert('Excel export is not available. Please refresh the page and try again.');
+    return;
+  }
+
+  try {
+    const wb = buildPulseReportXlsx();
+    const dt = new Date();
+    const stamp = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    XLSX.writeFile(wb, `peoplera-burnout-report-${stamp}.xlsx`);
+  } catch (e) {
+    alert(e && e.message ? e.message : 'Export failed');
+  }
+}
+
+async function copyPlanToClipboard(plan){
+  const title = String(plan?.title || 'Strategic Action Plan');
+  const actions = (Array.isArray(plan?.actions) ? plan.actions : []).slice(0, 6).map(a => `- ${String(a || '').trim()}`).filter(Boolean);
+  const text = [title, '', ...actions].join('\n');
+
+  try {
+    await navigator.clipboard.writeText(text);
+    showPulseToast('Copied', 'Plan copied to clipboard.');
+  } catch {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      showPulseToast('Copied', 'Plan copied to clipboard.');
+    } catch {
+      alert('Copy failed');
+    }
+  }
+}
+
+function ensureSendPlanModal(){
+  if (document.getElementById('sendPlanModal')) return;
+
+  const modal = document.createElement('div');
+  modal.id = 'sendPlanModal';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,0.45);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:18px';
+  modal.innerHTML = `
+    <div style="width:min(560px,92vw);background:rgba(255,255,255,0.96);border:1px solid rgba(0,0,0,0.12);border-radius:18px;box-shadow:0 30px 70px rgba(15,23,42,0.18);padding:16px 16px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div style="min-width:0">
+          <div style="font-weight:800;color:#111827;font-size:14px">Send plan</div>
+          <div id="sendPlanModalSubtitle" style="margin-top:4px;color:#6b7280;font-size:12px;font-weight:600;line-height:1.5"></div>
+        </div>
+        <button id="sendPlanModalClose" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:10px;padding:8px 10px;font-size:12px;font-weight:800;cursor:pointer;color:#111827">Close</button>
+      </div>
+
+      <div style="margin-top:12px;display:grid;gap:10px">
+        <div>
+          <div style="font-size:12px;color:#9ca3af;font-weight:700;margin-bottom:6px">Employee</div>
+          <select id="sendPlanEmployee" style="width:100%;background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 12px;font-size:13px;color:#111827;font-weight:600;outline:none"></select>
+        </div>
+        <div>
+          <div style="font-size:12px;color:#9ca3af;font-weight:700;margin-bottom:6px">Email</div>
+          <input id="sendPlanEmail" type="email" placeholder="e.g. name@company.com" style="width:100%;background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 12px;font-size:13px;color:#111827;font-weight:600;outline:none;box-sizing:border-box" />
+        </div>
+        <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.18);border-radius:14px;padding:12px">
+          <div style="font-size:12px;color:#111827;font-weight:700">This sends a single email to the selected person.</div>
+          <div style="margin-top:4px;font-size:12px;color:#6b7280;font-weight:600;line-height:1.55">Use supportive language and focus on workload and recovery. No bulk sending.</div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:2px">
+          <button id="sendPlanCancel" style="background:transparent;border:1px solid rgba(0,0,0,0.16);border-radius:12px;padding:10px 14px;font-size:12px;font-weight:800;cursor:pointer;color:#6b7280">Cancel</button>
+          <button id="sendPlanConfirm" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:10px 14px;font-size:12px;font-weight:900;cursor:pointer;color:#111827">Send plan</button>
+        </div>
+        <div id="sendPlanStatus" style="font-size:12px;color:#6b7280;font-weight:600;min-height:16px"></div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const close = () => { modal.style.display = 'none'; };
+  modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+  modal.querySelector('#sendPlanModalClose')?.addEventListener('click', close);
+  modal.querySelector('#sendPlanCancel')?.addEventListener('click', close);
+}
+
+async function sendPlanToEmployee(plan){
+  ensureSendPlanModal();
+
+  const modal = document.getElementById('sendPlanModal');
+  const select = document.getElementById('sendPlanEmployee');
+  const emailInput = document.getElementById('sendPlanEmail');
+  const subtitle = document.getElementById('sendPlanModalSubtitle');
+  const status = document.getElementById('sendPlanStatus');
+  const confirmBtn = document.getElementById('sendPlanConfirm');
+
+  const employees = Array.isArray(window.__lastPulseEmployees) ? window.__lastPulseEmployees : [];
+  const title = String(plan?.title || 'Weekly Workload & Recovery Plan');
+  if (!employees.length) {
+    alert('No employees found for this report.');
+    return;
+  }
+
+  select.innerHTML = employees.map((e, i) => `<option value="${i}">${escapeHtml(e?.name || `Employee ${i+1}`)}</option>`).join('');
+  if (subtitle) subtitle.textContent = title;
+  if (status) status.textContent = '';
+  if (emailInput) emailInput.value = '';
+
+  const doSend = async () => {
+    const idx = Number(select.value);
+    const employee = employees[idx] || employees[0];
+    const to = String(emailInput.value || '').trim();
+    if (!to) {
+      status.textContent = 'Please enter an email address.';
+      return;
+    }
+
+    const employeeName = String(employee?.name || 'there');
+    const actions = (Array.isArray(plan?.actions) ? plan.actions : []).slice(0, 4).map(a => String(a || '').trim()).filter(Boolean);
+    if (!actions.length) {
+      status.textContent = 'This plan has no actions to send.';
+      return;
+    }
+
+    const subject = 'Weekly Workload & Recovery Plan';
+    const html = `
+      <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:620px;margin:0 auto;line-height:1.6">
+        <div style="background:#f8fafc;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:18px">
+          <div style="font-size:12px;color:#6b7280;font-weight:700;letter-spacing:0.04em">PEOPLERA — SUPPORTIVE WEEKLY PLAN</div>
+          <h2 style="margin:10px 0 0;color:#111827;font-size:18px">${escapeHtml(title)}</h2>
+        </div>
+        <div style="padding:18px 4px">
+          <p style="margin:0;color:#111827;font-weight:600">Hi ${escapeHtml(employeeName)},</p>
+          <p style="margin:10px 0 0;color:#374151">Based on your recent workload signals, we recommend the following adjustments for the coming week:</p>
+          <ul style="margin:12px 0 0;padding-left:18px;color:#111827">
+            ${actions.map(a => `<li style="margin:8px 0">${escapeHtml(a)}</li>`).join('')}
+          </ul>
+          <p style="margin:12px 0 0;color:#374151">These steps are designed to support performance and well-being. If anything feels unclear, please reply to your manager with what would make this week more sustainable.</p>
+          <p style="margin:14px 0 0;color:#6b7280;font-size:12px">This is an advisory plan generated from workplace signals. It is not a medical assessment.</p>
+        </div>
+      </div>
+    `;
+
+    const ok = confirm(`Send this plan to ${employeeName} (${to})?`);
+    if (!ok) return;
+
+    const reset = setBusy(confirmBtn, 'Sending…');
+    try {
+      await fetch('/api/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, subject, html })
+      });
+      showPulseToast('Plan sent', `Sent to ${employeeName}.`);
+      modal.style.display = 'none';
+    } catch (e) {
+      status.textContent = 'Send failed. Please try again.';
+      console.warn('Plan send failed', e);
+    } finally {
+      reset();
+    }
+  };
+
+  confirmBtn.onclick = doSend;
+  modal.style.display = 'flex';
+}
+
 function pulseDemoCtaHtml(){
   return `
     <div style="margin-bottom:14px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px 14px">
@@ -291,12 +529,20 @@ function renderHistory(containerId, items, type) {
     renderPulseTrend();
 
     updateNavBurnoutBadge(window.__lastDecisionEngine);
+    if (type === 'pulse') {
+      const exportBtn = document.getElementById('btnExportPulseXlsx');
+      if (exportBtn) exportBtn.disabled = true;
+    }
     return;
   }
 
   const decision = computeDecisionEngine(emps, getCompanyTrendSeries(8));
   window.__lastDecisionEngine = decision;
   if (type === 'pulse') updateNavBurnoutBadge(decision);
+  if (type === 'pulse') {
+    const exportBtn = document.getElementById('btnExportPulseXlsx');
+    if (exportBtn) exportBtn.disabled = false;
+  }
 
   const colorMap = { hire: '#6366f1', board: '#00b894', pulse: '#FF6B6B' };
   const color = colorMap[type];
@@ -472,6 +718,8 @@ async function clearPulse(){
   window.__lastDecisionEngine = null;
   window.__lastActionPlans = null;
   updateNavBurnoutBadge(null);
+  const exportBtn = document.getElementById('btnExportPulseXlsx');
+  if (exportBtn) exportBtn.disabled = true;
   try {
     const { data: { session: s } } = await supabase.auth.getSession();
     if (!s) return;
@@ -1062,9 +1310,9 @@ function renderAIInsights(){
       <div style="background:${p.bg};border:${primary ? '1.5px' : '1px'} solid ${p.bd};border-radius:16px;padding:${primary ? '16px 16px' : '14px 14px'};display:flex;gap:12px;align-items:flex-start">
         <div style="width:${primary ? '38px' : '34px'};height:${primary ? '38px' : '34px'};border-radius:14px;background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.06);display:grid;place-items:center;flex-shrink:0">${it.icon}</div>
         <div style="min-width:0;flex:1">
-          ${primary ? `<div style=\"font-size:10px;font-weight:900;color:${p.c};letter-spacing:0.10em;margin-bottom:6px\">PRIMARY INSIGHT</div>` : ''}
-          <div style="font-weight:900;color:#0f172a;line-height:1.25;font-size:${primary ? '14px' : '13px'}">${escapeHtml(it.title)}</div>
-          <div class="small" style="margin-top:6px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(it.detail)}</div>
+          ${primary ? `<div style=\"font-size:12px;font-weight:700;color:${p.c};letter-spacing:0.10em;margin-bottom:6px\">PRIMARY INSIGHT</div>` : ''}
+          <div style="font-weight:600;color:#111827;line-height:1.35;font-size:${primary ? '14px' : '13px'}">${escapeHtml(it.title)}</div>
+          <div class="small" style="margin-top:6px;color:#6b7280;font-weight:600;line-height:1.65">${escapeHtml(it.detail)}</div>
         </div>
         <div style="flex-shrink:0">
           <span style="background:${p.c}18;border:1px solid ${p.c}33;border-radius:999px;padding:4px 10px;font-size:10px;font-weight:900;color:${p.c};letter-spacing:0.06em">${escapeHtml(it.kind.toUpperCase())}</span>
@@ -1136,8 +1384,8 @@ function renderWorkforceInsights(){
 
   const card = (title, body, accent) => `
     <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-left:3px solid ${accent};border-radius:14px;padding:14px">
-      <div style="font-size:10px;font-weight:900;color:${accent};letter-spacing:0.10em;margin-bottom:8px">${escapeHtml(title)}</div>
-      <div style="font-size:13px;color:#0f172a;font-weight:800;line-height:1.5">${body}</div>
+      <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em;margin-bottom:8px">${escapeHtml(title)}</div>
+      <div style="font-size:13px;color:#111827;font-weight:600;line-height:1.65">${body}</div>
     </div>
   `;
 
@@ -2263,6 +2511,9 @@ function renderPulse(employees){
   const plans = computeStrategicActionPlans(rows, decision);
   window.__lastActionPlans = plans;
 
+  const exportBtn = document.getElementById('btnExportPulseXlsx');
+  if (exportBtn) exportBtn.disabled = false;
+
   const totalSickDays = enriched.reduce((acc, e) => acc + (Number(e.raw?.sickDays) || 0), 0);
   const highSick = enriched.filter(e => (Number(e.raw?.sickDays) || 0) >= 3);
   const missingVacation = enriched.filter(e => {
@@ -2318,9 +2569,9 @@ function renderPulse(employees){
       <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div>
-            <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">DECISION ENGINE</div>
+            <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em">DECISION ENGINE</div>
             <div style="margin-top:8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-              <div style="font-family:'Syne',system-ui;font-weight:900;font-size:28px;color:#0f172a">${decision.score}/100</div>
+              <div style="font-family:'Syne',system-ui;font-weight:900;font-size:28px;color:#111827">${decision.score}/100</div>
               <span style="background:${decision.status.bg};border:1px solid ${decision.status.bd};border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;color:${decision.status.tone}">${escapeHtml(decision.status.label)} risk</span>
             </div>
           </div>
@@ -2328,19 +2579,19 @@ function renderPulse(employees){
             <div style="display:grid;gap:8px">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
                 <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em">BUSINESS IMPACT</div>
-                <div style="font-size:12px;color:#0f172a;font-weight:900">~${decision.productivityAtRiskWeekly.toLocaleString()} / week</div>
+                <div style="font-size:12px;color:#111827;font-weight:700">~${decision.productivityAtRiskWeekly.toLocaleString()} / week</div>
               </div>
-              <div style="font-size:12px;color:#64748b;font-weight:700;line-height:1.45">Estimated productivity at risk · Sick-leave exposure: <span style="font-weight:900;color:#0f172a">${decision.sickLeaveExposureDays}</span> day(s) (next 2–4 weeks)</div>
+              <div style="font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">Estimated productivity at risk · Sick-leave exposure: <span style="font-weight:700;color:#111827">${decision.sickLeaveExposureDays}</span> day(s) (next 2–4 weeks)</div>
               <div style="font-size:11px;font-weight:900;color:#6366f1;letter-spacing:0.08em;margin-top:4px">RISK PREDICTION</div>
-              <div style="font-size:12px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(decision.predictionText)}</div>
+              <div style="font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">${escapeHtml(decision.predictionText)}</div>
             </div>
           </div>
         </div>
 
         <div style="margin-top:12px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
-          <div style="font-size:10px;font-weight:900;color:#0f172a;letter-spacing:0.10em;margin-bottom:8px">ACTION RECOMMENDATIONS</div>
-          <div style="display:grid;gap:8px">
-            ${(decision.actions || []).slice(0, 4).map(a => `<div style=\"font-size:12px;color:#334155;font-weight:800;line-height:1.45\">- ${escapeHtml(a)}</div>`).join('')}
+          <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em;margin-bottom:8px">ACTION RECOMMENDATIONS</div>
+          <div style="display:grid;gap:10px">
+            ${(decision.actions || []).slice(0, 5).map(a => `<div style=\"font-size:12px;color:#111827;font-weight:600;line-height:1.65\">- ${escapeHtml(a)}</div>`).join('')}
           </div>
         </div>
 
@@ -2352,14 +2603,14 @@ function renderPulse(employees){
             </div>
             <span style="background:${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}18;border:1px solid ${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}33;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;color:${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}">${escapeHtml(decision?.sickLeaveRisk?.level || 'Low')} risk</span>
           </div>
-          <div style="margin-top:10px;font-size:12px;color:#0f172a;font-weight:900">${Number(decision?.sickLeaveAffected) || 0} employee(s) potentially at risk</div>
-          <div style="margin-top:6px;font-size:12px;color:#64748b;font-weight:700;line-height:1.45">Directional estimate based on current burnout + workload + sick-leave signals. Use early interventions and manager check-ins to reduce escalation.</div>
+          <div style="margin-top:10px;font-size:12px;color:#111827;font-weight:700">${Number(decision?.sickLeaveAffected) || 0} employee(s) potentially at risk</div>
+          <div style="margin-top:6px;font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">Directional estimate based on current burnout + workload + sick-leave signals. Use early interventions and manager check-ins to reduce escalation.</div>
         </div>
       </div>
 
       <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
-        <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">WEEKLY BURNOUT INTELLIGENCE BRIEF</div>
-        <div style="font-size:13px;color:#0f172a;font-weight:800;line-height:1.5">${escapeHtml(weeklyBrief)}</div>
+        <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.08em;margin-bottom:8px">WEEKLY BURNOUT INTELLIGENCE BRIEF</div>
+        <div style="font-size:13px;color:#111827;font-weight:600;line-height:1.7">${escapeHtml(weeklyBrief)}</div>
       </div>
 
       <div style="background:rgba(255,255,255,0.70);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
@@ -2371,12 +2622,16 @@ function renderPulse(employees){
           ${(Array.isArray(plans) ? plans : []).map(p => `
             <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
               <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
-                <div style="font-family:'Syne',system-ui;font-weight:900;color:#0f172a">${escapeHtml(p.title)}</div>
+                <div style="font-family:'Syne',system-ui;font-weight:900;color:#111827">${escapeHtml(p.title)}</div>
                 <span style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.10);border-radius:999px;padding:4px 10px;font-size:10px;font-weight:900;color:#334155;white-space:nowrap">${escapeHtml(p.timeframe || '')}</span>
               </div>
-              <div class="small" style="margin-top:6px;color:#64748b;font-weight:700;line-height:1.45">${escapeHtml(p.explanation || '')}</div>
-              <div style="margin-top:10px;display:grid;gap:6px">
-                ${(Array.isArray(p.actions) ? p.actions : []).slice(0, 4).map(a => `<div style=\"font-size:12px;color:#334155;font-weight:800;line-height:1.45\">- ${escapeHtml(a)}</div>`).join('')}
+              <div class="small" style="margin-top:6px;color:#6b7280;font-weight:600;line-height:1.65">${escapeHtml(p.explanation || '')}</div>
+              <div style="margin-top:10px;display:grid;gap:10px">
+                ${(Array.isArray(p.actions) ? p.actions : []).slice(0, 4).map(a => `<div style=\"font-size:12px;color:#111827;font-weight:600;line-height:1.65\">- ${escapeHtml(a)}</div>`).join('')}
+              </div>
+              <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:12px">
+                <button onclick="copyPlanToClipboard(window.__lastActionPlans.find(x=>x && x.key===${JSON.stringify(p.key)}))" style="background:transparent;border:1px solid rgba(0,0,0,0.14);border-radius:12px;padding:8px 10px;font-size:12px;font-weight:800;color:#6b7280;cursor:pointer">Copy plan</button>
+                <button onclick="sendPlanToEmployee(window.__lastActionPlans.find(x=>x && x.key===${JSON.stringify(p.key)}))" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.22);border-radius:12px;padding:8px 10px;font-size:12px;font-weight:900;color:#6366f1;cursor:pointer">Send plan</button>
               </div>
             </div>
           `).join('')}
@@ -2673,6 +2928,10 @@ function wireUi(){
       }
     });
 
+    document.getElementById('btnExportPulseXlsx')?.addEventListener('click', ()=>{
+      exportPulseReportXlsx();
+    });
+
     document.getElementById('cvFiles')?.addEventListener('change', function(){
       const names = Array.from(this.files || []).map(f=>f.name).join(', ');
       const _el_cvList = document.getElementById('cvList');
@@ -2754,5 +3013,8 @@ window.downloadPulseTemplate = downloadPulseTemplate;
 window.loadHistoryItem = loadHistoryItem;
 window.showEmployeeCard = showEmployeeCard;
 window.closeEmployeeCard = closeEmployeeCard;
+window.exportPulseReportXlsx = exportPulseReportXlsx;
+window.copyPlanToClipboard = copyPlanToClipboard;
+window.sendPlanToEmployee = sendPlanToEmployee;
 
 boot();
