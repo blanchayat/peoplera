@@ -3,6 +3,46 @@ async function readJsonSafe(res){
   if (ct.includes('application/json')) return res.json();
   const t = await res.text();
   try { return JSON.parse(t); } catch { return { raw: t }; }
+
+}
+
+function initPulseHistoryAccordion(){
+  const toggle = document.getElementById('pulseHistoryToggle');
+  const body = document.getElementById('pulseHistoryBody');
+  const chevron = document.getElementById('pulseHistoryChevron');
+  const list = document.getElementById('pulseHistory');
+  if (!toggle || !body || !chevron || !list) return;
+
+  const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+  const setOpen = (open) => {
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) {
+      const hasItems = list.getAttribute('data-has-items') === '1';
+      if (!hasItems) {
+        list.innerHTML = '<div style="font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">No recent analyses yet</div>';
+      }
+      body.style.opacity = '1';
+      body.style.maxHeight = Math.max(140, body.scrollHeight) + 'px';
+      chevron.style.transform = 'rotate(180deg)';
+    } else {
+      body.style.opacity = '0';
+      body.style.maxHeight = '0px';
+      chevron.style.transform = 'rotate(0deg)';
+    }
+  };
+
+  toggle.setAttribute('aria-expanded', 'false');
+  setOpen(false);
+
+  toggle.addEventListener('click', ()=>{
+    setOpen(!isOpen());
+  });
+
+  try{
+    window.addEventListener('resize', ()=>{
+      if (isOpen()) body.style.maxHeight = Math.max(140, body.scrollHeight) + 'px';
+    });
+  }catch(e){ /* noop */ }
 }
 
 function setPulseManualEmployees(list){
@@ -511,14 +551,29 @@ async function apiFetch(path, { method='POST', body=null, accessToken=null } = {
 function renderHistory(containerId, items, type) {
   const el = document.getElementById(containerId);
   if (!el) return;
+
+  if (type === 'pulse') {
+    try{
+      const countEl = document.getElementById('pulseHistoryCount');
+      const c = Array.isArray(items) ? items.length : 0;
+      if (countEl) {
+        countEl.textContent = String(c);
+        countEl.hidden = !(c > 0);
+      }
+
+      const list = document.getElementById('pulseHistory');
+      if (list) list.setAttribute('data-has-items', c > 0 ? '1' : '0');
+    }catch(e){ /* noop */ }
+  }
+
   if (!items || items.length === 0) {
     const emptyCopy = type === 'pulse'
       ? 'Run Burnout Intelligence to generate your first weekly report. Your recent analyses will appear here for quick loading and comparison.'
       : type === 'hire'
       ? 'Analyze candidates to generate your first shortlist. Your recent analyses will appear here for quick review.'
       : type === 'board'
-      ? 'Generate an onboarding plan to start tracking progress. Recent plans will appear here for quick reuse.'
-      : 'Run an analysis to see history here.';
+      ? 'Generate your first workforce insights plan. Your recent analyses will appear here here once you run a plan.'
+      : 'Run your first analysis to populate history.';
     el.innerHTML = `
       <div style="background:rgba(0,0,0,0.02);border:1px dashed rgba(0,0,0,0.14);border-radius:14px;padding:14px">
         <div style="font-weight:900;color:#0f172a">No recent activity yet</div>
@@ -2950,6 +3005,8 @@ function wireUi(){
     document.querySelectorAll('.nav-item[data-tab]').forEach(btn=>{
       btn?.addEventListener?.('click',()=>switchTab(btn.getAttribute('data-tab')));
     });
+
+    initPulseHistoryAccordion();
 
     const empEmailInput = document.getElementById('empEmail');
     const sendBtn = document.getElementById('btnSendEmployee');

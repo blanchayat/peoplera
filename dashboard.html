@@ -424,10 +424,20 @@
             </div>
           </div>
 
-          <div class="pulse-two-col" style="margin-top:24px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:24px;align-items:start">
-            <div class="panel pad">
-              <div style="font-weight:900">Recent analyses</div>
-              <div id="pulseHistory" style="margin-top:14px"></div>
+          <div class="pulse-two-col" style="margin-top:24px;display:grid;grid-template-columns:minmax(0,0.75fr) minmax(0,1.75fr);gap:24px;align-items:start">
+            <div class="panel pad" id="pulseHistoryAccordion" style="padding:0">
+              <button id="pulseHistoryToggle" type="button" style="width:100%;background:transparent;border:0;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
+                <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                  <div style="font-weight:900">Recent analyses</div>
+                  <span id="pulseHistoryCount" style="background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.10);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:900;color:#334155" hidden>0</span>
+                </div>
+                <svg id="pulseHistoryChevron" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:#64748b;transition:transform 0.2s ease">
+                  <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <div id="pulseHistoryBody" style="padding:0 16px 14px 16px;overflow:hidden;max-height:0;opacity:0;transition:max-height 0.25s ease, opacity 0.2s ease">
+                <div id="pulseHistory" style="margin-top:0"></div>
+              </div>
             </div>
 
             <div class="pulse-right-stack" style="display:grid;gap:24px;align-items:start;min-width:0">
