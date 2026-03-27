@@ -1255,7 +1255,7 @@ function renderAIInsights(){
       kind: 'warning',
       icon: '⚠️',
       title: `${highRisk} ${highRisk === 1 ? 'employee is' : 'employees are'} at high risk`,
-      detail: 'Review hotspots and assign interventions this week.'
+      detail: 'Review hotspots and assign interventions this week. Insights are derived from patterns typically tracked in HR systems (e.g., workload, time-off, and sick leave signals).'
     });
   }
 
@@ -1283,7 +1283,7 @@ function renderAIInsights(){
     kind: 'suggestion',
     icon: '🧠',
     title: 'Run a weekly Burnout Intelligence brief',
-    detail: 'Standardize 1 action per hotspot to show measurable progress.'
+    detail: 'Standardize 1 action per hotspot to show measurable progress. Works alongside the patterns typically tracked in HR systems.'
   });
 
   while (insights.length < 3) {
@@ -2593,6 +2593,7 @@ function renderPulse(employees){
           <div style="display:grid;gap:10px">
             ${(decision.actions || []).slice(0, 5).map(a => `<div style=\"font-size:12px;color:#111827;font-weight:600;line-height:1.65\">- ${escapeHtml(a)}</div>`).join('')}
           </div>
+          <div style="margin-top:10px;font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">Can be applied through your existing HR workflows.</div>
         </div>
 
         <div style="margin-top:12px;background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.18);border-radius:14px;padding:12px">
