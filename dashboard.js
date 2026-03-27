@@ -1480,6 +1480,74 @@ function renderWorkforceInsights(){
   const plans = computeStrategicActionPlans(emps, decision);
   const planHighlights = Array.isArray(plans) ? plans.slice(0, 2) : [];
 
+  const burnoutIntel = (() => {
+    const score = Number(decision?.score) || 0;
+    const riskLabel = escapeHtml(decision?.status?.label || 'Medium');
+    const riskTone = String(decision?.status?.tone || '#FF6B6B');
+
+    const series = getCompanyTrendSeries(8);
+    const last = Number(series?.[series.length - 1] || score);
+    const prev = Number(series?.[series.length - 2] || last);
+    const delta = (series && series.length >= 2) ? (last - prev) : 0;
+    const dir = Math.abs(delta) < 2 ? 'Stable' : (delta > 0 ? 'Increasing' : 'Decreasing');
+    const trendCopy = (series && series.length >= 2)
+      ? `${dir} trend (last 2 weeks)`
+      : 'Trend unlocked after 2+ Burnout Intelligence runs';
+
+    const top = topDrivers[0]?.[0] ? String(topDrivers[0][0]) : '';
+    const topDriverShort = top || 'Not enough driver data yet';
+    const topDriverExplain = (() => {
+      const t = top.toLowerCase();
+      if (!t) return 'Add more signals (hours, after-hours, sick days) for clearer causes.';
+      if (t.includes('workload') || t.includes('overload')) return 'Workload intensity is the primary contributor right now.';
+      if (t.includes('overtime') || t.includes('hours')) return 'Overtime signals are the primary contributor right now.';
+      if (t.includes('after-hours')) return 'After-hours activity is the primary contributor right now.';
+      if (t.includes('imbalance')) return 'Work distribution imbalance appears to be the primary contributor.';
+      return 'This is the strongest signal across your team this week.';
+    })();
+
+    const prediction = String(decision?.predictionText || '').trim() || 'No risk increase expected.';
+    const action = String(Array.isArray(decision?.actions) ? decision.actions[0] : '').trim() || 'Maintain current workload balance.';
+
+    return `
+      <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em">BURNOUT INTELLIGENCE</div>
+            <div style="margin-top:8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+              <div style="font-family:'Syne',system-ui;font-weight:900;font-size:34px;color:#111827;line-height:1">${escapeHtml(String(score))}</div>
+              <div style="font-size:12px;color:#9ca3af;font-weight:700;letter-spacing:0.08em">/100 Burnout Score</div>
+              <span style="margin-left:6px;background:${riskTone};border:0;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;color:#ffffff;letter-spacing:0.06em;white-space:nowrap">${riskLabel}</span>
+            </div>
+          </div>
+          <div style="min-width:260px;flex:1;display:grid;gap:10px">
+            <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+              <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:10px">
+                <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em">TREND</div>
+                <div style="margin-top:6px;font-size:13px;color:#111827;font-weight:600;line-height:1.5">${escapeHtml(trendCopy)}</div>
+              </div>
+              <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:10px">
+                <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em">TOP DRIVER</div>
+                <div style="margin-top:6px;font-size:13px;color:#111827;font-weight:600;line-height:1.5">${escapeHtml(topDriverShort)}</div>
+              </div>
+            </div>
+
+            <div style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.18);border-radius:14px;padding:10px">
+              <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em">PREDICTION</div>
+              <div style="margin-top:6px;font-size:13px;color:#111827;font-weight:600;line-height:1.65">${escapeHtml(prediction)}</div>
+              <div style="margin-top:6px;font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">${escapeHtml(topDriverExplain)}</div>
+            </div>
+
+            <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.18);border-radius:14px;padding:10px">
+              <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em">NEXT ACTION</div>
+              <div style="margin-top:6px;font-size:13px;color:#111827;font-weight:600;line-height:1.65">${escapeHtml(action)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  })();
+
   el.innerHTML = `
     <div style="display:grid;gap:12px">
       ${distBar}
@@ -1491,16 +1559,17 @@ function renderWorkforceInsights(){
         ${card('RISK PREDICTION', escapeHtml(decision.predictionText), '#6366f1')}
       </div>
 
+      ${burnoutIntel}
+
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
-        ${card('COMPANY BURNOUT SCORE', `${escapeHtml(String(decision.score))}/100 · ${escapeHtml(decision.status.label)} risk`, '#0f172a')}
         ${card('SICK LEAVE RISK', escapeHtml(sickLeaveModule), '#00b894')}
+        ${card('TOP DRIVERS', driversText, '#8b5cf6')}
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
         ${card('BURNOUT HOTSPOTS', escapeHtml(hotspotText), '#FF6B6B')}
         ${card('WORKLOAD IMBALANCE', escapeHtml(imbalanceText), '#6366f1')}
         ${card('HIGH-RISK CLUSTERS', escapeHtml(clustersText), '#00b894')}
-        ${card('TOP DRIVERS', driversText, '#8b5cf6')}
       </div>
 
       ${nextActions.length ? `
