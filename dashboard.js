@@ -75,6 +75,69 @@ function setPulseManualEmployees(list){
   }
 }
 
+function getPlanActionState(plan){
+  const key = String(plan?.key || plan?.title || 'plan');
+  window.__planActionState = window.__planActionState || {};
+  const state = window.__planActionState[key] || { actions: {} };
+  const actions = Array.isArray(plan?.actions) ? plan.actions : [];
+  for (const a of actions) {
+    const t = String(a || '').trim();
+    if (!t) continue;
+    if (!state.actions[t]) state.actions[t] = { selected: true, deleted: false };
+  }
+  window.__planActionState[key] = state;
+  return state;
+}
+
+function getSelectedPlanActions(plan, max = 6){
+  const actions = Array.isArray(plan?.actions) ? plan.actions : [];
+  const state = getPlanActionState(plan);
+  const out = [];
+  for (const a of actions) {
+    const t = String(a || '').trim();
+    if (!t) continue;
+    const st = state.actions[t] || { selected: true, deleted: false };
+    if (st.deleted) continue;
+    if (!st.selected) continue;
+    out.push(t);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
+function togglePlanAction(planKey, actionText){
+  try{
+    const key = String(planKey || 'plan');
+    const t = String(actionText || '').trim();
+    if (!t) return;
+    window.__planActionState = window.__planActionState || {};
+    const state = window.__planActionState[key] || { actions: {} };
+    state.actions[t] = state.actions[t] || { selected: true, deleted: false };
+    if (state.actions[t].deleted) return;
+    state.actions[t].selected = !state.actions[t].selected;
+    window.__planActionState[key] = state;
+    if (Array.isArray(window.__lastPulseEmployees)) renderPulse(window.__lastPulseEmployees);
+  }catch(e){ console.warn('togglePlanAction failed', e); }
+}
+
+function deletePlanAction(planKey, actionText){
+  try{
+    const key = String(planKey || 'plan');
+    const t = String(actionText || '').trim();
+    if (!t) return;
+    const ok = confirm('Remove this action item from the plan?');
+    if (!ok) return;
+    window.__planActionState = window.__planActionState || {};
+    const state = window.__planActionState[key] || { actions: {} };
+    state.actions[t] = state.actions[t] || { selected: true, deleted: false };
+    state.actions[t].deleted = true;
+    state.actions[t].selected = false;
+    window.__planActionState[key] = state;
+    if (typeof showPulseToast === 'function') showPulseToast('Removed');
+    if (Array.isArray(window.__lastPulseEmployees)) renderPulse(window.__lastPulseEmployees);
+  }catch(e){ console.warn('deletePlanAction failed', e); }
+}
+
 function buildPulseDemoEmployees(){
   return [
     { name: 'Alex Kim', weeklyHours: 68, weekendHours: 10, afterHoursMessages: 28, sickDays: 3, lastVacation: '9 months ago' },
@@ -243,7 +306,7 @@ function exportPulseReportXlsx(){
 
 async function copyPlanToClipboard(plan){
   const title = String(plan?.title || 'Strategic Action Plan');
-  const actions = (Array.isArray(plan?.actions) ? plan.actions : []).slice(0, 6).map(a => `- ${String(a || '').trim()}`).filter(Boolean);
+  const actions = getSelectedPlanActions(plan, 6).map(a => `- ${String(a || '').trim()}`).filter(Boolean);
   const text = [title, '', ...actions].join('\n');
 
   try {
@@ -344,7 +407,7 @@ async function sendPlanToEmployee(plan){
     }
 
     const employeeName = String(employee?.name || 'there');
-    const actions = (Array.isArray(plan?.actions) ? plan.actions : []).slice(0, 4).map(a => String(a || '').trim()).filter(Boolean);
+    const actions = getSelectedPlanActions(plan, 4).map(a => String(a || '').trim()).filter(Boolean);
     if (!actions.length) {
       status.textContent = 'This plan has no actions to send.';
       return;
@@ -2635,6 +2698,14 @@ function renderPulse(employees){
   const plans = computeStrategicActionPlans(rows, decision);
   window.__lastActionPlans = plans;
 
+  try{
+    const fp = Array.isArray(plans) ? plans.map(p=>String(p?.key||p?.title||'')).join('|') : '';
+    if (window.__planActionStateFp !== fp) {
+      window.__planActionStateFp = fp;
+      window.__planActionState = {};
+    }
+  }catch(e){ /* noop */ }
+
   const exportBtn = document.getElementById('btnExportPulseXlsx');
   if (exportBtn) exportBtn.disabled = false;
 
@@ -2751,8 +2822,26 @@ function renderPulse(employees){
                 <span style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.10);border-radius:999px;padding:4px 10px;font-size:10px;font-weight:900;color:#334155;white-space:nowrap">${escapeHtml(p.timeframe || '')}</span>
               </div>
               <div class="small" style="margin-top:6px;color:#6b7280;font-weight:600;line-height:1.65">${escapeHtml(p.explanation || '')}</div>
-              <div style="margin-top:10px;display:grid;gap:10px">
-                ${(Array.isArray(p.actions) ? p.actions : []).slice(0, 4).map(a => `<div style=\"font-size:12px;color:#111827;font-weight:600;line-height:1.65\">- ${escapeHtml(a)}</div>`).join('')}
+              <div style="margin-top:10px;display:grid;gap:8px">
+                ${(Array.isArray(p.actions) ? p.actions : []).filter(Boolean).slice(0, 6).map(a => {
+                  const t = String(a || '').trim();
+                  const st = (getPlanActionState(p).actions[t] || { selected:true, deleted:false });
+                  if (st.deleted) return '';
+                  const checked = !!st.selected;
+                  return `
+                    <div onclick="togglePlanAction(${JSON.stringify(p.key)}, ${JSON.stringify(t)})" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:${checked ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.65)'};border:1px solid ${checked ? 'rgba(99,102,241,0.18)' : 'rgba(0,0,0,0.10)'};border-radius:12px;padding:10px 10px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='${checked ? 'rgba(99,102,241,0.28)' : 'rgba(0,0,0,0.16)'}'" onmouseout="this.style.borderColor='${checked ? 'rgba(99,102,241,0.18)' : 'rgba(0,0,0,0.10)'}'">
+                      <div style="display:flex;gap:10px;min-width:0">
+                        <div style="width:18px;height:18px;border-radius:6px;border:1.5px solid ${checked ? '#6366f1' : 'rgba(0,0,0,0.22)'};background:${checked ? '#6366f1' : 'transparent'};display:grid;place-items:center;flex-shrink:0;margin-top:1px">
+                          ${checked ? '<svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#fff\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>' : ''}
+                        </div>
+                        <div style="font-size:12px;color:#111827;font-weight:600;line-height:1.65;min-width:0">${escapeHtml(t)}</div>
+                      </div>
+                      <button onclick="event.stopPropagation();deletePlanAction(${JSON.stringify(p.key)}, ${JSON.stringify(t)})" title="Remove" style="width:26px;height:26px;border-radius:10px;background:transparent;border:1px solid rgba(0,0,0,0.10);cursor:pointer;display:grid;place-items:center;flex-shrink:0;color:#9ca3af" onmouseover="this.style.borderColor='rgba(0,0,0,0.18)';this.style.color='#6b7280'" onmouseout="this.style.borderColor='rgba(0,0,0,0.10)';this.style.color='#9ca3af'">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 7h12M10 7V5h4v2m-6 0v14m8-14v14M9 21h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </button>
+                    </div>
+                  `;
+                }).join('')}
               </div>
               <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:12px">
                 <button onclick="copyPlanToClipboard(window.__lastActionPlans.find(x=>x && x.key===${JSON.stringify(p.key)}))" style="background:transparent;border:1px solid rgba(0,0,0,0.14);border-radius:12px;padding:8px 10px;font-size:12px;font-weight:800;color:#6b7280;cursor:pointer">Copy plan</button>
@@ -3143,5 +3232,7 @@ window.closeEmployeeCard = closeEmployeeCard;
 window.exportPulseReportXlsx = exportPulseReportXlsx;
 window.copyPlanToClipboard = copyPlanToClipboard;
 window.sendPlanToEmployee = sendPlanToEmployee;
+window.togglePlanAction = togglePlanAction;
+window.deletePlanAction = deletePlanAction;
 
 boot();
