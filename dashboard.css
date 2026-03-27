@@ -76,7 +76,89 @@ body {
 .main { background: transparent; }
 
 :root{
-  --side:260px;
+  --side:240px;
+  --side-collapsed:68px;
+}
+
+.dash{
+  transition: grid-template-columns .25s ease;
+}
+
+.sidebar{
+  transition: width .25s ease;
+}
+
+.dash.sidebar-collapsed{
+  grid-template-columns: var(--side-collapsed) 1fr;
+}
+
+.dash.sidebar-collapsed .sidebar{
+  padding:12px;
+}
+
+.dash.sidebar-collapsed .pill,
+.dash.sidebar-collapsed .nav-section-label,
+.dash.sidebar-collapsed .nav-item .nav-left > span:last-child,
+.dash.sidebar-collapsed #userPill{
+  display:none !important;
+}
+
+.dash.sidebar-collapsed .side-top{
+  justify-content:center;
+}
+
+.dash.sidebar-collapsed .side-top a{
+  display:none !important;
+}
+
+.dash.sidebar-collapsed .side-nav{
+  margin-top:10px;
+}
+
+.dash.sidebar-collapsed .nav-item{
+  justify-content:center;
+  padding:10px 8px;
+}
+
+.dash.sidebar-collapsed .nav-item.active{
+  padding-left:8px;
+}
+
+.dash.sidebar-collapsed .nav-left{
+  justify-content:center;
+  gap:0;
+}
+
+.dash.sidebar-collapsed .nav-badge{
+  display:none !important;
+}
+
+.dash.sidebar-collapsed .nav-item:hover{
+  padding-left:8px;
+  transform:none;
+}
+
+.dash.sidebar-collapsed .nav-item[data-tooltip]::after{
+  content: attr(data-tooltip);
+  position:absolute;
+  left:calc(100% + 10px);
+  top:50%;
+  transform:translateY(-50%);
+  background:rgba(15,23,42,0.92);
+  color:#fff;
+  font-size:12px;
+  font-weight:700;
+  padding:6px 10px;
+  border-radius:10px;
+  white-space:nowrap;
+  box-shadow:0 14px 35px rgba(15,23,42,0.18);
+  opacity:0;
+  pointer-events:none;
+  transition: opacity .15s ease;
+}
+
+.dash.sidebar-collapsed .nav-item[data-tooltip]:hover::after{
+  opacity:1;
 }
 
 .dash{

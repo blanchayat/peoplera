@@ -45,6 +45,51 @@ function initPulseHistoryAccordion(){
   }catch(e){ /* noop */ }
 }
 
+function initSidebarCollapse(){
+  const root = document.getElementById('app');
+  const btn = document.getElementById('sidebarToggle');
+  if (!root || !btn) return;
+
+  const apply = (collapsed) => {
+    root.classList.toggle('sidebar-collapsed', !!collapsed);
+    btn.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    try{ localStorage.setItem('peoplera_sidebar_collapsed', collapsed ? '1' : '0'); }catch(e){ /* noop */ }
+  };
+
+  const getStored = () => {
+    try{ return localStorage.getItem('peoplera_sidebar_collapsed') === '1'; }catch(e){ return false; }
+  };
+
+  const setTooltips = () => {
+    document.querySelectorAll('.side-nav .nav-item').forEach(el => {
+      const label = el.querySelector('.nav-left span:last-child')?.textContent?.trim();
+      if (label) el.setAttribute('data-tooltip', label);
+    });
+  };
+
+  setTooltips();
+  apply(getStored());
+
+  btn.addEventListener('click', ()=>{
+    apply(!root.classList.contains('sidebar-collapsed'));
+  });
+
+  try{
+    const mql = window.matchMedia('(max-width: 980px)');
+    const onChange = () => {
+      if (mql.matches) {
+        root.classList.remove('sidebar-collapsed');
+        btn.title = 'Collapse sidebar';
+      } else {
+        apply(getStored());
+      }
+    };
+    if (mql.addEventListener) mql.addEventListener('change', onChange);
+    else if (mql.addListener) mql.addListener(onChange);
+    onChange();
+  }catch(e){ /* noop */ }
+}
+
 function setPulseManualEmployees(list){
   const arr = Array.isArray(list) ? list : [];
   const panel = document.getElementById('pulseManualPanel');
@@ -3096,6 +3141,7 @@ function wireUi(){
     });
 
     initPulseHistoryAccordion();
+    initSidebarCollapse();
 
     const empEmailInput = document.getElementById('empEmail');
     const sendBtn = document.getElementById('btnSendEmployee');
