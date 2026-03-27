@@ -45,6 +45,34 @@ function initPulseHistoryAccordion(){
   }catch(e){ /* noop */ }
 }
 
+function initPlanActionDelegation(){
+  if (window.__planActionDelegationInit) return;
+  window.__planActionDelegationInit = true;
+
+  document.addEventListener('click', (e)=>{
+    const deleteBtn = e.target?.closest?.('.plan-action-delete');
+    if (deleteBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const row = deleteBtn.closest('.plan-action-row');
+      const keyEnc = row?.getAttribute('data-plan-key') || '';
+      const actionEnc = row?.getAttribute('data-action') || '';
+      const planKey = decodeURIComponent(keyEnc);
+      const actionText = decodeURIComponent(actionEnc);
+      deletePlanAction(planKey, actionText);
+      return;
+    }
+
+    const row = e.target?.closest?.('.plan-action-row');
+    if (!row) return;
+    const keyEnc = row.getAttribute('data-plan-key') || '';
+    const actionEnc = row.getAttribute('data-action') || '';
+    const planKey = decodeURIComponent(keyEnc);
+    const actionText = decodeURIComponent(actionEnc);
+    togglePlanAction(planKey, actionText);
+  });
+}
+
 function initSidebarCollapse(){
   const root = document.getElementById('app');
   const btn = document.getElementById('sidebarToggle');
@@ -2873,15 +2901,17 @@ function renderPulse(employees){
                   const st = (getPlanActionState(p).actions[t] || { selected:true, deleted:false });
                   if (st.deleted) return '';
                   const checked = !!st.selected;
+                  const keyEnc = encodeURIComponent(String(p.key || 'plan'));
+                  const actionEnc = encodeURIComponent(t);
                   return `
-                    <div onclick="togglePlanAction(${JSON.stringify(p.key)}, ${JSON.stringify(t)})" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:${checked ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.65)'};border:1px solid ${checked ? 'rgba(99,102,241,0.18)' : 'rgba(0,0,0,0.10)'};border-radius:12px;padding:10px 10px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='${checked ? 'rgba(99,102,241,0.28)' : 'rgba(0,0,0,0.16)'}'" onmouseout="this.style.borderColor='${checked ? 'rgba(99,102,241,0.18)' : 'rgba(0,0,0,0.10)'}'">
+                    <div class="plan-action-row" data-plan-key="${keyEnc}" data-action="${actionEnc}" style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;background:${checked ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.65)'};border:1px solid ${checked ? 'rgba(99,102,241,0.18)' : 'rgba(0,0,0,0.10)'};border-radius:12px;padding:10px 10px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='${checked ? 'rgba(99,102,241,0.28)' : 'rgba(0,0,0,0.16)'}'" onmouseout="this.style.borderColor='${checked ? 'rgba(99,102,241,0.18)' : 'rgba(0,0,0,0.10)'}'">
                       <div style="display:flex;gap:10px;min-width:0">
                         <div style="width:18px;height:18px;border-radius:6px;border:1.5px solid ${checked ? '#6366f1' : 'rgba(0,0,0,0.22)'};background:${checked ? '#6366f1' : 'transparent'};display:grid;place-items:center;flex-shrink:0;margin-top:1px">
                           ${checked ? '<svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M20 6L9 17l-5-5\" stroke=\"#fff\" stroke-width=\"2.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>' : ''}
                         </div>
                         <div style="font-size:12px;color:#111827;font-weight:600;line-height:1.65;min-width:0">${escapeHtml(t)}</div>
                       </div>
-                      <button onclick="event.stopPropagation();deletePlanAction(${JSON.stringify(p.key)}, ${JSON.stringify(t)})" title="Remove" style="width:26px;height:26px;border-radius:10px;background:transparent;border:1px solid rgba(0,0,0,0.10);cursor:pointer;display:grid;place-items:center;flex-shrink:0;color:#9ca3af" onmouseover="this.style.borderColor='rgba(0,0,0,0.18)';this.style.color='#6b7280'" onmouseout="this.style.borderColor='rgba(0,0,0,0.10)';this.style.color='#9ca3af'">
+                      <button class="plan-action-delete" type="button" title="Remove" style="width:26px;height:26px;border-radius:10px;background:transparent;border:1px solid rgba(0,0,0,0.10);cursor:pointer;display:grid;place-items:center;flex-shrink:0;color:#9ca3af" onmouseover="this.style.borderColor='rgba(0,0,0,0.18)';this.style.color='#6b7280'" onmouseout="this.style.borderColor='rgba(0,0,0,0.10)';this.style.color='#9ca3af'">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 7h12M10 7V5h4v2m-6 0v14m8-14v14M9 21h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                       </button>
                     </div>
@@ -3142,6 +3172,7 @@ function wireUi(){
 
     initPulseHistoryAccordion();
     initSidebarCollapse();
+    initPlanActionDelegation();
 
     const empEmailInput = document.getElementById('empEmail');
     const sendBtn = document.getElementById('btnSendEmployee');
