@@ -3060,27 +3060,47 @@ function renderPulse(employees){
     renderPulse(employees);
   };
 
+  const highlightImpacted = (text) => {
+    const s = String(text || '');
+    const i = s.lastIndexOf('(');
+    const j = s.lastIndexOf(')');
+    if (i === -1 || j === -1 || j <= i) return escapeHtml(s);
+    const before = s.slice(0, i);
+    const mid = s.slice(i, j + 1);
+    const after = s.slice(j + 1);
+    if (!/\bimpacted\b/i.test(mid)) return escapeHtml(s);
+    return `${escapeHtml(before)}<span style="font-weight:900;color:rgba(249,115,22,0.92)">${escapeHtml(mid)}</span>${escapeHtml(after)}`;
+  };
+
+  const decisionBadgeColor = (() => {
+    const lvl = String(decision?.status?.label || '').toLowerCase();
+    if (lvl === 'critical' || lvl === 'high') return '#FF6B6B';
+    if (lvl === 'medium') return 'rgba(249,115,22,0.92)';
+    if (lvl === 'low') return '#00b894';
+    return 'rgba(249,115,22,0.92)';
+  })();
+
   out.innerHTML = `
     <div style="display:grid;gap:12px">
       ${pulseDemoActive ? pulseDemoCtaHtml() : ''}
 
-      <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
+      <div style="background:rgba(255,255,255,0.7);border:1px solid rgba(0,0,0,0.08);border-left:3px solid #FF6B6B;border-radius:16px;padding:14px 16px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
           <div>
-            <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em">DECISION ENGINE</div>
+            <div style="font-size:12px;font-weight:900;color:#9ca3af;letter-spacing:0.10em">DECISION ENGINE</div>
             <div style="margin-top:8px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
-              <div style="font-family:'Syne',system-ui;font-weight:900;font-size:28px;color:#111827">${decision.score}/100</div>
-              <span style="background:${decision.status.bg};border:1px solid ${decision.status.bd};border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;color:${decision.status.tone}">${escapeHtml(decision.status.label)} risk</span>
+              <div style="font-family:'Syne',system-ui;font-weight:900;font-size:52px;line-height:1;background:var(--home-grad2);-webkit-background-clip:text;background-clip:text;color:transparent">${decision.score}/100</div>
+              <span style="background:${decisionBadgeColor};border:1px solid ${decisionBadgeColor};border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900;color:#fff">${escapeHtml(decision.status.label)} risk</span>
             </div>
           </div>
           <div style="min-width:240px;flex:1">
             <div style="display:grid;gap:8px">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
                 <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em">BUSINESS IMPACT</div>
-                <div style="font-size:12px;color:#111827;font-weight:700">~${decision.productivityAtRiskWeekly.toLocaleString()} / week</div>
+                <div style="font-size:12px;color:#FF6B6B;font-weight:900">~${decision.productivityAtRiskWeekly.toLocaleString()} / week</div>
               </div>
               <div style="font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">Estimated productivity at risk · Sick-leave exposure: <span style="font-weight:700;color:#111827">${decision.sickLeaveExposureDays}</span> day(s) (next 2–4 weeks)</div>
-              <div style="font-size:11px;font-weight:900;color:#6366f1;letter-spacing:0.08em;margin-top:4px">RISK PREDICTION</div>
+              <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-top:4px">RISK PREDICTION</div>
               <div style="font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">${escapeHtml(decision.predictionText)}</div>
             </div>
           </div>
@@ -3089,27 +3109,27 @@ function renderPulse(employees){
         <div style="margin-top:12px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
           <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em;margin-bottom:8px">ACTION RECOMMENDATIONS</div>
           <div style="display:grid;gap:10px">
-            ${(decision.actions || []).slice(0, 5).map(a => `<div style=\"font-size:12px;color:#111827;font-weight:600;line-height:1.65\">- ${escapeHtml(a)}</div>`).join('')}
+            ${(decision.actions || []).slice(0, 5).map(a => `<div style="font-size:12px;color:#111827;font-weight:600;line-height:1.65;background:linear-gradient(90deg, rgba(255,107,107,0.85) 0 3px, rgba(255,107,107,0.05) 3px 100%);border-radius:10px;padding:8px 10px"><span style="color:#FF6B6B;font-weight:900;margin-right:8px">■</span>${highlightImpacted(a)}</div>`).join('')}
           </div>
-          <div style="margin-top:10px;font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">Can be applied through your existing HR workflows.</div>
+          <div style="margin-top:10px;font-size:11px;color:#94a3b8;font-weight:600;line-height:1.65;font-style:italic">Can be applied through your existing HR workflows.</div>
         </div>
 
-        <div style="margin-top:12px;background:rgba(0,184,148,0.06);border:1px solid rgba(0,184,148,0.18);border-radius:14px;padding:12px">
+        <div style="margin-top:12px;background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.18);border-radius:14px;padding:12px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div>
-              <div style="font-size:10px;font-weight:900;color:#00b894;letter-spacing:0.10em;margin-bottom:6px">SICK LEAVE RISK PREDICTION</div>
-              <div style="font-size:12px;color:#64748b;font-weight:700;line-height:1.45">Potential sick leave risk over the next ${Number(decision?.sickLeaveHorizonDays) || 30} days.</div>
+              <div style="font-size:10px;font-weight:900;color:#FF6B6B;letter-spacing:0.10em;margin-bottom:6px">SICK LEAVE RISK PREDICTION</div>
+              <div style="font-size:12px;color:#FF6B6B;font-weight:800;line-height:1.45">Potential sick leave risk over the next ${Number(decision?.sickLeaveHorizonDays) || 30} days.</div>
             </div>
-            <span style="background:${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}18;border:1px solid ${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}33;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;color:${escapeHtml(decision?.sickLeaveRisk?.color || '#00b894')}">${escapeHtml(decision?.sickLeaveRisk?.level || 'Low')} risk</span>
+            <span style="background:${escapeHtml(decision?.sickLeaveRisk?.color || '#FF6B6B')};border:1px solid ${escapeHtml(decision?.sickLeaveRisk?.color || '#FF6B6B')};border-radius:999px;padding:7px 12px;font-size:12px;font-weight:900;color:#fff">${escapeHtml(decision?.sickLeaveRisk?.level || 'Low')} risk</span>
           </div>
-          <div style="margin-top:10px;font-size:12px;color:#111827;font-weight:700">${Number(decision?.sickLeaveAffected) || 0} employee(s) potentially at risk</div>
-          <div style="margin-top:6px;font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">Directional estimate based on current burnout + workload + sick-leave signals. Use early interventions and manager check-ins to reduce escalation.</div>
+          <div style="margin-top:10px;font-size:14px;color:#111827;font-weight:900">${Number(decision?.sickLeaveAffected) || 0} employee(s) potentially at risk</div>
+          <div style="margin-top:6px;font-size:11px;color:#94a3b8;font-weight:600;line-height:1.65;font-style:italic">Directional estimate based on current burnout + workload + sick-leave signals. Use early interventions and manager check-ins to reduce escalation.</div>
         </div>
       </div>
 
-      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
-        <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.08em;margin-bottom:8px">WEEKLY BURNOUT INTELLIGENCE BRIEF</div>
-        <div style="font-size:13px;color:#111827;font-weight:600;line-height:1.7">${escapeHtml(weeklyBrief)}</div>
+      <div style="background:rgba(255,255,255,0.8);border:1px solid rgba(0,0,0,0.08);border-top:3px solid #FF6B6B;border-radius:16px;padding:14px 16px">
+        <div style="font-size:13px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">WEEKLY BURNOUT INTELLIGENCE BRIEF</div>
+        <div style="font-size:13px;color:#111827;font-weight:600;line-height:1.7;background:linear-gradient(90deg, rgba(255,107,107,0.85) 0 3px, rgba(255,107,107,0.05) 3px 100%);border-radius:12px;padding:10px 12px">${escapeHtml(weeklyBrief)}</div>
       </div>
 
       <div style="background:rgba(255,255,255,0.70);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
