@@ -303,59 +303,302 @@ function buildPulseReportXlsx(){
 
   const wb = XLSX.utils.book_new();
 
-  const summaryRows = [
-    ['Metric', 'Value'],
-    ['Burnout Score', `${Number(decision.score) || 0} / 100`],
-    ['Risk Level', `${String(decision?.status?.label || '—')}`],
-    ['Sick Leave Risk', `${String(decision?.sickLeaveRisk?.level || 'Low')} · ${Number(decision?.sickLeaveAffected) || 0} employee(s) potentially at risk (next ${Number(decision?.sickLeaveHorizonDays) || 30} days)`],
-    ['Estimated Business Impact', `~${Number(decision?.productivityAtRiskWeekly || 0).toLocaleString()} / week at productivity risk · ${Number(decision?.sickLeaveExposureDays || 0)} sick-leave day(s) exposure (next 2–4 weeks)`]
-  ];
-  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
-  wsSummary['!cols'] = [{ wch: 28 }, { wch: 74 }];
-  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+  const HEADER_RGB = 'FF6B4A';
+  const WHITE_RGB = 'FFFFFF';
+  const riskBadge = { critical: 'FF4444', high: 'FF8C00', medium: 'FFD700', low: '4CAF50' };
+
+  const applyHeaderStyle = (ws) => {
+    try{
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const addr = XLSX.utils.encode_cell({ r: 0, c });
+        if (!ws[addr]) continue;
+        ws[addr].s = ws[addr].s || {};
+        ws[addr].s.fill = { patternType: 'solid', fgColor: { rgb: HEADER_RGB } };
+        ws[addr].s.font = { bold: true, color: { rgb: WHITE_RGB } };
+        ws[addr].s.alignment = { vertical: 'center', horizontal: 'center', wrapText: true };
+      }
+    }catch(e){ /* noop */ }
+  };
+
+  const setFreezeHeader = (ws) => {
+    try{
+      ws['!sheetViews'] = [{ state: 'frozen', ySplit: 1 }];
+    }catch(e){ /* noop */ }
+  };
+
+  const styleRiskCell = (ws, r, c, levelText) => {
+    try{
+      const l = String(levelText || '').toLowerCase();
+      const rgb = riskBadge[l];
+      if (!rgb) return;
+      const addr = XLSX.utils.encode_cell({ r, c });
+      if (!ws[addr]) return;
+      ws[addr].s = ws[addr].s || {};
+      ws[addr].s.fill = { patternType: 'solid', fgColor: { rgb } };
+      ws[addr].s.font = { bold: true, color: { rgb: WHITE_RGB } };
+      ws[addr].s.alignment = { vertical: 'center', horizontal: 'center' };
+    }catch(e){ /* noop */ }
+  };
+
+  const autoFitCols = (rows, min = 10, max = 70) => {
+    const widths = [];
+    for (const row of rows) {
+      for (let i = 0; i < row.length; i++) {
+        const v = row[i] == null ? '' : String(row[i]);
+        const len = Math.min(max, Math.max(min, v.length + 2));
+        widths[i] = Math.max(widths[i] || min, len);
+      }
+    }
+    return widths.map(wch => ({ wch }));
+  };
+
+  const levelLabel = (lvl) => {
+    const l = normalizeRiskLevel(lvl);
+    return l ? (l.charAt(0).toUpperCase() + l.slice(1)) : '—';
+  };
+
+  const companyLevelFromScore = (score) => {
+    const s = Number(score);
+    if (!Number.isFinite(s)) return '—';
+    if (s >= 85) return 'Critical';
+    if (s >= 70) return 'High';
+    if (s >= 45) return 'Medium';
+    return 'Low';
+  };
+
+  const trendWord = (arrow) => {
+    if (arrow === '↑') return '↑ Increasing';
+    if (arrow === '↓') return '↓ Decreasing';
+    return '— Stable';
+  };
 
   const norm = {
-    weeklyHours: (e) => Number(e?.weeklyHours || e?.weekly_hours || 0),
-    afterHours: (e) => Number(e?.afterHoursMessages || e?.after_hours_messages || 0),
-    sickDays: (e) => Number(e?.sickDays || e?.sick_days || 0)
+    name: (e) => String(e?.name || '').trim(),
+    weeklyHours: (e) => Number(e?.weeklyHours ?? e?.weekly_hours ?? 0),
+    weekendHours: (e) => Number(e?.weekendHours ?? e?.weekend_hours ?? 0),
+    afterHours: (e) => Number(e?.afterHoursMessages ?? e?.after_hours_messages ?? 0),
+    sickDays: (e) => Number(e?.sickDays ?? e?.sick_days ?? 0),
+    lastVacation: (e) => String(e?.lastVacation ?? e?.last_vacation ?? ''),
+    burnoutScore: (e) => Number(e?.burnoutScore ?? e?.burnout_score ?? 0),
+    riskLevel: (e) => normalizeRiskLevel(e?.riskLevel)
   };
-  const employeesRows = [
-    ['Name', 'Weekly hours', 'Risk level', 'Key flags']
+
+  const prevMap = readJsonLocalStorage('peoplera_people_risk_prev_employees', {});
+  const enriched = employees.map(e => {
+    const name = norm.name(e) || 'Employee';
+    const score = norm.burnoutScore(e);
+    const lvl = norm.riskLevel(e);
+    const prev = prevMap[String(name).toLowerCase()];
+    const arrow = getTrendArrow(score, prev?.score);
+    const drivers = (Array.isArray(e?.riskFactors) && e.riskFactors.length)
+      ? e.riskFactors.slice(0, 3)
+      : computeHeuristicDrivers(e);
+    const topDriver = drivers[0] || '—';
+    const recommendedAction = computeRecommendedAction(lvl, drivers);
+    const logged = getLoggedAction(name);
+    return { raw: e, name, score, lvl, arrow, drivers, topDriver, recommendedAction, logged };
+  }).sort((a,b)=>(b.score||0)-(a.score||0));
+
+  const totalEmployees = enriched.length;
+  const atRiskCount = enriched.filter(e => ['medium','high','critical'].includes(e.lvl)).length;
+  const atRiskPct = totalEmployees ? Math.round((atRiskCount / totalEmployees) * 100) : 0;
+
+  const driverCounts = {};
+  for (const e of enriched) {
+    if (!e.topDriver) continue;
+    driverCounts[e.topDriver] = (driverCounts[e.topDriver] || 0) + 1;
+  }
+  const topRiskDriver = Object.entries(driverCounts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
+
+  const series = getCompanyTrendSeries(8);
+  const last = Number(series?.[series.length - 1] ?? decision.score ?? 0);
+  const prev = Number(series?.[series.length - 2] ?? last);
+  const arrow = (Array.isArray(series) && series.length >= 2) ? getTrendArrow(last, prev) : '—';
+
+  const reportDate = new Date();
+  const reportDateLabel = reportDate.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+  const companyRisk = companyLevelFromScore(decision.score);
+
+  const summaryRows = [
+    ['Metric', 'Value', 'Status'],
+    ['Report Date', reportDateLabel, '—'],
+    ['Company Burnout Score', `${Number(decision.score) || 0}/100`, companyRisk],
+    ['Risk Level', companyRisk, '—'],
+    ['% Employees at Risk', `${atRiskPct}%`, 'Medium + High combined'],
+    ['Top Risk Driver', topRiskDriver, '—'],
+    ['Risk Trend', trendWord(arrow), '—'],
+    ['Sick Leave Risk', String(decision?.sickLeaveRisk?.level || 'Low'), '—'],
+    ['Employees Potentially at Sick Leave Risk', Number(decision?.sickLeaveAffected) || 0, 'Next 30 days'],
+    ['Estimated Productivity at Risk', `~€${Number(decision?.productivityAtRiskWeekly || 0).toLocaleString()}/week`, '—'],
+    ['Sick Leave Exposure', `${Number(decision?.sickLeaveExposureDays || 0)} days`, 'Next 2–4 weeks'],
+    ['Total Employees Analyzed', totalEmployees, '—']
   ];
-  for (const e of employees) {
-    const weekly = norm.weeklyHours(e);
-    const flags = [];
-    if (weekly >= 55) flags.push('Overtime (55h+)');
-    const lvl = String(e?.riskLevel || '').toLowerCase();
-    if (lvl === 'high' || lvl === 'critical') flags.push('High risk');
-    if (norm.afterHours(e) >= 10) flags.push('After-hours activity');
-    if (norm.sickDays(e) >= 3) flags.push('Sick-leave signal');
-    employeesRows.push([
-      String(e?.name || ''),
-      weekly || 0,
-      String(e?.riskLevel || '—'),
-      flags.join('; ')
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  wsSummary['!cols'] = autoFitCols(summaryRows, 14, 80);
+  applyHeaderStyle(wsSummary);
+  setFreezeHeader(wsSummary);
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+  const detailRows = [
+    ['Employee Name', 'Weekly Hours', 'Weekend Hours', 'After-Hours Messages', 'Sick Days (Last 3mo)', 'Last Vacation', 'Burnout Score', 'Risk Level', 'Top Driver', 'Trend', 'Recommended Action']
+  ];
+  for (const e of enriched) {
+    detailRows.push([
+      e.name,
+      norm.weeklyHours(e.raw),
+      norm.weekendHours(e.raw),
+      norm.afterHours(e.raw),
+      norm.sickDays(e.raw),
+      norm.lastVacation(e.raw),
+      e.score,
+      levelLabel(e.lvl),
+      e.topDriver,
+      e.arrow === '→' ? '—' : e.arrow,
+      e.recommendedAction
     ]);
   }
-  const wsEmployees = XLSX.utils.aoa_to_sheet(employeesRows);
-  wsEmployees['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 12 }, { wch: 46 }];
-  XLSX.utils.book_append_sheet(wb, wsEmployees, 'Employees');
+  const wsDetails = XLSX.utils.aoa_to_sheet(detailRows);
+  wsDetails['!cols'] = autoFitCols(detailRows, 12, 70);
+  applyHeaderStyle(wsDetails);
+  setFreezeHeader(wsDetails);
+  for (let r = 1; r < detailRows.length; r++) styleRiskCell(wsDetails, r, 7, detailRows[r][7]);
+  XLSX.utils.book_append_sheet(wb, wsDetails, 'Employee Details');
+
+  const hotspotRows = [
+    ['Employee Name', 'Burnout Score', 'Risk Badge', 'Top Driver 1', 'Top Driver 2', 'Top Driver 3', 'Recommended Action', 'Action Taken (Yes/No)']
+  ];
+  for (const e of enriched.filter(x => ['medium','high','critical'].includes(x.lvl))) {
+    hotspotRows.push([
+      e.name,
+      e.score,
+      levelLabel(e.lvl),
+      e.drivers?.[0] || '—',
+      e.drivers?.[1] || '—',
+      e.drivers?.[2] || '—',
+      e.recommendedAction,
+      e.logged ? 'Yes' : 'No'
+    ]);
+  }
+  const wsHotspots = XLSX.utils.aoa_to_sheet(hotspotRows);
+  wsHotspots['!cols'] = autoFitCols(hotspotRows, 12, 70);
+  applyHeaderStyle(wsHotspots);
+  setFreezeHeader(wsHotspots);
+  for (let r = 1; r < hotspotRows.length; r++) styleRiskCell(wsHotspots, r, 2, hotspotRows[r][2]);
+  XLSX.utils.book_append_sheet(wb, wsHotspots, 'Team Hotspots');
+
+  const trendRows = [
+    ['Week', 'Burnout Score', 'Risk Level', 'Notes']
+  ];
+  const tSeries = (Array.isArray(series) && series.length) ? series : [Number(decision.score) || 0];
+  for (let i = 0; i < tSeries.length; i++) {
+    const s = Number(tSeries[i]) || 0;
+    const lvl = companyLevelFromScore(s);
+    const note = (i > 0) ? trendWord(getTrendArrow(s, tSeries[i - 1])) : '—';
+    trendRows.push([`Week ${i + 1}`, s, lvl, note]);
+  }
+  const wsTrend = XLSX.utils.aoa_to_sheet(trendRows);
+  wsTrend['!cols'] = autoFitCols(trendRows, 12, 50);
+  applyHeaderStyle(wsTrend);
+  setFreezeHeader(wsTrend);
+  for (let r = 1; r < trendRows.length; r++) styleRiskCell(wsTrend, r, 2, trendRows[r][2]);
+  XLSX.utils.book_append_sheet(wb, wsTrend, 'Burnout Trend');
+
+  const impacted = {
+    high: enriched.filter(e => ['high','critical'].includes(e.lvl)).map(e => e.name),
+    medium: enriched.filter(e => e.lvl === 'medium').map(e => e.name),
+    overtime: enriched.filter(e => norm.weeklyHours(e.raw) >= 55).map(e => e.name),
+    sick: enriched.filter(e => norm.sickDays(e.raw) >= 3).map(e => e.name)
+  };
+
+  const priorityForPlan = (key) => {
+    const k = String(key || '').toLowerCase();
+    if (k.includes('recovery') || k.includes('sick') || k.includes('manager')) return 'High';
+    if (k.includes('rebalance') || k.includes('productivity')) return 'Medium';
+    return 'Medium';
+  };
+
+  const impactedForPlan = (planKey) => {
+    const k = String(planKey || '').toLowerCase();
+    if (k.includes('sick')) return impacted.sick;
+    if (k.includes('rebalance') || k.includes('productivity')) return impacted.overtime.length ? impacted.overtime : impacted.medium;
+    return impacted.high.length ? impacted.high : impacted.medium;
+  };
 
   const plansRows = [
-    ['Plan name', 'Description', 'Action items', 'Timeframe']
+    ['Plan Name', 'Timeframe', 'Action Item', 'Priority', 'Impacted Employees']
   ];
   for (const p of plans) {
-    const actionLines = (Array.isArray(p?.actions) ? p.actions : []).slice(0, 6).map(a => `- ${String(a || '').trim()}`).filter(Boolean).join('\n');
-    plansRows.push([
-      String(p?.title || ''),
-      String(p?.explanation || ''),
-      actionLines,
-      String(p?.timeframe || '')
-    ]);
+    const planName = String(p?.title || '');
+    const timeframe = String(p?.timeframe || '');
+    const priority = priorityForPlan(p?.key || p?.title);
+    const impactedNames = impactedForPlan(p?.key || p?.title).slice(0, 12).join('; ');
+    const actions = Array.isArray(p?.actions) ? p.actions : [];
+    for (const a of actions) {
+      const t = String(a || '').trim();
+      if (!t) continue;
+      plansRows.push([planName, timeframe, t, priority, impactedNames]);
+    }
   }
   const wsPlans = XLSX.utils.aoa_to_sheet(plansRows);
-  wsPlans['!cols'] = [{ wch: 28 }, { wch: 64 }, { wch: 54 }, { wch: 16 }];
+  wsPlans['!cols'] = autoFitCols(plansRows, 12, 90);
+  applyHeaderStyle(wsPlans);
+  setFreezeHeader(wsPlans);
   XLSX.utils.book_append_sheet(wb, wsPlans, 'Action Plans');
+
+  const buildInsightsForExport = () => {
+    const emps = Array.isArray(employees) ? employees : [];
+    const teamSize = emps.length;
+    const overHours = emps.filter(e => norm.weeklyHours(e) >= 55).length;
+    const highRisk = emps.filter(e => ['high','critical'].includes(normalizeRiskLevel(e?.riskLevel))).length;
+    const series = getCompanyTrendSeries(8);
+    const last = series[series.length - 1];
+    const prev = series[series.length - 2];
+    const delta = (last && prev) ? (last - prev) : null;
+
+    const out = [];
+    if (decision?.inputs?.teamSize) {
+      const riskWord = decision.status?.label ? `${decision.status.label} risk` : 'risk';
+      out.push({ kind: 'TREND', title: `Company burnout score: ${decision.score}/100 (${riskWord})`, detail: 'This is a composite of workload, after-hours load, recovery, and sick leave signals.' });
+    }
+    if (decision?.sickLeaveRisk?.level) {
+      const lvl = decision?.sickLeaveRisk?.level || 'Low';
+      const affected = Number(decision?.sickLeaveAffected) || 0;
+      const horizon = Number(decision?.sickLeaveHorizonDays) || 30;
+      out.push({ kind: 'WARNING', title: `Potential sick leave risk: ${lvl} (next ${horizon} days)`, detail: `${affected} employee(s) potentially at risk. Prioritize workload adjustments and recovery planning.` });
+    }
+    if (teamSize > 0 && highRisk > 0) {
+      out.push({ kind: 'WARNING', title: `${highRisk} ${highRisk === 1 ? 'employee is' : 'employees are'} at high risk`, detail: 'Review hotspots and assign interventions this week.' });
+    }
+    if (teamSize > 0 && overHours > 0) {
+      out.push({ kind: 'WARNING', title: `${overHours} ${overHours === 1 ? 'employee shows' : 'employees show'} overtime signals`, detail: 'Reduce workload or rebalance responsibilities to prevent escalation.' });
+    }
+    if (delta !== null) {
+      const dir = delta > 0 ? 'increased' : 'decreased';
+      const magnitude = Math.abs(delta);
+      out.push({ kind: 'TREND', title: `Burnout risk ${dir} ${magnitude.toFixed(0)} pts this week`, detail: 'Track the top drivers and validate against team changes.' });
+    }
+    return out.slice(0, 10);
+  };
+
+  const insights = buildInsightsForExport();
+  const insightsRows = [
+    ['Insight Type (TREND/WARNING)', 'Insight Title', 'Detail', 'Date']
+  ];
+  const isoDate = new Date().toISOString().slice(0, 10);
+  for (const it of insights) {
+    insightsRows.push([
+      String(it.kind || 'TREND'),
+      String(it.title || ''),
+      String(it.detail || ''),
+      isoDate
+    ]);
+  }
+  const wsInsights = XLSX.utils.aoa_to_sheet(insightsRows);
+  wsInsights['!cols'] = autoFitCols(insightsRows, 14, 120);
+  applyHeaderStyle(wsInsights);
+  setFreezeHeader(wsInsights);
+  XLSX.utils.book_append_sheet(wb, wsInsights, 'AI Insights');
 
   return wb;
 }
