@@ -3,40 +3,40 @@ async function readJsonSafe(res){
   if (ct.includes('application/json')) return res.json();
   const t = await res.text();
   try { return JSON.parse(t); } catch { return { raw: t }; }
-
 }
 
 function initPulseHistoryAccordion(){
-  const toggle = document.getElementById('pulseHistoryToggle');
-  const body = document.getElementById('pulseHistoryBody');
-  const chevron = document.getElementById('pulseHistoryChevron');
+  const btn = document.getElementById('btnPulseRecent');
+  const dropdown = document.getElementById('pulseRecentDropdown');
+  const body = document.getElementById('pulseRecentBody');
   const list = document.getElementById('pulseHistory');
-  if (!toggle || !body || !chevron || !list) return;
+  if (!btn || !dropdown || !body || !list) return;
 
-  const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
+  const isOpen = () => dropdown.style.display !== 'none';
   const setOpen = (open) => {
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     if (open) {
+      dropdown.style.display = 'block';
       const hasItems = list.getAttribute('data-has-items') === '1';
       if (!hasItems) {
         list.innerHTML = '<div style="font-size:12px;color:#6b7280;font-weight:600;line-height:1.65">No recent analyses yet</div>';
       }
       body.style.opacity = '1';
       body.style.maxHeight = Math.max(140, body.scrollHeight) + 'px';
-      chevron.style.transform = 'rotate(180deg)';
     } else {
       body.style.opacity = '0';
       body.style.maxHeight = '0px';
-      chevron.style.transform = 'rotate(0deg)';
+      window.setTimeout(()=>{
+        dropdown.style.display = 'none';
+      }, 220);
     }
   };
 
-  toggle.setAttribute('aria-expanded', 'false');
-  setOpen(false);
-
-  toggle.addEventListener('click', ()=>{
+  window.togglePulseRecent = function(open){
+    if (typeof open === 'boolean') return setOpen(open);
     setOpen(!isOpen());
-  });
+  };
+
+  setOpen(false);
 
   try{
     window.addEventListener('resize', ()=>{
@@ -129,7 +129,7 @@ function setPulseManualEmployees(list){
   pulseEmployees = [];
 
   for (const e of arr) {
-    addPulseEmployee();
+    addPulseEmployee(false);
     const idx = pulseEmployees.length - 1;
 
     const write = (field, value) => {
@@ -1421,9 +1421,7 @@ function renderAIInsights(){
   const series = getCompanyTrendSeries(8);
   const last = series[series.length - 1];
   const prev = series[series.length - 2];
-  const lastScore = Number(last || 0);
-  const prevScore = Number(prev || 0);
-  const delta = (last && prev) ? (lastScore - prevScore) : null;
+  const delta = (last && prev) ? (last - prev) : null;
 
   const decision = computeDecisionEngine(emps, series);
   window.__lastDecisionEngine = decision;
@@ -1584,85 +1582,6 @@ function renderWorkforceInsights(){
   const maxH = hours.length ? Math.max(...hours) : 0;
   const minH = hours.length ? Math.min(...hours) : 0;
   const imbalance = (maxH && minH) ? (maxH - minH) : 0;
-
-  const card = (title, body, accent) => `
-    <div style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-left:3px solid ${accent};border-radius:14px;padding:14px">
-      <div style="font-size:12px;font-weight:700;color:#9ca3af;letter-spacing:0.10em;margin-bottom:8px">${escapeHtml(title)}</div>
-      <div style="font-size:13px;color:#111827;font-weight:600;line-height:1.65">${body}</div>
-    </div>
-  `;
-
-  const distBar = (() => {
-    const total = Math.max(1, emps.length);
-    const seg = (n, c) => `<div style="height:10px;width:${Math.round((n/total)*100)}%;background:${c}"></div>`;
-    return `
-      <div style="background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">TEAM RISK DISTRIBUTION</div>
-          <div style="font-size:12px;color:#64748b;font-weight:800">${emps.length} employees</div>
-        </div>
-        <div style="margin-top:10px;display:flex;overflow:hidden;border-radius:999px;border:1px solid rgba(0,0,0,0.06)">
-          ${seg(counts.low, 'rgba(0,229,160,0.9)')}
-          ${seg(counts.medium, 'rgba(255,217,61,0.9)')}
-          ${seg(counts.high, 'rgba(255,107,107,0.85)')}
-          ${seg(counts.critical, 'rgba(255,59,59,0.85)')}
-        </div>
-        <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#64748b;font-weight:800">
-          <span>Low: ${counts.low}</span>
-          <span>Medium: ${counts.medium}</span>
-          <span>High: ${counts.high}</span>
-          <span>Critical: ${counts.critical}</span>
-        </div>
-      </div>
-    `;
-  })();
-
-  const hotspotsList = (() => {
-    const list = highCluster
-      .slice()
-      .sort((a, b) => (Number(b?.burnoutScore) || 0) - (Number(a?.burnoutScore) || 0))
-      .slice(0, 4);
-
-    if (!list.length) return '';
-
-    const badge = (lvl) => {
-      const l = level(lvl);
-      if (l === 'critical') return { t: 'Critical', c: '#FF3B3B', bg: 'rgba(255,59,59,0.10)', bd: 'rgba(255,59,59,0.22)' };
-      if (l === 'high') return { t: 'High', c: '#FF6B6B', bg: 'rgba(255,107,107,0.10)', bd: 'rgba(255,107,107,0.22)' };
-      return { t: 'Medium', c: '#b45309', bg: 'rgba(255,217,61,0.18)', bd: 'rgba(255,217,61,0.35)' };
-    };
-
-    return `
-      <div style="background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">BURNOUT HOTSPOTS</div>
-          <div style="font-size:12px;color:#64748b;font-weight:800">Top ${list.length} at risk</div>
-        </div>
-        <div style="margin-top:10px;display:grid;gap:8px">
-          ${list.map(e => {
-            const b = badge(e?.riskLevel);
-            return `
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.06);border-radius:12px;padding:10px 10px">
-                <div style="min-width:0">
-                  <div style="font-weight:900;color:#0f172a;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(e?.name || 'Employee')}</div>
-                  <div style="margin-top:3px;font-size:11px;color:#64748b;font-weight:800">Score ${Number(e?.burnoutScore) || 0}/100</div>
-                </div>
-                <span style="background:${b.bg};border:1px solid ${b.bd};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900;color:${b.c};white-space:nowrap">${escapeHtml(b.t)}</span>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      </div>
-    `;
-  })();
-
-  const hotspotText = highCluster.length
-    ? `${highCluster.length} hotspot ${highCluster.length === 1 ? 'employee is' : 'employees are'} in high/critical risk. Prioritize workload adjustments and manager check-ins this week.`
-    : 'No high/critical hotspots detected. Maintain weekly monitoring and protect recovery time.';
-
-  const imbalanceText = imbalance >= 12
-    ? `Workload spread is ${imbalance}h (min ${minH}h → max ${maxH}h). Consider rebalancing work across roles or adding coverage during peak weeks.`
-    : `Workload spread is ${imbalance}h (min ${minH}h → max ${maxH}h). Distribution looks relatively stable.`;
 
   const clusterSignals = [
     overtime.length ? `${overtime.length} with overtime (55h+)` : '',
@@ -2170,8 +2089,6 @@ async function runBoard(){
       }
     } catch(e) { console.warn('Save board result failed', e); }
 
-    document.getElementById('btnDownloadBoard').disabled = false;
-
     document.getElementById('statEmployees').textContent = String(Number(document.getElementById('statEmployees').textContent || 0) + 1);
     addFeed('Board', `Generated onboarding plan for ${name} (${role}).`);
 
@@ -2181,81 +2098,6 @@ async function runBoard(){
   }finally{
     reset();
   }
-}
-
-function generatePlanPdfText(data){
-  const p = data?.onboardingPlan;
-  if (!p) return '';
-  const lines = [];
-  lines.push('Peoplera — Onboarding Plan');
-  lines.push('');
-  const sec = (title, items)=>{
-    lines.push(title);
-    const arr = Array.isArray(items) ? items : [];
-    for (const it of arr) lines.push(' - ' + it);
-    lines.push('');
-  };
-  sec('First week checklist', p.firstWeekChecklist);
-  sec('Day 30', p.day30);
-  sec('Day 60', p.day60);
-  sec('Day 90', p.day90);
-  sec('Resources', p.resources);
-  return lines.join('\n');
-}
-
-function downloadBoardPdf(data){
-  const p = data?.onboardingPlan;
-  if (!p) throw new Error('No onboarding plan to download');
-  const jspdf = window.jspdf;
-  if (!jspdf || !jspdf.jsPDF) throw new Error('PDF library not loaded');
-
-  const doc = new jspdf.jsPDF({ unit: 'pt', format: 'a4' });
-  const pageW = doc.internal.pageSize.getWidth();
-  const margin = 52;
-  let y = 64;
-
-  const title = 'Peoplera — 30-60-90 Onboarding Plan';
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
-  doc.text(title, margin, y);
-  y += 18;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(11);
-  doc.setTextColor(120);
-  doc.text('Generated by Peoplera Board', margin, y);
-  doc.setTextColor(0);
-  y += 22;
-
-  const section = (name, items)=>{
-    const arr = Array.isArray(items) ? items : [];
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    y += 10;
-    if (y > 760){ doc.addPage(); y = 64; }
-    doc.text(name, margin, y);
-    y += 14;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-
-    for (const it of arr){
-      const line = '- ' + String(it);
-      const wrapped = doc.splitTextToSize(line, pageW - margin * 2);
-      for (const w of wrapped){
-        if (y > 770){ doc.addPage(); y = 64; }
-        doc.text(w, margin, y);
-        y += 14;
-      }
-    }
-  };
-
-  section('First week checklist', p.firstWeekChecklist);
-  section('30 days', p.day30);
-  section('60 days', p.day60);
-  section('90 days', p.day90);
-  section('Resources', p.resources);
-
-  doc.save('peoplera-onboarding-plan.pdf');
 }
 
 let pulseLast = null;
@@ -2299,7 +2141,7 @@ function switchPulseTab(tab) {
   }
 }
 
-function addPulseEmployee() {
+function addPulseEmployee(expanded = true) {
   const idx = pulseEmployees.length;
   pulseEmployees.push({});
   const list = document.getElementById('pulseEmployeeList');
@@ -2310,8 +2152,15 @@ function addPulseEmployee() {
   card.style.cssText = 'background:rgba(255,107,107,0.04);border:1px solid rgba(255,107,107,0.15);border-radius:12px;padding:16px;position:relative';
   card.innerHTML = `
     <button onclick="removePulseEmployee(${idx})" style="position:absolute;top:10px;right:10px;background:none;border:none;color:#FF6B6B;font-size:16px;cursor:pointer;font-weight:900">✕</button>
-    <div style="font-size:11px;font-weight:900;color:#FF6B6B;margin-bottom:10px;letter-spacing:0.05em">EMPLOYEE ${idx + 1}</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+    <button type="button" onclick="togglePulseEmployee(${idx})" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:transparent;border:none;padding:0;margin:0;cursor:pointer;text-align:left">
+      <div style="min-width:0">
+        <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.05em">EMPLOYEE ${idx + 1}</div>
+        <div id="pulseEmpName_${idx}" style="margin-top:6px;font-size:12px;font-weight:800;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+      </div>
+      <div id="pulseEmpChevron_${idx}" aria-hidden="true" style="flex-shrink:0;color:#64748b;font-weight:900;font-size:14px;transition:transform 0.2s ease">▼</div>
+    </button>
+    <div id="pulseEmpBody_${idx}" style="overflow:hidden;max-height:0;opacity:0;transition:max-height 0.28s ease, opacity 0.18s ease">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
       <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Full name *</div>
         <input data-idx="${idx}" data-field="name" placeholder="e.g. Alex Kim" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
       <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Weekly hours</div>
@@ -2324,9 +2173,46 @@ function addPulseEmployee() {
         <input data-idx="${idx}" data-field="sickDays" type="number" min="0" placeholder="0" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
       <div><div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">Last vacation</div>
         <input data-idx="${idx}" data-field="lastVacation" placeholder="e.g. 3 months ago" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:8px;padding:8px 10px;font-size:12px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" oninput="updatePulseEmp(this)"></div>
+      </div>
     </div>
   `;
   list.appendChild(card);
+
+  window.togglePulseEmployee = function(i){
+    const body = document.getElementById(`pulseEmpBody_${i}`);
+    const chev = document.getElementById(`pulseEmpChevron_${i}`);
+    if (!body || !chev) return;
+    const open = body.style.maxHeight !== '0px' && body.style.maxHeight !== '';
+    if (open) {
+      body.style.opacity = '0';
+      body.style.maxHeight = '0px';
+      chev.textContent = '▼';
+    } else {
+      body.style.opacity = '1';
+      body.style.maxHeight = Math.max(120, body.scrollHeight) + 'px';
+      chev.textContent = '▲';
+    }
+  };
+
+  const nameEl = document.getElementById(`pulseEmpName_${idx}`);
+  if (nameEl) nameEl.textContent = '';
+
+  const applyExpanded = (open) => {
+    const body = document.getElementById(`pulseEmpBody_${idx}`);
+    const chev = document.getElementById(`pulseEmpChevron_${idx}`);
+    if (!body || !chev) return;
+    if (open) {
+      body.style.opacity = '1';
+      body.style.maxHeight = Math.max(120, body.scrollHeight) + 'px';
+      chev.textContent = '▲';
+    } else {
+      body.style.opacity = '0';
+      body.style.maxHeight = '0px';
+      chev.textContent = '▼';
+    }
+  };
+
+  applyExpanded(Boolean(expanded));
 }
 
 function updatePulseEmp(input) {
@@ -2335,6 +2221,11 @@ function updatePulseEmp(input) {
   if (!Number.isFinite(idx) || !field) return;
   if (!pulseEmployees[idx]) pulseEmployees[idx] = {};
   pulseEmployees[idx][field] = input.value;
+
+  if (field === 'name') {
+    const nameEl = document.getElementById(`pulseEmpName_${idx}`);
+    if (nameEl) nameEl.textContent = String(input.value || '').trim();
+  }
 }
 
 function removePulseEmployee(idx) {

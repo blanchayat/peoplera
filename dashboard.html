@@ -373,7 +373,21 @@
                 <div style="flex-shrink:0;display:flex;gap:10px;align-items:center">
                   <button id="btnPulse" onclick="runPulse()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:14px;padding:14px 26px;font-family:'Syne',system-ui;font-weight:900;font-size:15px;color:#0f172a;cursor:pointer;box-shadow:0 10px 26px rgba(255,107,107,0.28);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 14px 34px rgba(255,107,107,0.34)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 10px 26px rgba(255,107,107,0.28)'">Generate burnout intelligence report</button>
                   <button id="btnPulseDemo" onclick="runPulseDemo()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 16px;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='rgba(0,0,0,0.03)'">Try demo data</button>
+                  <button id="btnPulseRecent" onclick="togglePulseRecent()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 16px;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='rgba(0,0,0,0.03)'">Recent analyses</button>
                   <button onclick="clearPulse()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:12px;padding:10px 16px;color:#FF6B6B;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
+                </div>
+              </div>
+
+              <div id="pulseRecentDropdown" class="panel pad" style="display:none;padding:0;margin-top:12px">
+                <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <div style="display:flex;align-items:center;gap:10px;min-width:0">
+                    <div style="font-weight:900">Recent analyses</div>
+                    <span id="pulseHistoryCount" style="background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.10);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:900;color:#334155" hidden>0</span>
+                  </div>
+                  <button type="button" onclick="togglePulseRecent(false)" style="background:none;border:none;color:#94a3b8;font-size:14px;cursor:pointer;font-weight:900" aria-label="Close">✕</button>
+                </div>
+                <div id="pulseRecentBody" style="padding:0 16px 14px 16px;overflow:hidden;max-height:0;opacity:0;transition:max-height 0.25s ease, opacity 0.2s ease">
+                  <div id="pulseHistory" style="margin-top:0"></div>
                 </div>
               </div>
 
@@ -431,22 +445,7 @@
             </div>
           </div>
 
-          <div class="pulse-two-col" style="margin-top:24px;display:grid;grid-template-columns:minmax(0,0.75fr) minmax(0,1.75fr);gap:24px;align-items:start">
-            <div class="panel pad" id="pulseHistoryAccordion" style="padding:0">
-              <button id="pulseHistoryToggle" type="button" style="width:100%;background:transparent;border:0;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer">
-                <div style="display:flex;align-items:center;gap:10px;min-width:0">
-                  <div style="font-weight:900">Recent analyses</div>
-                  <span id="pulseHistoryCount" style="background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.10);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:900;color:#334155" hidden>0</span>
-                </div>
-                <svg id="pulseHistoryChevron" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="color:#64748b;transition:transform 0.2s ease">
-                  <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-              <div id="pulseHistoryBody" style="padding:0 16px 14px 16px;overflow:hidden;max-height:0;opacity:0;transition:max-height 0.25s ease, opacity 0.2s ease">
-                <div id="pulseHistory" style="margin-top:0"></div>
-              </div>
-            </div>
-
+          <div class="pulse-two-col" style="margin-top:24px;display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start">
             <div class="pulse-right-stack" style="display:grid;gap:24px;align-items:start;min-width:0">
               <div class="panel pad">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
