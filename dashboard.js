@@ -1232,75 +1232,6 @@ async function loadSettings(){
         </div>
       </div>
     `;
-  } catch(e) {
-    console.warn('loadSettings error:', e);
-  }
-}
-
-async function runPulseDemo(){
-  const btn = document.getElementById('btnPulseDemo');
-  let msg = document.getElementById('pulseMsg');
-  if (!btn) return;
-  if (msg) msg.textContent = '';
-
-  try {
-    const hasRealPulseHistory = Array.isArray(window.__historyCache?.pulse) && window.__historyCache.pulse.length > 0;
-    if (hasRealPulseHistory) {
-      const ok = confirm('You already have Burnout Intelligence analyses in this account. Run a demo analysis without overwriting your real data?');
-      if (!ok) return;
-    }
-
-    const demoEmployees = buildPulseDemoEmployees();
-    setPulseManualEmployees(demoEmployees);
-    setPulseDemoActive(true);
-
-    document.getElementById('pulseOut').innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;font-size:13px">⏳ Running sample analysis…</div>';
-
-    const rows = parseCsvText([
-      'name,weekly hours,weekend hours,after-hours messages,sick days,last vacation',
-      ...demoEmployees.map(e => `${e.name||''},${e.weeklyHours||0},${e.weekendHours||0},${e.afterHoursMessages||0},${e.sickDays||0},${e.lastVacation||'unknown'}`)
-    ].join('\n'));
-
-    const employeesInput = mapEmployeeRows(rows);
-
-    const data = await apiFetch('/api/pulse', {
-      method:'POST',
-      accessToken: (await supabase.auth.getSession()).data?.session?.access_token,
-      body: { employees: employeesInput }
-    });
-
-    if (!data || !Array.isArray(data.employees)) throw new Error('Invalid AI response');
-
-    const inputByName = {};
-    for (const e of employeesInput) {
-      const k = String(e?.name || '').toLowerCase();
-      if (k) inputByName[k] = e;
-    }
-
-    const mergedEmployees = data.employees.map(e => {
-      const k = String(e?.name || '').toLowerCase();
-      const metrics = inputByName[k] || {};
-      return { ...metrics, ...e };
-    });
-
-    const demoCompanyScore = computeCompanyRiskScore(mergedEmployees);
-    setPulseDemoActive(true, { series: buildDemoTrendSeries(demoCompanyScore, 6) });
-
-    pulseLast = { ...data, employees: mergedEmployees };
-    renderPulse(mergedEmployees);
-
-    renderAIInsights();
-    renderPulseTrend();
-
-    showPulseToast('Demo analysis generated', 'This is a sample report based on demo data.');
-
-    if (msg) msg.textContent = 'Sample analysis ready.';
-  } catch(err) {
-    if (msg) msg.textContent = err && err.message ? err.message : 'Demo failed';
-    setPulseDemoActive(false);
-  } finally {
-    reset();
-  }
 }
 
 function switchTab(tab){
@@ -1324,6 +1255,9 @@ function switchTab(tab){
     hire: 'Hiring Intelligence',
     board: 'Workforce Insights',
     pulse: 'Burnout Intelligence',
+    pulse_plans: 'Strategic Action Plans',
+    pulse_hotspots: 'Team Hotspots',
+    pulse_insights: 'AI Insights',
     settings: 'Settings'
   };
 
@@ -1339,6 +1273,19 @@ function switchTab(tab){
 
   if (tab === 'pulse') {
     updateNavBurnoutBadge(window.__lastDecisionEngine);
+    loadBurnoutMain();
+  }
+
+  if (tab === 'pulse_plans') {
+    renderPulsePlansPage();
+  }
+
+  if (tab === 'pulse_hotspots') {
+    renderPulseHotspotsPage();
+  }
+
+  if (tab === 'pulse_insights') {
+    renderAIInsights();
   }
 }
 
