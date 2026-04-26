@@ -99,7 +99,7 @@ body {
 .dash.sidebar-collapsed .pill,
 .dash.sidebar-collapsed .nav-section-label,
 .dash.sidebar-collapsed .nav-item .nav-left > span:last-child,
-.dash.sidebar-collapsed #userProfile{
+.dash.sidebar-collapsed #userPill{
   display:none !important;
 }
 
