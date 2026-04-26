@@ -2298,21 +2298,11 @@ async function initSupabase(){
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      flowType: 'pkce'
+      flowType: 'implicit'
     }
   });
 
   window.supabaseClient = supabase;
-
-  try{
-    const hasCode = new URLSearchParams(window.location.search).get('code');
-    if (hasCode) {
-      await supabase.auth.exchangeCodeForSession(window.location.href);
-      try{ window.history.replaceState({}, '', '/dashboard.html'); }catch(e){ /* noop */ }
-    }
-  }catch(e){
-    console.warn('OAuth code exchange failed:', e);
-  }
 
   const { data: sData } = await supabase.auth.getSession();
   session = sData.session;
@@ -2332,11 +2322,6 @@ async function initSupabase(){
     if (_event === 'SIGNED_IN' || _event === 'TOKEN_REFRESHED' || _event === 'INITIAL_SESSION') {
       window.__subChecked = false;
       await renderAuthState();
-
-      if (session) {
-        try{ await loadHistory(); }catch(e){ /* noop */ }
-        try{ await checkStatus(); }catch(e){ /* noop */ }
-      }
     }
   });
 
@@ -2395,18 +2380,15 @@ async function loadUserPlan() {
 async function renderAuthState(){
   const gate = document.getElementById('gate');
   const app = document.getElementById('app');
-  const gateMsg = document.getElementById('gateMsg');
 
   if (!session){
     if (gate) gate.hidden = false;
     if (app) app.hidden = true;
-    if (gateMsg) gateMsg.textContent = '';
     return;
   }
 
   if (gate) gate.hidden = true;
   if (app) app.hidden = false;
-  if (gateMsg) gateMsg.textContent = '';
 
   if (window.__showWelcome) {
     window.__showWelcome = false;
@@ -3424,6 +3406,8 @@ function computeDecisionEngine(employees, trendSeries){
   if (sickSignals.length) actions.push(`Review sick leave signals and offer support plan (check workload, recovery time) (${sickSignals.length} impacted).`);
   if (!actions.length) actions.push('Maintain weekly monitoring and protect recovery time. Standardize one proactive action per team.');
 
+  const uniqueActions = Array.from(new Set(actions)).slice(0, 4);
+
   const predictionText = predictedPct === 0
     ? 'Risk is projected to remain stable over the next 2 weeks if conditions stay the same.'
     : predictedPct > 0
@@ -3994,11 +3978,8 @@ function renderPulse(employees){
 
       <div style="background:rgba(255,255,255,0.70);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:14px 16px">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
-          <div>
-            <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">STRATEGIC ACTION PLANS</div>
-            <div style="font-size:12px;color:#64748b;font-weight:800">5 plans generated from this analysis</div>
-          </div>
-          <div style="font-size:12px;color:#64748b;font-weight:800">Manager-ready plans</div>
+          <div style="font-size:10px;font-weight:900;color:#64748b;letter-spacing:0.10em">STRATEGIC ACTION PLANS</div>
+          <div style="font-size:12px;color:#64748b;font-weight:800">5 plans generated from this analysis</div>
         </div>
         <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
           ${(Array.isArray(plans) ? plans : []).map(p => `
@@ -4402,7 +4383,7 @@ async function boot(){
     const app = document.getElementById('app');
     if (gate) gate.hidden = false;
     if (app) app.hidden = true;
-    if (gateMsg) gateMsg.textContent = 'Unable to initialize dashboard.';
+    if (gateMsg) gateMsg.textContent = 'Loading…';
   }
 }
 
