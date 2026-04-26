@@ -1190,11 +1190,10 @@ function addFeed(type, message){
 
 async function loadSettings(){
   try {
-    const { data: { session: s } } = await supabase.auth.getSession();
-    const u = s?.user || null;
-
-    const userEmail = u?.email || '';
-    const createdAt = u?.created_at || new Date().toISOString();
+    const info = await getUserDisplayInfo();
+    const userEmail = info.email || '';
+    const fullName = info.fullName || '—';
+    const createdAt = info.createdAt || new Date().toISOString();
 
     const memberSince = new Date(createdAt).toLocaleDateString('en-GB', {
       day:'2-digit',
@@ -1207,19 +1206,24 @@ async function loadSettings(){
 
     settingsEl.innerHTML = `
       <div style="max-width:700px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
-            <div style="font-size:10px;color:#64748b;font-weight:900">STATUS</div>
-            <div style="font-weight:900;margin-top:6px">Free access</div>
-          </div>
-          <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
-            <div style="font-size:10px;color:#64748b;font-weight:900">MEMBER SINCE</div>
-            <div style="font-weight:900;margin-top:6px">${memberSince}</div>
+        <div style="padding:14px;border:1px solid rgba(0,0,0,0.08);border-radius:16px;background:rgba(0,0,0,0.02)">
+          <div style="font-weight:900">Account</div>
+          <div style="display:grid;gap:10px;margin-top:10px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+              <div style="font-size:12px;color:#64748b;font-weight:800">Full name</div>
+              <div style="font-size:12px;color:#0f172a;font-weight:900;text-align:right">${escapeHtml(fullName)}</div>
+            </div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+              <div style="font-size:12px;color:#64748b;font-weight:800">Email address</div>
+              <div style="font-size:12px;color:#0f172a;font-weight:900;text-align:right;word-break:break-word">${escapeHtml(userEmail || '—')}</div>
+            </div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+              <div style="font-size:12px;color:#64748b;font-weight:800">Member since</div>
+              <div style="font-size:12px;color:#0f172a;font-weight:900;text-align:right">${escapeHtml(memberSince)}</div>
+            </div>
           </div>
         </div>
-        <div style="margin-top:16px;font-size:12px;color:#64748b">
-          Plan: <strong>Free access</strong> · Billing: <strong>Not active</strong>
-        </div>
+
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
           <div style="padding:12px;border:1px solid rgba(0,0,0,0.08);border-radius:12px">
             <div style="font-size:10px;color:#64748b;font-weight:900">PLAN</div>
@@ -1471,6 +1475,24 @@ function computeTopDriverFromMetrics(metrics){
   return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—';
 }
 
+function monthsAgoDate(months){
+  const m = Number(months);
+  if (!Number.isFinite(m)) return '';
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  d.setMonth(d.getMonth() - Math.max(0, Math.round(m)));
+  return isoDate(d);
+}
+
+function setBurnoutEmployeeFormOpen(open, { mode = 'add', employee = null } = {}){
+  window.__burnoutState = window.__burnoutState || { collapsed: {}, weekInputs: {} };
+  window.__burnoutState.employeeForm = {
+    open: !!open,
+    mode: String(mode || 'add'),
+    employee: employee || null
+  };
+}
+
 async function loadBurnoutMain(){
   const out = document.getElementById('burnoutMainOut');
   if (!out) return;
@@ -1524,6 +1546,11 @@ function renderBurnoutTeamSection(root, employees){
   const emps = Array.isArray(employees) ? employees : [];
   const empty = !emps.length;
 
+  const formState = window.__burnoutState?.employeeForm || { open: false, mode: 'add', employee: null };
+  const formEmp = formState.employee || {};
+  const showForm = !!formState.open;
+  const formTitle = formState.mode === 'edit' ? 'Edit employee' : 'Add employee';
+
   const card = (e) => {
     const id = String(e.id);
     const collapsed = !!(window.__burnoutState?.collapsed?.[id]);
@@ -1567,9 +1594,54 @@ function renderBurnoutTeamSection(root, employees){
           <div style="font-family:Syne;font-weight:800;font-size:18px">Your Team</div>
           <div class="small" style="margin-top:6px">Employee profiles are saved permanently.</div>
         </div>
-        <button type="button" onclick="window.addBurnoutEmployee()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 18px;font-family:'Syne',system-ui;font-weight:900;font-size:13px;color:#0f172a;cursor:pointer">+ Add employee</button>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button type="button" onclick="window.addBurnoutEmployee()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 18px;font-family:'Syne',system-ui;font-weight:900;font-size:13px;color:#0f172a;cursor:pointer">+ Add employee</button>
+          <button type="button" onclick="window.tryBurnoutDemoData()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:900;color:#0f172a;cursor:pointer">Try demo data</button>
+        </div>
       </div>
     </div>
+
+    ${showForm ? `
+      <div style="margin-top:12px;background:rgba(255,255,255,0.75);border:1px solid rgba(0,0,0,0.08);border-radius:16px;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div style="font-family:Syne;font-weight:900;color:#0f172a">${escapeHtml(formTitle)}</div>
+          <button type="button" onclick="window.closeBurnoutEmployeeForm()" style="background:none;border:none;color:#94a3b8;font-size:14px;cursor:pointer;font-weight:900" aria-label="Close">✕</button>
+        </div>
+
+        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
+          <div style="grid-column:1/-1">
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Full name *</div>
+            <input id="burnoutEmpFullName" type="text" value="${escapeHtml(String(formEmp.full_name || ''))}" placeholder="e.g. Alex Kim" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:10px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" />
+          </div>
+
+          <div style="grid-column:1/-1">
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Job title</div>
+            <input id="burnoutEmpJobTitle" type="text" value="${escapeHtml(String(formEmp.job_title || ''))}" placeholder="e.g. Product Designer" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.10);border-radius:10px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" />
+          </div>
+
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Start date *</div>
+            <input id="burnoutEmpStartDate" type="date" value="${escapeHtml(isoDate(formEmp.start_date))}" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(255,107,107,0.2);border-radius:10px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" />
+          </div>
+
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Birth date</div>
+            <input id="burnoutEmpBirthDate" type="date" value="${escapeHtml(isoDate(formEmp.birth_date))}" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.10);border-radius:10px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" />
+          </div>
+
+          <div>
+            <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px">Last vacation date</div>
+            <input id="burnoutEmpLastVacation" type="date" value="${escapeHtml(isoDate(formEmp.last_vacation))}" style="width:100%;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.10);border-radius:10px;padding:10px 12px;font-size:13px;color:#0f172a;font-family:'DM Sans',system-ui;outline:none;box-sizing:border-box" />
+          </div>
+
+          <div style="display:flex;align-items:flex-end;gap:10px">
+            <button type="button" onclick="window.saveBurnoutEmployeeFromForm()" style="background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.22);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:900;color:#FF6B6B;cursor:pointer">Save</button>
+            <button type="button" onclick="window.closeBurnoutEmployeeForm()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:12px 18px;font-size:13px;font-weight:900;color:#0f172a;cursor:pointer">Cancel</button>
+          </div>
+        </div>
+        <div id="burnoutEmpFormMsg" class="small" style="margin-top:10px;color:var(--muted)"></div>
+      </div>
+    ` : ''}
 
     <div style="margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px">
       ${empty ? `
@@ -1783,29 +1855,143 @@ window.toggleBurnoutEmployeeCollapse = function(id){
 };
 
 window.addBurnoutEmployee = async function(){
+  setBurnoutEmployeeFormOpen(true, { mode: 'add', employee: { full_name: '', job_title: '', start_date: '', birth_date: '', last_vacation: '' } });
+  refreshBurnoutMain();
+};
+
+window.closeBurnoutEmployeeForm = function(){
+  setBurnoutEmployeeFormOpen(false);
+  refreshBurnoutMain();
+};
+
+window.saveBurnoutEmployeeFromForm = async function(){
+  const msgEl = document.getElementById('burnoutEmpFormMsg');
+  if (msgEl) msgEl.textContent = '';
+
   try{
     const { data: { session: s } } = await supabase.auth.getSession();
     if (!s) return;
 
-    const fullName = prompt('Employee full name');
-    if (!fullName || !String(fullName).trim()) return;
-    const startDate = prompt('Start date (YYYY-MM-DD)');
-    const birthDate = prompt('Birth date (YYYY-MM-DD)');
-    const lastVacation = prompt('Last vacation date (YYYY-MM-DD)');
+    const fullName = String(document.getElementById('burnoutEmpFullName')?.value || '').trim();
+    const jobTitle = String(document.getElementById('burnoutEmpJobTitle')?.value || '').trim();
+    const startDate = String(document.getElementById('burnoutEmpStartDate')?.value || '').trim();
+    const birthDate = String(document.getElementById('burnoutEmpBirthDate')?.value || '').trim();
+    const lastVacation = String(document.getElementById('burnoutEmpLastVacation')?.value || '').trim();
+
+    if (!fullName) {
+      if (msgEl) msgEl.textContent = 'Full name is required.';
+      return;
+    }
+    if (!startDate) {
+      if (msgEl) msgEl.textContent = 'Start date is required.';
+      return;
+    }
 
     const payload = {
       user_id: s.user.id,
-      full_name: String(fullName).trim(),
-      start_date: startDate ? String(startDate).trim() : null,
-      birth_date: birthDate ? String(birthDate).trim() : null,
-      last_vacation: lastVacation ? String(lastVacation).trim() : null
+      full_name: fullName,
+      job_title: jobTitle || null,
+      start_date: startDate,
+      birth_date: birthDate || null,
+      last_vacation: lastVacation || null
     };
 
     const { error } = await supabase.from('employees').insert(payload);
     if (error) throw error;
+
+    setBurnoutEmployeeFormOpen(false);
     await refreshBurnoutMain();
   }catch(e){
-    console.warn('Add employee failed', e);
+    console.warn('Save employee failed', e);
+    if (msgEl) msgEl.textContent = 'Save failed.';
+  }
+};
+
+window.tryBurnoutDemoData = async function(){
+  try{
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (!s) return;
+
+    const monday = getMondayWeekStart(new Date());
+    const weekStart = isoDate(monday);
+
+    const demo = [
+      { full_name: 'Alex Kim', job_title: 'Engineering Manager', start_date: '2022-03-15', birth_date: '1990-06-12', last_vacation: monthsAgoDate(9), metrics: { weekly_hours: 68, weekend_hours: 10, after_hours_messages: 28, sick_days: 3 } },
+      { full_name: 'Maya Chen', job_title: 'Product Manager', start_date: '2021-07-01', birth_date: '1988-11-24', last_vacation: monthsAgoDate(6), metrics: { weekly_hours: 62, weekend_hours: 8, after_hours_messages: 20, sick_days: 1 } },
+      { full_name: 'Omar Hassan', job_title: 'Customer Success Lead', start_date: '2023-01-10', birth_date: '1995-03-08', last_vacation: monthsAgoDate(4), metrics: { weekly_hours: 54, weekend_hours: 4, after_hours_messages: 12, sick_days: 0 } },
+      { full_name: 'Sara Lee', job_title: 'UX Designer', start_date: '2020-09-20', birth_date: '1992-08-30', last_vacation: monthsAgoDate(2), metrics: { weekly_hours: 42, weekend_hours: 0, after_hours_messages: 3, sick_days: 0 } }
+    ];
+
+    const { data: existingEmps } = await supabase
+      .from('employees')
+      .select('id, full_name')
+      .eq('user_id', s.user.id);
+    const existingByName = {};
+    for (const e of (Array.isArray(existingEmps) ? existingEmps : [])) {
+      const k = String(e.full_name || '').toLowerCase();
+      if (k) existingByName[k] = e;
+    }
+
+    const nameToId = {};
+    for (const d of demo) {
+      const k = String(d.full_name).toLowerCase();
+      if (existingByName[k]?.id) {
+        nameToId[k] = existingByName[k].id;
+        continue;
+      }
+      const { data: inserted, error } = await supabase
+        .from('employees')
+        .insert({
+          user_id: s.user.id,
+          full_name: d.full_name,
+          job_title: d.job_title,
+          start_date: d.start_date,
+          birth_date: d.birth_date,
+          last_vacation: d.last_vacation || null
+        })
+        .select('id')
+        .single();
+      if (error) throw error;
+      nameToId[k] = inserted?.id;
+    }
+
+    for (const d of demo) {
+      const empId = nameToId[String(d.full_name).toLowerCase()];
+      if (!empId) continue;
+
+      const { data: existingMetric } = await supabase
+        .from('weekly_metrics')
+        .select('id')
+        .eq('employee_id', empId)
+        .eq('week_start', weekStart)
+        .maybeSingle();
+
+      const weeklyHours = Number(d.metrics.weekly_hours || 0);
+      const overtimeHours = Math.max(0, weeklyHours - 40);
+      const payload = {
+        employee_id: empId,
+        week_start: weekStart,
+        weekly_hours: d.metrics.weekly_hours,
+        weekend_hours: d.metrics.weekend_hours,
+        after_hours_messages: d.metrics.after_hours_messages,
+        sick_days: d.metrics.sick_days,
+        overtime_hours: overtimeHours
+      };
+
+      if (existingMetric?.id) {
+        const r = await supabase.from('weekly_metrics').update(payload).eq('id', existingMetric.id);
+        if (r.error) throw r.error;
+      } else {
+        const r = await supabase.from('weekly_metrics').insert(payload);
+        if (r.error) throw r.error;
+      }
+    }
+
+    setBurnoutEmployeeFormOpen(false);
+    await refreshBurnoutMain();
+    await refreshBurnoutAiFromWeek(weekStart);
+  }catch(e){
+    console.warn('Demo data load failed', e);
   }
 };
 
@@ -2035,7 +2221,7 @@ async function waitForSubscription(email, token, {
   maxAttempts = 8,
   delayMs = 2500
 } = {}) {
-  for (let i = 0; i < maxAttempts; i++) {
+  for (let i = 0; i <maxAttempts; i++) {
     try {
       const subRes = await fetch('/api/check-subscription', {
         method: 'POST',
@@ -2223,9 +2409,17 @@ async function renderAuthState(){
     }, 1000);
   }
 
-  const email = session.user?.email || 'Signed in';
-  const userPill = document.getElementById('userPill');
-  if (userPill) userPill.textContent = email;
+  const info = await getUserDisplayInfo();
+  const fullNameEl = document.getElementById('userFullName');
+  const emailEl = document.getElementById('userEmail');
+  const avatarEl = document.getElementById('userAvatar');
+
+  const fullName = info.fullName || 'Signed in';
+  const email = info.email || '';
+
+  if (fullNameEl) fullNameEl.textContent = fullName;
+  if (emailEl) emailEl.textContent = email || '—';
+  if (avatarEl) avatarEl.textContent = getInitialsFromName(fullName, email);
 }
 
 async function checkStatus(){
