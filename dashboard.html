@@ -62,12 +62,25 @@
         </div>
       </div>
 
-      <div class="pill" id="userPill">Signed in</div>
+      <div class="pill" id="userPill" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:16px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2)">
+        <div id="userAvatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#FF6B6B,#FFD93D);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#0f172a" title="Profile">—</div>
+        <div style="min-width:0;flex:1">
+          <div id="userName" style="font-weight:900;color:#0f172a;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
+          <div id="userEmail" style="font-size:11px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</div>
+        </div>
+      </div>
 
       <div class="side-nav" style="margin-top:12px">
         <div class="nav-section-label">CORE</div>
         <button class="nav-item active" data-tab="overview"><span class="nav-left"><span class="nav-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 10.5L12 3l9 7.5V21a1.5 1.5 0 0 1-1.5 1.5H4.5A1.5 1.5 0 0 1 3 21v-10.5Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 22.5V15.5A1.5 1.5 0 0 1 11 14h2a1.5 1.5 0 0 1 1.5 1.5v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span>Overview</span></span></button>
-        <button class="nav-item" data-tab="pulse"><span class="nav-left"><span class="nav-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7-4.4-9.5-9A5.7 5.7 0 0 1 12 5.8 5.7 5.7 0 0 1 21.5 12C19 16.6 12 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.6 12h3.2l1.7-3.2 2.6 7 2.2-4.1h3.9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Burnout Intelligence</span></span><span class="nav-badge" id="navBurnoutBadge" hidden>—</span></button>
+        <div class="nav-group">
+          <button class="nav-item nav-parent" data-tab="pulse"><span class="nav-left"><span class="nav-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 21s-7-4.4-9.5-9A5.7 5.7 0 0 1 12 5.8 5.7 5.7 0 0 1 21.5 12C19 16.6 12 21 12 21Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.6 12h3.2l1.7-3.2 2.6 7 2.2-4.1h3.9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Burnout Intelligence</span></span><span class="nav-badge" id="navBurnoutBadge" hidden>—</span></button>
+          <div class="nav-sub-items">
+            <button class="nav-item nav-sub" data-tab="pulse-plans" style="font-size:0.8rem"><span class="nav-left"><span>Strategic Action Plans</span></span></button>
+            <button class="nav-item nav-sub" data-tab="pulse-hotspots" style="font-size:0.8rem"><span class="nav-left"><span>Team Hotspots</span></span></button>
+            <button class="nav-item nav-sub" data-tab="pulse-insights" style="font-size:0.8rem"><span class="nav-left"><span>AI Insights</span></span></button>
+          </div>
+        </div>
         <button class="nav-item" data-tab="hire"><span class="nav-left"><span class="nav-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l2.2 6.2L21 10l-6.8 1.8L12 18l-2.2-6.2L3 10l6.8-1.8L12 2Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 18v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span>Hiring Intelligence</span></span></button>
         <button class="nav-item" data-tab="board"><span class="nav-left"><span class="nav-ic" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M8 19V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 19V12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 19V7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 19V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span>Workforce Insights</span></span></button>
 
@@ -360,115 +373,163 @@
         </section>
 
         <section id="tab-pulse" class="module">
-          <div class="panel pad" style="padding:32px">
-            <div style="max-width:980px;margin:0 auto">
-              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
-                <div style="min-width:260px;flex:1">
-                  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-                    <div style="font-family:Syne;font-weight:900;font-size:22px">Burnout Intelligence</div>
-                    <span id="pulseDemoBadge" style="display:none;background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.1);border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900;color:#334155">Demo data</span>
+          <div style="padding:0 24px">
+            <div style="max-width:1200px;margin:0 auto">
+              <!-- Section A: Your Team -->
+              <div class="panel pad" style="margin-top:24px">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+                  <h2 style="font-family:Syne;font-weight:900;font-size:20px;margin:0">Your Team</h2>
+                  <div style="display:flex;gap:10px">
+                    <button id="btnTryDemoData" onclick="loadDemoData()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 16px;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='rgba(0,0,0,0.03)'">Try demo data</button>
+                    <button id="btnAddEmployee" onclick="showAddEmployeeForm()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:10px 16px;font-family:'Syne',system-ui;font-weight:900;font-size:12px;color:#0f172a;cursor:pointer">+ Add employee</button>
                   </div>
-                  <div class="small" style="margin-top:6px">Upload employee metrics and generate a weekly burnout intelligence report.</div>
                 </div>
-                <div style="flex-shrink:0;display:flex;gap:10px;align-items:center">
-                  <button id="btnPulse" onclick="runPulse()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:14px;padding:14px 26px;font-family:'Syne',system-ui;font-weight:900;font-size:15px;color:#0f172a;cursor:pointer;box-shadow:0 10px 26px rgba(255,107,107,0.28);transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 14px 34px rgba(255,107,107,0.34)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 10px 26px rgba(255,107,107,0.28)'">Generate burnout intelligence report</button>
-                  <button id="btnPulseDemo" onclick="runPulseDemo()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 16px;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='rgba(0,0,0,0.03)'">Try demo data</button>
-                  <button id="btnPulseRecent" onclick="togglePulseRecent()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:12px;padding:10px 16px;color:#0f172a;font-size:12px;font-weight:900;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='rgba(0,0,0,0.03)'">Recent analyses</button>
-                  <button onclick="clearPulse()" style="background:none;border:1px solid rgba(255,107,107,0.3);border-radius:12px;padding:10px 16px;color:#FF6B6B;font-size:12px;font-weight:800;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,107,107,0.08)'" onmouseout="this.style.background='none'">✕ Clear</button>
-                </div>
-              </div>
 
-              <div id="pulseRecentDropdown" class="panel pad" style="display:none;padding:0;margin-top:12px">
-                <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
-                  <div style="display:flex;align-items:center;gap:10px;min-width:0">
-                    <div style="font-weight:900">Recent analyses</div>
-                    <span id="pulseHistoryCount" style="background:rgba(0,0,0,0.04);border:1px solid rgba(0,0,0,0.10);border-radius:999px;padding:4px 10px;font-size:11px;font-weight:900;color:#334155" hidden>0</span>
+                <div id="employeesList" style="display:grid;gap:12px">
+                  <!-- Empty state -->
+                  <div id="emptyState" class="panel" style="padding:24px;text-align:center;border:2px dashed rgba(255,107,107,0.2);background:rgba(255,107,107,0.02)">
+                    <div style="font-size:16px;font-weight:900;color:#64748b;margin-bottom:8px">Add your team members to get started</div>
+                    <div style="font-size:13px;color:#94a3b8">Employees are saved permanently and used for burnout analysis.</div>
                   </div>
-                  <button type="button" onclick="togglePulseRecent(false)" style="background:none;border:none;color:#94a3b8;font-size:14px;cursor:pointer;font-weight:900" aria-label="Close">✕</button>
-                </div>
-                <div id="pulseRecentBody" style="padding:0 16px 14px 16px;overflow:hidden;max-height:0;opacity:0;transition:max-height 0.25s ease, opacity 0.2s ease">
-                  <div id="pulseHistory" style="margin-top:0"></div>
-                </div>
-              </div>
-
-              <div style="background:rgba(99,102,241,0.04);border:1px solid rgba(99,102,241,0.1);border-radius:10px;padding:10px 14px;font-size:11px;color:#64748b;margin-top:16px">
-                🤖 <strong>AI-powered:</strong> Results are generated by Claude AI and should be used as a guide. Always apply your own judgment before making hiring or HR decisions.
-              </div>
-
-              <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-                <span style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;color:#334155">EU privacy-friendly (data stays in your account)</span>
-                <span style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;color:#334155">Secure uploads (CV/CSV)</span>
-                <span style="background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.08);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;color:#334155">Advisory AI outputs</span>
-              </div>
-
-              <div style="margin-top:24px;display:flex;gap:10px">
-                <button id="pulseTabManual" onclick="switchPulseTab('manual')" style="flex:1;padding:12px 12px;border-radius:12px;border:1.5px solid #FF6B6B;background:rgba(255,107,107,0.1);font-weight:900;font-size:12px;color:#FF6B6B;cursor:pointer">👤 Add manually</button>
-                <button id="pulseTabCsv" onclick="switchPulseTab('csv')" style="flex:1;padding:12px 12px;border-radius:12px;border:1.5px solid rgba(0,0,0,0.1);background:transparent;font-weight:900;font-size:12px;color:#64748b;cursor:pointer">📂 Upload CSV</button>
-              </div>
-
-              <div style="margin-top:20px">
-                <div id="pulseManualPanel" style="margin-bottom:0">
-                  <div id="pulseEmployeeList" style="display:grid;gap:10px;margin-bottom:12px"></div>
-                  <button onclick="addPulseEmployee()" style="width:100%;padding:12px;border-radius:12px;border:2px dashed rgba(255,107,107,0.3);background:transparent;font-weight:900;font-size:12px;color:#FF6B6B;cursor:pointer">+ Add employee</button>
                 </div>
 
-                <div id="pulseCsvPanel" style="display:none;margin-bottom:0">
-                  <div style="background:rgba(255,107,107,0.04);border:1px solid rgba(255,107,107,0.12);border-radius:12px;padding:14px;margin-bottom:12px;font-size:12px;color:#64748b;line-height:1.6">
-                    💡 <strong>How it works:</strong> Download the CSV template below, fill in your employee data (one row per employee), then upload it here. All columns except "name" are optional.
-                  </div>
-                  <div style="background:rgba(255,107,107,0.06);border:1px solid rgba(255,107,107,0.2);border-radius:18px;padding:26px">
-                    <div style="font-size:11px;font-weight:900;color:#FF6B6B;letter-spacing:0.08em;margin-bottom:8px">📊 EMPLOYEE DATA CSV</div>
-                    <div style="font-size:12px;color:#64748b;margin-bottom:4px">Required columns:</div>
-                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-                      <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:#FF6B6B">name</span>
-                      <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:#FF6B6B">weekly hours</span>
-                      <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:#FF6B6B">weekend hours</span>
-                      <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:#FF6B6B">after-hours messages</span>
-                      <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:#FF6B6B">sick days</span>
-                      <span style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:3px 8px;font-size:11px;font-weight:800;color:#FF6B6B">last vacation</span>
+                <!-- Add Employee Form (hidden by default) -->
+                <div id="addEmployeeForm" style="display:none;margin-top:20px;padding:20px;border:1px solid rgba(255,107,107,0.2);border-radius:12px;background:rgba(255,107,107,0.02)">
+                  <div style="font-weight:900;font-size:16px;margin-bottom:16px">Add New Employee</div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:900;color:#64748b;margin-bottom:4px">Full name *</label>
+                      <input id="empFullName" type="text" style="width:100%;padding:8px 12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:13px" placeholder="e.g. John Doe">
                     </div>
-                    <label style="display:flex;align-items:center;gap:10px;background:rgba(255,107,107,0.08);border:2px dashed rgba(255,107,107,0.3);border-radius:12px;padding:18px;cursor:pointer">
-                      <span style="font-size:20px">📈</span>
-                      <div>
-                        <div style="font-weight:900;font-size:13px;color:#0f172a">Click to upload CSV file</div>
-                        <div style="font-size:11px;color:#94a3b8;margin-top:2px">CSV format only</div>
-                      </div>
-                      <input type="file" id="pulseFile" accept=".csv" style="display:none">
-                    </label>
-                    <div id="pulseName" style="margin-top:8px;font-size:12px;color:#FF6B6B;font-weight:800"></div>
-                    <a id="pulseCsvTemplate" href="#" onclick="downloadPulseTemplate()" style="display:inline-block;margin-top:10px;font-size:12px;color:#6366f1;font-weight:800;text-decoration:underline">⬇ Download CSV template</a>
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:900;color:#64748b;margin-bottom:4px">Job title</label>
+                      <input id="empJobTitle" type="text" style="width:100%;padding:8px 12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:13px" placeholder="e.g. Senior Engineer">
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:900;color:#64748b;margin-bottom:4px">Start date *</label>
+                      <input id="empStartDate" type="date" style="width:100%;padding:8px 12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:13px">
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:900;color:#64748b;margin-bottom:4px">Birth date</label>
+                      <input id="empBirthDate" type="date" style="width:100%;padding:8px 12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:13px">
+                    </div>
+                    <div>
+                      <label style="display:block;font-size:12px;font-weight:900;color:#64748b;margin-bottom:4px">Last vacation date</label>
+                      <input id="empLastVacation" type="date" style="width:100%;padding:8px 12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:13px">
+                    </div>
+                  </div>
+                  <div id="formError" style="color:#FF6B6B;font-size:12px;font-weight:800;margin-bottom:12px;display:none"></div>
+                  <div style="display:flex;gap:10px">
+                    <button onclick="saveEmployee()" id="btnSaveEmployee" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:8px;padding:8px 16px;font-weight:900;font-size:12px;color:#0f172a;cursor:pointer">Save</button>
+                    <button onclick="hideAddEmployeeForm()" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:8px;padding:8px 16px;font-weight:900;font-size:12px;color:#64748b;cursor:pointer">Cancel</button>
                   </div>
                 </div>
               </div>
 
-              <div id="pulseMsg" class="small" style="color:var(--muted);margin-top:16px"></div>
+              <!-- Section B: This Week's Data -->
+              <div id="weeklyDataSection" class="panel pad" style="margin-top:24px;display:none">
+                <div style="margin-bottom:20px">
+                  <h2 style="font-family:Syne;font-weight:900;font-size:20px;margin:0 0 4px 0">This Week's Data</h2>
+                  <div id="weekRange" style="font-size:13px;color:#64748b;font-weight:700">Loading...</div>
+                </div>
+
+                <div id="weeklyDataList" style="display:grid;gap:12px;margin-bottom:16px"></div>
+
+                <button id="btnSaveWeeklyData" onclick="saveWeeklyData()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 20px;font-family:'Syne',system-ui;font-weight:900;font-size:14px;color:#0f172a;cursor:pointer">Save weekly data</button>
+              </div>
+
+              <!-- Section C: Weekly Score & Trend -->
+              <div id="scoreSection" class="panel pad" style="margin-top:24px;display:none">
+                <div style="margin-bottom:20px">
+                  <h2 style="font-family:Syne;font-weight:900;font-size:20px;margin:0 0 4px 0">Weekly Score & Trend</h2>
+                  <div style="font-size:13px;color:#64748b">Company burnout risk assessment</div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+                  <div class="panel" style="padding:16px;text-align:center">
+                    <div style="font-size:12px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">COMPANY RISK SCORE</div>
+                    <div id="companyScore" class="burnout-score" style="font-size:32px;margin-bottom:4px">—</div>
+                    <div id="riskLevel" style="font-size:12px;font-weight:800;color:#FF6B6B">—</div>
+                  </div>
+                  <div class="panel" style="padding:16px;text-align:center">
+                    <div style="font-size:12px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">% AT RISK</div>
+                    <div id="atRiskPercent" style="font-family:Syne;font-weight:900;font-size:32px;color:#FF6B6B;margin-bottom:4px">—</div>
+                    <div style="font-size:12px;color:#94a3b8">employees with score >50</div>
+                  </div>
+                  <div class="panel" style="padding:16px;text-align:center">
+                    <div style="font-size:12px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">TOP RISK DRIVER</div>
+                    <div id="topRiskDriver" style="font-weight:900;font-size:14px;color:#0f172a;margin-bottom:4px">—</div>
+                    <div style="font-size:12px;color:#94a3b8">across all employees</div>
+                  </div>
+                  <div class="panel" style="padding:16px;text-align:center">
+                    <div style="font-size:12px;font-weight:900;color:#64748b;letter-spacing:0.08em;margin-bottom:8px">RISK TREND</div>
+                    <div id="riskTrend" style="font-weight:900;font-size:14px;color:#64748b;margin-bottom:4px">—</div>
+                    <div style="font-size:12px;color:#94a3b8">vs last week</div>
+                  </div>
+                </div>
+
+                <!-- Trend Chart -->
+                <div class="panel" style="padding:20px">
+                  <div style="font-weight:900;font-size:16px;margin-bottom:16px">8-Week Burnout Trend</div>
+                  <div id="trendChart" style="display:flex;gap:8px;align-items:end;height:120px"></div>
+                </div>
+
+                <div style="text-align:center;margin-top:20px">
+                  <button onclick="generateFullReport()" style="background:linear-gradient(90deg,#FF6B6B,#FFD93D);border:none;border-radius:12px;padding:12px 24px;font-family:'Syne',system-ui;font-weight:900;font-size:14px;color:#0f172a;cursor:pointer">Generate full report</button>
+                </div>
+              </div>
             </div>
           </div>
+        </section>
 
-          <div class="pulse-two-col" style="margin-top:24px;display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start">
-            <div class="pulse-right-stack" style="display:grid;gap:24px;align-items:start;min-width:0">
-              <div class="panel pad">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-                  <div style="font-weight:900">Weekly report</div>
-                  <button id="btnExportPulseXlsx" class="btn" disabled>Export Report (.xlsx)</button>
+        <!-- Sub-pages -->
+        <section id="tab-pulse-plans" class="module">
+          <div style="padding:0 24px">
+            <div style="max-width:980px;margin:0 auto">
+              <div class="panel pad" style="margin-top:24px">
+                <h1 style="font-family:Syne;font-weight:900;font-size:24px;margin:0 0 8px 0">Strategic Action Plans</h1>
+                <div style="font-size:14px;color:#64748b;margin-bottom:20px">Manager-ready action plans based on your burnout analysis</div>
+                <div id="actionPlansContent">
+                  <div style="text-align:center;padding:40px">
+                    <div style="font-size:16px;font-weight:900;color:#64748b;margin-bottom:8px">Run a burnout analysis to generate action plans</div>
+                    <div style="font-size:13px;color:#94a3b8">Action plans will appear here after generating a full report.</div>
+                  </div>
                 </div>
-                <div id="pulseOut" style="margin-top:12px;overflow:auto"></div>
               </div>
+            </div>
+          </div>
+        </section>
 
-              <div class="panel pad">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-                  <div style="font-weight:900">AI Insights</div>
-                  <div class="small" style="font-weight:700">Auto-generated signals from your Burnout Intelligence data — based on patterns typically tracked in HR systems</div>
+        <section id="tab-pulse-hotspots" class="module">
+          <div style="padding:0 24px">
+            <div style="max-width:980px;margin:0 auto">
+              <div class="panel pad" style="margin-top:24px">
+                <h1 style="font-family:Syne;font-weight:900;font-size:24px;margin:0 0 8px 0">Team Hotspots</h1>
+                <div style="font-size:14px;color:#64748b;margin-bottom:20px">Identify patterns and hotspots in your team data</div>
+                <div id="hotspotsContent">
+                  <div style="text-align:center;padding:40px">
+                    <div style="font-size:16px;font-weight:900;color:#64748b;margin-bottom:8px">Run a burnout analysis to view hotspots</div>
+                    <div style="font-size:13px;color:#94a3b8">Team hotspots will appear here after generating a full report.</div>
+                  </div>
                 </div>
-                <div id="aiInsightsOut" style="margin-top:14px;display:grid;gap:10px"></div>
               </div>
+            </div>
+          </div>
+        </section>
 
-              <div class="panel pad">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
-                  <div style="font-weight:900">Burnout Intelligence Trend</div>
-                  <div class="small" style="font-weight:700">4–8 week tracking</div>
+        <section id="tab-pulse-insights" class="module">
+          <div style="padding:0 24px">
+            <div style="max-width:980px;margin:0 auto">
+              <div class="panel pad" style="margin-top:24px">
+                <h1 style="font-family:Syne;font-weight:900;font-size:24px;margin:0 0 8px 0">AI Insights</h1>
+                <div style="font-size:14px;color:#64748b;margin-bottom:20px">AI-powered insights and recommendations</div>
+                <div id="insightsContent">
+                  <div style="text-align:center;padding:40px">
+                    <div style="font-size:16px;font-weight:900;color:#64748b;margin-bottom:8px">Run a burnout analysis for AI insights</div>
+                    <div style="font-size:13px;color:#94a3b8">AI insights will appear here after generating a full report.</div>
+                  </div>
                 </div>
-                <div id="pulseTrendOut" style="margin-top:14px"></div>
               </div>
             </div>
           </div>

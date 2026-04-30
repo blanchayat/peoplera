@@ -1305,7 +1305,9 @@ async function runPulseDemo(){
 
 function switchTab(tab){
   document.querySelectorAll('.nav-item').forEach(b => {
-    b.classList.toggle('active', b.getAttribute('data-tab') === tab);
+    const itemTab = b.getAttribute('data-tab');
+    const isActive = itemTab === tab || (tab.startsWith('pulse-') && itemTab === 'pulse');
+    b.classList.toggle('active', isActive);
   });
 
   document.querySelectorAll('.nav-item[data-section]').forEach(b => {
@@ -1324,6 +1326,9 @@ function switchTab(tab){
     hire: 'Hiring Intelligence',
     board: 'Workforce Insights',
     pulse: 'Burnout Intelligence',
+    'pulse-plans': 'Strategic Action Plans',
+    'pulse-hotspots': 'Team Hotspots',
+    'pulse-insights': 'AI Insights',
     settings: 'Settings'
   };
 
@@ -1339,6 +1344,11 @@ function switchTab(tab){
 
   if (tab === 'pulse') {
     updateNavBurnoutBadge(window.__lastDecisionEngine);
+    loadPulseData();
+  }
+
+  if (['pulse-plans', 'pulse-hotspots', 'pulse-insights'].includes(tab)) {
+    updateNavBurnoutBadge(window.__lastDecisionEngine);
   }
 }
 
@@ -1351,7 +1361,7 @@ function showSection(section){
     return;
   }
 
-  if (['overview','hire','board','pulse','settings'].includes(section)) {
+  if (['overview','hire','board','pulse','pulse-plans','pulse-hotspots','pulse-insights','settings'].includes(section)) {
     switchTab(section);
     return;
   }
@@ -1576,6 +1586,8 @@ async function renderAuthState(){
   const email = session.user?.email || 'Signed in';
   const userPill = document.getElementById('userPill');
   if (userPill) userPill.textContent = email;
+
+  updateUserProfile();
 }
 
 async function checkStatus(){
@@ -3564,6 +3576,527 @@ window.removePulseEmployee = removePulseEmployee;
 window.downloadPulseTemplate = downloadPulseTemplate;
 window.loadHistoryItem = loadHistoryItem;
 window.showEmployeeCard = showEmployeeCard;
+
+// New Burnout Intelligence functions
+let employees = [];
+let weeklyData = {};
+
+async function loadPulseData() {
+  try {
+    const { data: empData, error: empError } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false });
+
+    if (empError) throw empError;
+    employees = empData || [];
+
+    // Load weekly metrics for current week
+    const currentMonday = getCurrentMonday();
+    const { data: metricsData, error: metricsError } = await supabase
+      .from('weekly_metrics')
+      .select('*')
+      .eq('employee_id', employees.map(e => e.id))
+      .eq('week_start', currentMonday);
+
+    if (metricsError) throw metricsError;
+    weeklyData = {};
+    (metricsData || []).forEach(m => {
+      weeklyData[m.employee_id] = m;
+    });
+
+    renderEmployees();
+    updateSectionsVisibility();
+    if (employees.length > 0) {
+      renderWeeklyData();
+      await loadAndCalculateScores();
+    }
+  } catch (error) {
+    console.error('Error loading pulse data:', error);
+    showToast('Error loading data', 'error');
+  }
+}
+
+function getCurrentMonday() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  return monday.toISOString().split('T')[0];
+}
+
+function renderEmployees() {
+  const list = document.getElementById('employeesList');
+  const emptyState = document.getElementById('emptyState');
+
+  if (employees.length === 0) {
+    list.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+
+  emptyState.style.display = 'none';
+
+  list.innerHTML = employees.map(emp => `
+    <div class="panel" style="padding:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div>
+          <div style="font-weight:900;font-size:16px">${emp.full_name}</div>
+          <div style="font-size:13px;color:#64748b">${emp.job_title}</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="editEmployee(${emp.id})" style="background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.12);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;color:#64748b;cursor:pointer">✏ Edit</button>
+          <button onclick="deleteEmployee(${emp.id})" style="background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2);border-radius:6px;padding:6px 10px;font-size:12px;font-weight:800;color:#FF6B6B;cursor:pointer">✕ Delete</button>
+        </div>
+      </div>
+      <div id="emp-details-${emp.id}" style="display:none;padding-top:12px;border-top:1px solid rgba(0,0,0,0.08)">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;font-size:13px">
+          <div><strong>Start Date:</strong> ${formatDate(emp.start_date)}</div>
+          <div><strong>Birth Date:</strong> ${emp.birth_date ? formatDate(emp.birth_date) : 'Not set'}</div>
+          <div><strong>Last Vacation:</strong> ${emp.last_vacation ? formatDate(emp.last_vacation) : 'Not set'}</div>
+        </div>
+      </div>
+      <button onclick="toggleEmployeeDetails(${emp.id})" style="background:none;border:none;color:#6366f1;font-size:12px;font-weight:800;cursor:pointer;margin-top:8px">Show details ▼</button>
+    </div>
+  `).join('');
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function toggleEmployeeDetails(id) {
+  const details = document.getElementById(`emp-details-${id}`);
+  const btn = details.nextElementSibling;
+  const isVisible = details.style.display !== 'none';
+  details.style.display = isVisible ? 'none' : 'block';
+  btn.textContent = isVisible ? 'Show details ▼' : 'Hide details ▲';
+}
+
+function updateSectionsVisibility() {
+  const weeklySection = document.getElementById('weeklyDataSection');
+  const scoreSection = document.getElementById('scoreSection');
+
+  weeklySection.style.display = employees.length > 0 ? 'block' : 'none';
+  scoreSection.style.display = employees.length > 0 ? 'block' : 'none';
+}
+
+function renderWeeklyData() {
+  const list = document.getElementById('weeklyDataList');
+  const weekRange = document.getElementById('weekRange');
+  const monday = getCurrentMonday();
+  const sunday = new Date(monday);
+  sunday.setDate(sunday.getDate() + 6);
+
+  weekRange.textContent = `${monday} – ${sunday.toISOString().split('T')[0]}`;
+
+  list.innerHTML = employees.map(emp => {
+    const data = weeklyData[emp.id] || {};
+    return `
+      <div class="panel" style="padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-weight:900;font-size:14px">${emp.full_name}</div>
+            <div style="font-size:12px;color:#64748b">${emp.job_title}</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">
+          <div>
+            <label style="display:block;font-size:11px;font-weight:900;color:#64748b;margin-bottom:4px">Weekly Hours</label>
+            <input type="number" id="hours-${emp.id}" value="${data.weekly_hours || ''}" style="width:100%;padding:6px 8px;border:1px solid rgba(0,0,0,0.12);border-radius:6px;font-size:13px" min="0" step="0.5">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:900;color:#64748b;margin-bottom:4px">Weekend Hours</label>
+            <input type="number" id="weekend-${emp.id}" value="${data.weekend_hours || ''}" style="width:100%;padding:6px 8px;border:1px solid rgba(0,0,0,0.12);border-radius:6px;font-size:13px" min="0" step="0.5">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:900;color:#64748b;margin-bottom:4px">After-hours Messages</label>
+            <input type="number" id="messages-${emp.id}" value="${data.after_hours_messages || ''}" style="width:100%;padding:6px 8px;border:1px solid rgba(0,0,0,0.12);border-radius:6px;font-size:13px" min="0">
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:900;color:#64748b;margin-bottom:4px">Sick Days</label>
+            <input type="number" id="sick-${emp.id}" value="${data.sick_days || ''}" style="width:100%;padding:6px 8px;border:1px solid rgba(0,0,0,0.12);border-radius:6px;font-size:13px" min="0" step="0.5">
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveWeeklyData() {
+  const btn = document.getElementById('btnSaveWeeklyData');
+  const originalText = btn.textContent;
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+
+  try {
+    const monday = getCurrentMonday();
+    const updates = [];
+    const inserts = [];
+
+    for (const emp of employees) {
+      const hours = parseFloat(document.getElementById(`hours-${emp.id}`).value) || 0;
+      const weekend = parseFloat(document.getElementById(`weekend-${emp.id}`).value) || 0;
+      const messages = parseInt(document.getElementById(`messages-${emp.id}`).value) || 0;
+      const sick = parseFloat(document.getElementById(`sick-${emp.id}`).value) || 0;
+
+      const data = {
+        employee_id: emp.id,
+        week_start: monday,
+        weekly_hours: hours,
+        weekend_hours: weekend,
+        after_hours_messages: messages,
+        sick_days: sick,
+        overtime_hours: Math.max(0, hours - 40)
+      };
+
+      if (weeklyData[emp.id]) {
+        updates.push({ ...data, id: weeklyData[emp.id].id });
+      } else {
+        inserts.push(data);
+      }
+    }
+
+    if (updates.length > 0) {
+      const { error: updateError } = await supabase
+        .from('weekly_metrics')
+        .upsert(updates);
+      if (updateError) throw updateError;
+    }
+
+    if (inserts.length > 0) {
+      const { error: insertError } = await supabase
+        .from('weekly_metrics')
+        .insert(inserts);
+      if (insertError) throw insertError;
+    }
+
+    showToast('Weekly data saved successfully!');
+    await loadPulseData(); // Refresh data
+  } catch (error) {
+    console.error('Error saving weekly data:', error);
+    showToast('Error saving data', 'error');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+async function loadDemoData() {
+  const btn = document.getElementById('btnTryDemoData');
+  const originalText = btn.textContent;
+  btn.textContent = 'Loading...';
+  btn.disabled = true;
+
+  try {
+    const demoEmployees = [
+      { full_name: 'Alex Kim', job_title: 'Senior Engineer', start_date: '2022-03-15', birth_date: '1990-06-12', last_vacation: getDateMonthsAgo(9) },
+      { full_name: 'Maya Chen', job_title: 'Product Designer', start_date: '2021-07-01', birth_date: '1988-11-24', last_vacation: getDateMonthsAgo(6) },
+      { full_name: 'Omar Hassan', job_title: 'Marketing Lead', start_date: '2023-01-10', birth_date: '1995-03-08', last_vacation: getDateMonthsAgo(4) },
+      { full_name: 'Sara Lee', job_title: 'Operations Manager', start_date: '2020-09-20', birth_date: '1992-08-30', last_vacation: getDateMonthsAgo(2) }
+    ];
+
+    const { data: insertedEmps, error: empError } = await supabase
+      .from('employees')
+      .insert(demoEmployees.map(emp => ({ ...emp, user_id: session.user.id })))
+      .select();
+
+    if (empError) throw empError;
+
+    const monday = getCurrentMonday();
+    const demoMetrics = [
+      { employee_id: insertedEmps[0].id, week_start: monday, weekly_hours: 68, weekend_hours: 10, after_hours_messages: 28, sick_days: 3, overtime_hours: 28 },
+      { employee_id: insertedEmps[1].id, week_start: monday, weekly_hours: 62, weekend_hours: 8, after_hours_messages: 20, sick_days: 1, overtime_hours: 22 },
+      { employee_id: insertedEmps[2].id, week_start: monday, weekly_hours: 54, weekend_hours: 4, after_hours_messages: 12, sick_days: 0, overtime_hours: 14 },
+      { employee_id: insertedEmps[3].id, week_start: monday, weekly_hours: 42, weekend_hours: 0, after_hours_messages: 3, sick_days: 0, overtime_hours: 2 }
+    ];
+
+    const { error: metricsError } = await supabase
+      .from('weekly_metrics')
+      .insert(demoMetrics);
+
+    if (metricsError) throw metricsError;
+
+    showToast('Demo data loaded successfully!');
+    await loadPulseData();
+  } catch (error) {
+    console.error('Error loading demo data:', error);
+    showToast('Error loading demo data', 'error');
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+function getDateMonthsAgo(months) {
+  const date = new Date();
+  date.setMonth(date.getMonth() - months);
+  return date.toISOString().split('T')[0];
+}
+
+function showAddEmployeeForm() {
+  document.getElementById('addEmployeeForm').style.display = 'block';
+  document.getElementById('btnAddEmployee').style.display = 'none';
+}
+
+function hideAddEmployeeForm() {
+  document.getElementById('addEmployeeForm').style.display = 'none';
+  document.getElementById('btnAddEmployee').style.display = 'inline-block';
+  // Clear form
+  document.getElementById('empFullName').value = '';
+  document.getElementById('empJobTitle').value = '';
+  document.getElementById('empStartDate').value = '';
+  document.getElementById('empBirthDate').value = '';
+  document.getElementById('empLastVacation').value = '';
+  document.getElementById('formError').style.display = 'none';
+}
+
+async function saveEmployee() {
+  const btn = document.getElementById('btnSaveEmployee');
+  const originalText = btn.textContent;
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+
+  try {
+    const fullName = document.getElementById('empFullName').value.trim();
+    const jobTitle = document.getElementById('empJobTitle').value.trim();
+    const startDate = document.getElementById('empStartDate').value;
+    const birthDate = document.getElementById('empBirthDate').value;
+    const lastVacation = document.getElementById('empLastVacation').value;
+
+    if (!fullName || !startDate) {
+      document.getElementById('formError').textContent = 'Full name and start date are required';
+      document.getElementById('formError').style.display = 'block';
+      return;
+    }
+
+    const { error } = await supabase
+      .from('employees')
+      .insert({
+        user_id: session.user.id,
+        full_name: fullName,
+        job_title: jobTitle,
+        start_date: startDate,
+        birth_date: birthDate || null,
+        last_vacation: lastVacation || null
+      });
+
+    if (error) throw error;
+
+    showToast('Employee added successfully!');
+    hideAddEmployeeForm();
+    await loadPulseData();
+  } catch (error) {
+    console.error('Error saving employee:', error);
+    document.getElementById('formError').textContent = 'Error saving employee';
+    document.getElementById('formError').style.display = 'block';
+  } finally {
+    btn.textContent = originalText;
+    btn.disabled = false;
+  }
+}
+
+async function deleteEmployee(id) {
+  if (!confirm('Are you sure you want to delete this employee? This action cannot be undone.')) return;
+
+  try {
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', session.user.id);
+
+    if (error) throw error;
+
+    showToast('Employee deleted');
+    await loadPulseData();
+  } catch (error) {
+    console.error('Error deleting employee:', error);
+    showToast('Error deleting employee', 'error');
+  }
+}
+
+function editEmployee(id) {
+  // For now, just show a message. Could implement inline editing later
+  showToast('Edit functionality coming soon', 'info');
+}
+
+async function loadAndCalculateScores() {
+  try {
+    // Load last 8 weeks of data for trend
+    const monday = getCurrentMonday();
+    const eightWeeksAgo = new Date(monday);
+    eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+
+    const { data: trendData, error: trendError } = await supabase
+      .from('weekly_metrics')
+      .select('*')
+      .eq('employee_id', employees.map(e => e.id))
+      .gte('week_start', eightWeeksAgo.toISOString().split('T')[0])
+      .order('week_start', { ascending: true });
+
+    if (trendError) throw trendError;
+
+    // Calculate scores for current week
+    const currentWeekData = (trendData || []).filter(d => d.week_start === monday);
+    const scores = calculateBurnoutScores(currentWeekData);
+
+    // Update UI
+    updateScoreCards(scores, currentWeekData);
+    renderTrendChart(trendData || []);
+  } catch (error) {
+    console.error('Error calculating scores:', error);
+  }
+}
+
+function calculateBurnoutScores(weeklyData) {
+  const employeeScores = {};
+
+  weeklyData.forEach(data => {
+    const emp = employees.find(e => e.id === data.employee_id);
+    if (!emp) return;
+
+    // Weighted formula: weekly_hours (40%), weekend_hours (20%), after_hours_messages (20%), sick_days (20%)
+    const hoursScore = Math.min(data.weekly_hours / 60, 1) * 40;
+    const weekendScore = Math.min(data.weekend_hours / 20, 1) * 20;
+    const messagesScore = Math.min(data.after_hours_messages / 50, 1) * 20;
+    const sickScore = Math.min(data.sick_days / 5, 1) * 20;
+
+    const totalScore = Math.round(hoursScore + weekendScore + messagesScore + sickScore);
+    employeeScores[emp.id] = totalScore;
+  });
+
+  return employeeScores;
+}
+
+function updateScoreCards(scores, weeklyData) {
+  const scoreValues = Object.values(scores);
+  const companyScore = scoreValues.length > 0 ? Math.round(scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length) : 0;
+  const atRiskCount = scoreValues.filter(s => s > 50).length;
+  const atRiskPercent = scoreValues.length > 0 ? Math.round((atRiskCount / scoreValues.length) * 100) : 0;
+
+  // Find top risk driver
+  const riskDrivers = { hours: 0, weekend: 0, messages: 0, sick: 0 };
+  weeklyData.forEach(data => {
+    if (data.weekly_hours > 50) riskDrivers.hours++;
+    if (data.weekend_hours > 10) riskDrivers.weekend++;
+    if (data.after_hours_messages > 25) riskDrivers.messages++;
+    if (data.sick_days > 2) riskDrivers.sick++;
+  });
+
+  const topDriver = Object.entries(riskDrivers).sort((a, b) => b[1] - a[1])[0];
+  const driverNames = { hours: 'Overtime Hours', weekend: 'Weekend Work', messages: 'After-hours Messages', sick: 'Sick Days' };
+
+  document.getElementById('companyScore').textContent = companyScore;
+  document.getElementById('riskLevel').textContent = getRiskLevel(companyScore);
+  document.getElementById('atRiskPercent').textContent = atRiskPercent;
+  document.getElementById('topRiskDriver').textContent = topDriver[1] > 0 ? driverNames[topDriver[0]] : 'None';
+  document.getElementById('riskTrend').textContent = '—'; // Would need historical data
+}
+
+function getRiskLevel(score) {
+  if (score >= 75) return 'Critical';
+  if (score >= 50) return 'High';
+  if (score >= 25) return 'Medium';
+  return 'Low';
+}
+
+function renderTrendChart(trendData) {
+  const chart = document.getElementById('trendChart');
+  if (!trendData.length) {
+    chart.innerHTML = '<div style="text-align:center;color:#64748b;padding:20px">No trend data available</div>';
+    return;
+  }
+
+  // Group by week and calculate average scores
+  const weeklyAverages = {};
+  trendData.forEach(data => {
+    if (!weeklyAverages[data.week_start]) weeklyAverages[data.week_start] = [];
+    const emp = employees.find(e => e.id === data.employee_id);
+    if (emp) {
+      const score = calculateBurnoutScores([data])[emp.id] || 0;
+      weeklyAverages[data.week_start].push(score);
+    }
+  });
+
+  const weeks = Object.keys(weeklyAverages).sort().slice(-8);
+  const bars = weeks.map(week => {
+    const scores = weeklyAverages[week];
+    const avgScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+    const height = Math.max((avgScore / 100) * 100, 10); // Min height of 10px
+    const color = avgScore >= 75 ? '#dc2626' : avgScore >= 50 ? '#ea580c' : avgScore >= 25 ? '#f59e0b' : '#10b981';
+
+    return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <div style="width:20px;background:${color};border-radius:2px 2px 0 0;min-height:${height}px;max-height:100px;transition:height 0.3s ease" title="Score: ${Math.round(avgScore)}"></div>
+        <div style="font-size:10px;color:#64748b;text-align:center">${new Date(week).toLocaleDateString('en', { month: 'short', day: 'numeric' })}</div>
+      </div>
+    `;
+  });
+
+  chart.innerHTML = bars.join('');
+}
+
+function generateFullReport() {
+  showToast('Full report generation coming soon!', 'info');
+}
+
+function showToast(message, type = 'success') {
+  // Simple toast implementation
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'error' ? '#fee2e2' : '#d1fae5'};
+    color: ${type === 'error' ? '#dc2626' : '#065f46'};
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  `;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => document.body.removeChild(toast), 3000);
+}
+
+// Update user profile in sidebar
+function updateUserProfile() {
+  if (!session?.user) return;
+
+  const user = session.user;
+  const name = user.user_metadata?.full_name || user.user_metadata?.name || '';
+  const email = user.email || '';
+
+  const avatar = document.getElementById('userAvatar');
+  const nameEl = document.getElementById('userName');
+  const emailEl = document.getElementById('userEmail');
+
+  if (name) {
+    const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+    avatar.textContent = initials;
+    nameEl.textContent = name;
+    emailEl.textContent = email;
+  } else {
+    avatar.textContent = email[0]?.toUpperCase() || '?';
+    nameEl.textContent = '';
+    emailEl.textContent = email;
+  }
+}
+
+window.showAddEmployeeForm = showAddEmployeeForm;
+window.hideAddEmployeeForm = hideAddEmployeeForm;
+window.saveEmployee = saveEmployee;
+window.deleteEmployee = deleteEmployee;
+window.editEmployee = editEmployee;
+window.toggleEmployeeDetails = toggleEmployeeDetails;
+window.saveWeeklyData = saveWeeklyData;
+window.loadDemoData = loadDemoData;
+window.generateFullReport = generateFullReport;
 window.closeEmployeeCard = closeEmployeeCard;
 window.exportPulseReportXlsx = exportPulseReportXlsx;
 window.copyPlanToClipboard = copyPlanToClipboard;

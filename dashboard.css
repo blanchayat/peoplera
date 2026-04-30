@@ -49,6 +49,48 @@ body {
 
 .nav-item.active::before{background:#FF6B6B}
 
+.nav-group {
+  margin-bottom: 4px;
+}
+
+.nav-sub-items {
+  margin-left: 16px;
+  border-left: 2px solid rgba(255,107,107,0.15);
+  padding-left: 12px;
+}
+
+.nav-sub {
+  padding: 6px 12px;
+  margin-bottom: 2px;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 8px;
+  transition: all 0.2s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-sub:hover {
+  background: rgba(255,107,107,0.08);
+  color: #0f172a;
+}
+
+.nav-sub.active {
+  background: rgba(255,107,107,0.12);
+  color: #0f172a;
+}
+
+/* Burnout Intelligence gradient text */
+.burnout-score {
+  background: linear-gradient(90deg, #FF6B6B 0%, #FFD93D 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  font-family: 'Syne', system-ui;
+  font-weight: 900;
+}
+
 .panel {
   background: rgba(255,255,255,0.80) !important;
   border: 1px solid rgba(255,107,107,0.12) !important;
@@ -99,7 +141,11 @@ body {
 .dash.sidebar-collapsed .pill,
 .dash.sidebar-collapsed .nav-section-label,
 .dash.sidebar-collapsed .nav-item .nav-left > span:last-child,
-.dash.sidebar-collapsed #userPill{
+.dash.sidebar-collapsed #userPill,
+.dash.sidebar-collapsed #userAvatar,
+.dash.sidebar-collapsed #userName,
+.dash.sidebar-collapsed #userEmail,
+.dash.sidebar-collapsed .nav-sub-items{
   display:none !important;
 }
 
