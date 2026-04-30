@@ -3589,7 +3589,17 @@ async function loadPulseData() {
       .eq('user_id', session.user.id)
       .order('created_at', { ascending: false });
 
-    if (empError) throw empError;
+    if (empError) {
+      console.log('Supabase error loading employees:', empError);
+      // If table doesn't exist, silently show empty state
+      if (empError.message && empError.message.includes('relation') && empError.message.includes('does not exist')) {
+        employees = [];
+        renderEmployees();
+        updateSectionsVisibility();
+        return;
+      }
+      throw empError;
+    }
     employees = empData || [];
 
     // Load weekly metrics for current week
@@ -3600,11 +3610,20 @@ async function loadPulseData() {
       .eq('employee_id', employees.map(e => e.id))
       .eq('week_start', currentMonday);
 
-    if (metricsError) throw metricsError;
-    weeklyData = {};
-    (metricsData || []).forEach(m => {
-      weeklyData[m.employee_id] = m;
-    });
+    if (metricsError) {
+      console.log('Supabase error loading weekly metrics:', metricsError);
+      // If table doesn't exist, silently continue with empty metrics
+      if (metricsError.message && metricsError.message.includes('relation') && metricsError.message.includes('does not exist')) {
+        weeklyData = {};
+      } else {
+        throw metricsError;
+      }
+    } else {
+      weeklyData = {};
+      (metricsData || []).forEach(m => {
+        weeklyData[m.employee_id] = m;
+      });
+    }
 
     renderEmployees();
     updateSectionsVisibility();
@@ -3787,9 +3806,11 @@ async function saveWeeklyData() {
 
 async function loadDemoData() {
   const btn = document.getElementById('btnTryDemoData');
+  const errorEl = document.getElementById('demoError');
   const originalText = btn.textContent;
   btn.textContent = 'Loading...';
   btn.disabled = true;
+  if (errorEl) errorEl.style.display = 'none';
 
   try {
     const demoEmployees = [
@@ -3804,7 +3825,10 @@ async function loadDemoData() {
       .insert(demoEmployees.map(emp => ({ ...emp, user_id: session.user.id })))
       .select();
 
-    if (empError) throw empError;
+    if (empError) {
+      console.log('Supabase error saving demo employees:', empError);
+      throw empError;
+    }
 
     const monday = getCurrentMonday();
     const demoMetrics = [
@@ -3818,12 +3842,20 @@ async function loadDemoData() {
       .from('weekly_metrics')
       .insert(demoMetrics);
 
-    if (metricsError) throw metricsError;
+    if (metricsError) {
+      console.log('Supabase error saving demo metrics:', metricsError);
+      throw metricsError;
+    }
 
     showToast('Demo data loaded successfully!');
     await loadPulseData();
   } catch (error) {
     console.error('Error loading demo data:', error);
+    const errorMessage = error.message || 'Failed to save demo data';
+    if (errorEl) {
+      errorEl.textContent = errorMessage;
+      errorEl.style.display = 'block';
+    }
     showToast('Error loading demo data', 'error');
   } finally {
     btn.textContent = originalText;
