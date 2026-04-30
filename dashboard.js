@@ -3629,7 +3629,12 @@ async function loadPulseData() {
     updateSectionsVisibility();
     if (employees.length > 0) {
       renderWeeklyData();
-      await loadAndCalculateScores();
+      try {
+        await loadAndCalculateScores();
+      } catch (scoresError) {
+        // Silently ignore score calculation errors - pulse results loading is not critical
+        console.log('Scores calculation skipped:', scoresError);
+      }
     }
   } catch (error) {
     console.error('Error loading pulse data:', error);
