@@ -4078,13 +4078,13 @@ function updateUserProfile() {
 
   if (name) {
     const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
-    avatar.textContent = initials;
-    nameEl.textContent = name;
-    emailEl.textContent = email;
+    if (avatar) avatar.textContent = initials;
+    if (nameEl) nameEl.textContent = name;
+    if (emailEl) emailEl.textContent = email;
   } else {
-    avatar.textContent = email[0]?.toUpperCase() || '?';
-    nameEl.textContent = '';
-    emailEl.textContent = email;
+    if (avatar) avatar.textContent = email[0]?.toUpperCase() || '?';
+    if (nameEl) nameEl.textContent = '';
+    if (emailEl) emailEl.textContent = email;
   }
 }
 
