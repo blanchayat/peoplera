@@ -3637,7 +3637,8 @@ async function loadPulseData() {
       }
     }
   } catch (error) {
-    console.error('Error loading pulse data:', error);
+    console.error('Error loading employees or weekly metrics:', error);
+    // Only show error banner for critical table failures (employees, weekly_metrics)
     showToast('Error loading data', 'error');
   }
 }
@@ -3801,7 +3802,8 @@ async function saveWeeklyData() {
     showToast('Weekly data saved successfully!');
     await loadPulseData(); // Refresh data
   } catch (error) {
-    console.error('Error saving weekly data:', error);
+    console.error('Error saving weekly data (critical):', error);
+    // Show error banner for critical weekly_metrics save failures
     showToast('Error saving data', 'error');
   } finally {
     btn.textContent = originalText;
@@ -3855,12 +3857,13 @@ async function loadDemoData() {
     showToast('Demo data loaded successfully!');
     await loadPulseData();
   } catch (error) {
-    console.error('Error loading demo data:', error);
+    console.error('Error loading demo data (critical):', error);
     const errorMessage = error.message || 'Failed to save demo data';
     if (errorEl) {
       errorEl.textContent = errorMessage;
       errorEl.style.display = 'block';
     }
+    // Show error banner for critical demo data save failures (employees/weekly_metrics)
     showToast('Error loading demo data', 'error');
   } finally {
     btn.textContent = originalText;
@@ -3951,7 +3954,8 @@ async function deleteEmployee(id) {
     showToast('Employee deleted');
     await loadPulseData();
   } catch (error) {
-    console.error('Error deleting employee:', error);
+    console.error('Error deleting employee (critical):', error);
+    // Show error banner for critical employee deletion failures
     showToast('Error deleting employee', 'error');
   }
 }
