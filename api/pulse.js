@@ -1,4 +1,78 @@
 const { callClaudeJson } = require('./_anthropic');
+const { requireSupabaseAuth } = require('./_auth');
+
+// ── Rate Limiting (in-memory, per serverless instance) ──
+const RATE_LIMIT_MAX = 10;          // max Claude calls per user per hour
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const rateLimitMap = new Map();      // userId -> [timestamp, ...]
+
+function checkRateLimit(userId) {
+  if (!userId) return false;
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  let timestamps = rateLimitMap.get(userId) || [];
+  timestamps = timestamps.filter(t => t > cutoff);
+  rateLimitMap.set(userId, timestamps);
+  return timestamps.length >= RATE_LIMIT_MAX;
+}
+
+function recordRateLimitHit(userId) {
+  if (!userId) return;
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  let timestamps = rateLimitMap.get(userId) || [];
+  timestamps = timestamps.filter(t => t > cutoff);
+  timestamps.push(now);
+  rateLimitMap.set(userId, timestamps);
+}
+
+// ── Input Sanitization — prevent prompt injection ──
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?previous\s+instructions/i,
+  /ignore\s+(all\s+)?above/i,
+  /disregard\s+(all\s+)?previous/i,
+  /forget\s+(all\s+)?previous/i,
+  /you\s+are\s+now/i,
+  /new\s+instructions?:/i,
+  /system\s*:/i,
+  /\[INST\]/i,
+  /\[\/INST\]/i,
+  /<<SYS>>/i,
+  /<\|im_start\|>/i,
+  /<\|system\|>/i,
+  /\bprompt\s*injection/i,
+  /\bjailbreak/i,
+  /\bDAN\b/,
+  /do\s+anything\s+now/i
+];
+
+function sanitizeText(s, maxLen = 100) {
+  let text = String(s || '').slice(0, maxLen).trim();
+  for (const p of INJECTION_PATTERNS) {
+    text = text.replace(p, '[removed]');
+  }
+  return text;
+}
+
+function sanitizeNumber(n, min, max, fallback = 0) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return fallback;
+  return Math.max(min, Math.min(max, x));
+}
+
+function sanitizeEmployeeInput(e) {
+  return {
+    name: sanitizeText(e?.name || e?.full_name || '', 100),
+    jobTitle: sanitizeText(e?.jobTitle || e?.job_title || '', 100),
+    weeklyHours: sanitizeNumber(e?.weeklyHours || e?.weekly_hours, 0, 168, 0),
+    weekendHours: sanitizeNumber(e?.weekendHours || e?.weekend_hours, 0, 72, 0),
+    afterHoursMessages: sanitizeNumber(e?.afterHoursMessages || e?.after_hours_messages, 0, 9999, 0),
+    sickDays: sanitizeNumber(e?.sickDays || e?.sick_days, 0, 365, 0),
+    burnoutScore: sanitizeNumber(e?.burnoutScore || e?.burnout_score, 0, 100, 0),
+    riskLevel: sanitizeText(e?.riskLevel || e?.risk_level || '', 20),
+    lastVacation: sanitizeText(e?.lastVacation || e?.last_vacation || '', 60)
+  };
+}
 
 function clampInt(n, min, max){
   const x = Number(n);
@@ -311,13 +385,24 @@ module.exports = async (req, res) => {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
 
+    // Extract user ID from JWT for rate limiting (best-effort, non-blocking for record_action_taken)
+    let authUserId = null;
+    try {
+      const jwt = await requireSupabaseAuth(req);
+      authUserId = jwt.sub || null;
+    } catch (authErr) {
+      // Actions that need auth will check individually below
+    }
+
     if (action === 'generate_for_employee') {
-      console.log('generate_for_employee called with body:', JSON.stringify(req.body));
-      console.log('ANTHROPIC_API_KEY present:', !!process.env.ANTHROPIC_API_KEY);
-      console.log('SUPABASE_URL present:', !!process.env.SUPABASE_URL);
       try {
         const authHeader = req.headers.authorization || '';
         if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Authentication required.' });
+
+        // Rate limit check before calling Claude
+        if (authUserId && checkRateLimit(authUserId)) {
+          return res.status(429).json({ error: 'Rate limit exceeded. Try again in 1 hour.' });
+        }
         const employee_id = String(body.employee_id || body.employeeId || body.id || '').trim();
         if (!employee_id) return res.status(400).json({ error: 'employee_id is required' });
 
@@ -422,6 +507,7 @@ module.exports = async (req, res) => {
         }
 
         const supabaseAdmin = await getSupabaseAdminClient();
+        recordRateLimitHit(authUserId);
         const out = await generatePlansForEmployee(supabaseAdmin, employee_id);
         return res.status(200).json(out);
       } catch (err) {
@@ -485,16 +571,23 @@ module.exports = async (req, res) => {
 
     // AI Insights: Claude generates specific insights from employee data
     if (action === 'ai_insights') {
-      const authHeader = req.headers.authorization || '';
-      if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Authentication required.' });
+      if (!authUserId) return res.status(401).json({ error: 'Authentication required.' });
 
-      const employeeData = Array.isArray(body.employees) ? body.employees : [];
-      if (!employeeData.length) return res.status(400).json({ error: 'employees data required' });
+      if (checkRateLimit(authUserId)) {
+        return res.status(429).json({ error: 'Rate limit exceeded. Try again in 1 hour.' });
+      }
+
+      const rawEmployees = Array.isArray(body.employees) ? body.employees : [];
+      if (!rawEmployees.length) return res.status(400).json({ error: 'employees data required' });
+
+      const employeeData = rawEmployees.map(sanitizeEmployeeInput).filter(e => e.name).slice(0, 300);
+      if (!employeeData.length) return res.status(400).json({ error: 'No valid employee data after sanitization' });
 
       const system = 'You are Peoplera AI Insights — an HR burnout analytics expert. Analyze the employee data and return specific, actionable insights with real employee names and exact numbers. Be concrete and prescriptive.';
       const userPrompt = `Employee burnout data:\n${JSON.stringify(employeeData)}\n\nReturn a JSON object with:\n- "insights": array of 4-5 objects, each with: "type" (CRITICAL/WARNING/TREND/POSITIVE), "color" (hex), "icon" (single char: ! or arrow), "title" (specific with names and numbers), "detail" (2-3 sentences with concrete recommendations)\n- "recommendations": array of 5 strings — specific actionable steps naming employees\n\nRules:\n- Always name specific employees with their exact numbers\n- CRITICAL = score >=75, WARNING = concerning patterns, TREND = week-over-week changes, POSITIVE = improvements\n- Be prescriptive: "Cap Sara Lee at 50h this week" not "Consider reducing workload"`;
 
       try {
+        recordRateLimitHit(authUserId);
         const out = await callClaudeJson({ system, user: userPrompt, schemaName: 'ai_insights' });
         return res.status(200).json(out || { insights: [], recommendations: [] });
       } catch (aiErr) {
@@ -503,9 +596,12 @@ module.exports = async (req, res) => {
     }
 
     // Default: existing Pulse behavior (unchanged)
-    const authHeader = req.headers.authorization || '';
-    if (!authHeader.startsWith('Bearer ')) {
+    if (!authUserId) {
       return res.status(401).json({ error: 'Authentication required.' });
+    }
+
+    if (checkRateLimit(authUserId)) {
+      return res.status(429).json({ error: 'Rate limit exceeded. Try again in 1 hour.' });
     }
 
     const employees = Array.isArray(body.employees) ? body.employees : [];
@@ -516,15 +612,8 @@ module.exports = async (req, res) => {
     }
 
     const safe = employees
-      .map(e=>({
-        name: String(e?.name || '').slice(0, 160),
-        weeklyHours: Number(e?.weeklyHours || 0),
-        weekendHours: Number(e?.weekendHours || 0),
-        afterHoursMessages: Number(e?.afterHoursMessages || 0),
-        sickDays: Number(e?.sickDays || 0),
-        lastVacation: String(e?.lastVacation || '').slice(0, 60)
-      }))
-      .filter(e=>e.name.trim() !== '')
+      .map(sanitizeEmployeeInput)
+      .filter(e => e.name.trim() !== '')
       .slice(0, 300);
 
     if (!safe.length) {
@@ -536,6 +625,7 @@ module.exports = async (req, res) => {
 
     const userPrompt = `Employee metrics (weekly snapshot):\n${JSON.stringify(safe)}\n\nInstructions:\n- Output one employee object per input employee (match by name).\n- burnoutScore must be 0-100.\n- riskLevel must be low/medium/high/critical.\n- Provide top riskFactors and concrete recommendations for HR intervention.\nReturn JSON exactly matching required schema.`;
 
+    recordRateLimitHit(authUserId);
     const out = await callClaudeJson({ system, user: userPrompt, schemaName: 'pulse' });
 
     const outEmployees = Array.isArray(out?.employees) ? out.employees.map(normalizeEmployee) : [];

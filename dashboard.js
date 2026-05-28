@@ -1302,7 +1302,7 @@ async function importEmployeesFromCsvRows(importRows){
 
   const { data: inserted, error: empErr } = await supabase
     .from('employees')
-    .insert(toInsertEmployees)
+    .upsert(toInsertEmployees, { onConflict: 'user_id, full_name' })
     .select();
   if (empErr) throw empErr;
 
@@ -5142,7 +5142,7 @@ async function loadDemoData() {
 
       const { data: inserted, error: empErr } = await supabase
         .from('employees')
-        .insert(toInsertEmployees)
+        .upsert(toInsertEmployees, { onConflict: 'user_id, full_name' })
         .select('id, full_name, job_title, start_date, birth_date, last_vacation, is_demo');
       if (empErr) throw empErr;
 
@@ -5359,7 +5359,8 @@ async function loadDemoData() {
           const { error: planErr } = await supabase
             .from('employees')
             .update({ latest_action_plans })
-            .eq('id', emp.id);
+            .eq('id', emp.id)
+            .eq('user_id', s.user.id);
           if (planErr) throw planErr;
         }
       }catch(e){
@@ -5462,6 +5463,19 @@ async function saveEmployee() {
 
     if (!fullName || !startDate) {
       document.getElementById('formError').textContent = 'Full name and start date are required';
+      document.getElementById('formError').style.display = 'block';
+      return;
+    }
+
+    // Check for duplicate full_name under this user
+    const { data: existingDup } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .eq('full_name', fullName)
+      .limit(1);
+    if (existingDup && existingDup.length) {
+      document.getElementById('formError').textContent = 'An employee with this name already exists';
       document.getElementById('formError').style.display = 'block';
       return;
     }
@@ -6532,7 +6546,7 @@ document.addEventListener('click', function(e) {
     if (!card || !employeeId) return;
     if (employeeId && employeeId.toString().startsWith('demo-')) return;
     if (!confirm('Delete this employee?')) return;
-    supabase.from('employees').delete().eq('id', employeeId).then(() => {
+    supabase.from('employees').delete().eq('id', employeeId).eq('user_id', session?.user?.id).then(() => {
       card.remove();
     });
     return;
@@ -6567,7 +6581,7 @@ document.addEventListener('click', function(e) {
     if (employeeId && employeeId.toString().startsWith('demo-')) return;
     const newName = card.querySelector('.edit-name')?.value || '';
     const newTitle = card.querySelector('.edit-title')?.value || '';
-    supabase.from('employees').update({ full_name: newName, job_title: newTitle }).eq('id', employeeId).then(() => {
+    supabase.from('employees').update({ full_name: newName, job_title: newTitle }).eq('id', employeeId).eq('user_id', session?.user?.id).then(() => {
       const nm = card.querySelector('.employee-name');
       const tt = card.querySelector('.employee-title');
       if (nm) nm.textContent = newName;
@@ -6629,7 +6643,8 @@ document.addEventListener('click', function(e) {
             birth_date: birthDate || null,
             last_vacation: lastVacation || null
           })
-          .eq('id', employeeId);
+          .eq('id', employeeId)
+          .eq('user_id', session?.user?.id);
         if (empErr) throw empErr;
 
         const monday = getCurrentMonday();
