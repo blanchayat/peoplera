@@ -7705,50 +7705,90 @@ function populateDemoOverviewChart(){
   }
 }
 
-// ── Load Survey Results ──
+// ── Load Survey Results (direct Supabase query) ──
 async function loadSurveyResults(){
   try{
     const s = (await supabase.auth.getSession()).data?.session;
     if (!s) return;
+    const userId = s.user.id;
 
-    const res = await fetch('/api/survey/results', {
-      headers: { 'Accept': 'application/json' }
-    });
-    if (!res.ok) return;
-    const data = await res.json();
+    // Determine current week boundaries (Monday to Sunday)
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const weekStart = new Date(now);
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(weekStart.getDate() + mondayOffset);
+    const weekStartIso = weekStart.toISOString();
 
-    // Update response rate
+    // Query tokens sent this week
+    const { data: tokens } = await supabase
+      .from('survey_tokens')
+      .select('employee_id, token')
+      .eq('user_id', userId)
+      .gte('sent_at', weekStartIso);
+
+    const totalSent = (tokens || []).length;
+
+    // Query responses this week
+    const { data: responses } = await supabase
+      .from('survey_responses')
+      .select('*')
+      .eq('user_id', userId)
+      .gte('submitted_at', weekStartIso);
+
+    const totalResponded = (responses || []).length;
+    const responseRate = totalSent > 0 ? Math.round((totalResponded / totalSent) * 100) : 0;
+
+    // Update response rate UI
     const rateText = document.getElementById('responseRateText');
     const ratePercent = document.getElementById('responseRatePercent');
     const rateBar = document.getElementById('responseRateBar');
-    if (rateText) rateText.textContent = `${data.total_responded || 0} of ${data.total_sent || 0} employees responded`;
-    if (ratePercent) ratePercent.textContent = `${data.response_rate || 0}%`;
-    if (rateBar) rateBar.style.width = `${data.response_rate || 0}%`;
+    if (rateText) rateText.textContent = `${totalResponded} of ${totalSent} employees responded`;
+    if (ratePercent) ratePercent.textContent = `${responseRate}%`;
+    if (rateBar) rateBar.style.width = `${responseRate}%`;
 
     // Update results content
     const resultsEl = document.getElementById('surveyResultsContent');
     if (!resultsEl) return;
 
-    if (!data.total_responded) return; // keep empty state
+    if (!totalResponded) return; // keep empty state shown in HTML
+
+    // Compute average psych score from responses
+    const scores = (responses || []).map(r => Number(r.score || r.psych_score || 0)).filter(v => v > 0);
+    const avgPsychScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
 
     let html = '';
 
-    // Avg burnout score
+    // Avg wellbeing score
     html += `<div class="panel" style="padding:16px;margin-bottom:16px;text-align:center">
       <div style="font-size:12px;font-weight:900;color:#64748b;letter-spacing:0.06em">AVG WELLBEING SCORE</div>
-      <div style="font-family:'Syne',system-ui;font-weight:900;font-size:36px;color:${data.avg_psych_score > 60 ? '#00b894' : data.avg_psych_score > 40 ? '#F97316' : '#FF6B4A'};margin-top:4px">${data.avg_psych_score}/100</div>
-      <div style="font-size:12px;color:#94a3b8;margin-top:4px">${data.total_responded} responses this week</div>
+      <div style="font-family:'Syne',system-ui;font-weight:900;font-size:36px;color:${avgPsychScore > 60 ? '#00b894' : avgPsychScore > 40 ? '#F97316' : '#FF6B4A'};margin-top:4px">${avgPsychScore}/100</div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:4px">${totalResponded} responses this week</div>
     </div>`;
 
-    // Per-question breakdown
-    if (data.breakdown && data.breakdown.length) {
+    // Per-question breakdown from answers field
+    const questions = getSurveyQuestions();
+    const answerOptions = ['Always', 'Often', 'Sometimes', 'Rarely', 'Never'];
+    const breakdown = questions.map((q, idx) => {
+      const counts = {};
+      answerOptions.forEach(opt => { counts[opt] = 0; });
+      (responses || []).forEach(r => {
+        const answers = Array.isArray(r.answers) ? r.answers : (typeof r.answers === 'string' ? (() => { try { return JSON.parse(r.answers); } catch(e) { return []; } })() : []);
+        const ans = String(answers[idx] || '').trim();
+        if (ans && counts.hasOwnProperty(ans)) counts[ans]++;
+      });
+      return { question: q, counts, options: answerOptions };
+    });
+
+    if (breakdown.length) {
       html += `<div style="display:grid;gap:12px;margin-bottom:16px">`;
-      data.breakdown.forEach((q, idx) => {
-        const total = Object.values(q.counts).reduce((a,b) => a+b, 0) || 1;
+      breakdown.forEach((q, idx) => {
+        const total = Object.values(q.counts).reduce((a, b) => a + b, 0) || 1;
         html += `<div class="panel" style="padding:14px">
-          <div style="font-weight:900;font-size:13px;margin-bottom:10px">Q${idx+1}: ${escapeHtml(q.question)}</div>
+          <div style="font-weight:900;font-size:13px;margin-bottom:10px">Q${idx + 1}: ${escapeHtml(q.question)}</div>
           <div style="display:grid;gap:6px">`;
-        (q.options || []).forEach(opt => {
+        q.options.forEach(opt => {
           const count = q.counts[opt] || 0;
           const pct = Math.round((count / total) * 100);
           html += `<div style="display:flex;align-items:center;gap:8px">
@@ -7764,21 +7804,45 @@ async function loadSurveyResults(){
       html += `</div>`;
     }
 
-    // Employee status
-    if (data.employee_status && data.employee_status.length) {
-      html += `<div class="panel" style="padding:14px">
-        <div style="font-weight:900;font-size:14px;margin-bottom:10px">Employee Status</div>
-        <div style="display:grid;gap:6px">`;
-      data.employee_status.forEach(e => {
-        const badge = e.responded
-          ? '<span style="background:rgba(22,163,74,0.1);color:#16a34a;font-size:11px;font-weight:900;padding:3px 8px;border-radius:999px">✓ Responded</span>'
-          : '<span style="background:rgba(148,163,184,0.1);color:#94a3b8;font-size:11px;font-weight:900;padding:3px 8px;border-radius:999px">Pending</span>';
-        html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
-          <span style="font-weight:700;font-size:13px">${escapeHtml(e.name)}</span>
-          ${badge}
-        </div>`;
+    // Employee status — who responded vs pending
+    if (totalSent) {
+      const { data: emps } = await supabase
+        .from('employees')
+        .select('id, full_name')
+        .eq('user_id', userId);
+
+      const empMap = {};
+      (emps || []).forEach(e => { empMap[e.id] = e.full_name || 'Employee'; });
+
+      const respondedIds = new Set((responses || []).map(r => r.employee_id));
+      const statusList = (tokens || []).map(t => ({
+        name: empMap[t.employee_id] || 'Employee',
+        responded: respondedIds.has(t.employee_id)
+      }));
+
+      // Deduplicate by name
+      const seen = new Set();
+      const unique = statusList.filter(e => {
+        if (seen.has(e.name)) return false;
+        seen.add(e.name);
+        return true;
       });
-      html += `</div></div>`;
+
+      if (unique.length) {
+        html += `<div class="panel" style="padding:14px">
+          <div style="font-weight:900;font-size:14px;margin-bottom:10px">Employee Status</div>
+          <div style="display:grid;gap:6px">`;
+        unique.forEach(e => {
+          const badge = e.responded
+            ? '<span style="background:rgba(22,163,74,0.1);color:#16a34a;font-size:11px;font-weight:900;padding:3px 8px;border-radius:999px">\u2713 Responded</span>'
+            : '<span style="background:rgba(148,163,184,0.1);color:#94a3b8;font-size:11px;font-weight:900;padding:3px 8px;border-radius:999px">Pending</span>';
+          html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
+            <span style="font-weight:700;font-size:13px">${escapeHtml(e.name)}</span>
+            ${badge}
+          </div>`;
+        });
+        html += `</div></div>`;
+      }
     }
 
     resultsEl.innerHTML = html;
