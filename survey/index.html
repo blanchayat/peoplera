@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Peoplera Survey</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800;900&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+
+  <style>
+    :root{
+      --accent:#F97316;
+      --bg:#FAFAF9;
+      --card:#ffffff;
+      --border:#E7E5E4;
+      --text:#0f172a;
+      --muted:#64748b;
+      --muted2:#94a3b8;
+      --green:#16a34a;
+      --greenBg:rgba(22,163,74,0.10);
+      --shadow:0 4px 24px rgba(0,0,0,0.06);
+      --radius:24px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html, body{
+      height:100%;
+    }
+
+    body{
+      margin:0;
+      font-family:"DM Sans", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .page{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+    }
+
+    .card{
+      width:100%;
+      max-width:560px;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    .card-inner{
+      padding:22px 22px 18px;
+    }
+
+    .header{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .brand{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      min-width:0;
+    }
+
+    .brand-title{
+      font-family:"DM Serif Display", serif;
+      font-size:22px;
+      line-height:1.05;
+      margin:0;
+      letter-spacing:0.2px;
+    }
+
+    .brand-sub{
+      font-size:13px;
+      color:var(--muted);
+      font-weight:700;
+      margin:0;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(22,163,74,0.22);
+      background:var(--greenBg);
+      color:var(--green);
+      font-weight:900;
+      font-size:12px;
+      white-space:nowrap;
+      flex-shrink:0;
+    }
+
+    .progress-wrap{
+      margin-top:14px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .counter{
+      font-size:12px;
+      color:var(--muted);
+      font-weight:900;
+      letter-spacing:0.02em;
+    }
+
+    .bar{
+      flex:1;
+      min-width:160px;
+      height:10px;
+      border-radius:999px;
+      background:rgba(0,0,0,0.05);
+      overflow:hidden;
+      border:1px solid rgba(0,0,0,0.05);
+    }
+
+    .bar > div{
+      height:100%;
+      width:20%;
+      background:linear-gradient(90deg, var(--accent), rgba(249,115,22,0.65));
+      border-radius:999px;
+      transition:width 240ms ease;
+    }
+
+    .content{
+      margin-top:18px;
+      position:relative;
+    }
+
+    .slides-viewport{
+      overflow:hidden;
+      width:100%;
+    }
+
+    .slides-track{
+      display:flex;
+      width:100%;
+      transform:translateX(0%);
+      transition:transform 320ms ease;
+    }
+
+    .slide{
+      width:100%;
+      flex:0 0 100%;
+      padding-bottom:6px;
+    }
+
+    .q-title{
+      margin:0;
+      font-size:18px;
+      line-height:1.25;
+      font-weight:900;
+    }
+
+    .q-help{
+      margin:10px 0 0;
+      font-size:13px;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .options{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
+    .opt{
+      width:100%;
+      text-align:left;
+      background:#fff;
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px 12px;
+      cursor:pointer;
+      font-weight:900;
+      color:var(--text);
+      transition:transform 120ms ease, border-color 120ms ease, background 120ms ease;
+    }
+
+    .opt:hover{ transform:translateY(-1px); }
+
+    .opt[aria-pressed="true"]{
+      border-color:rgba(249,115,22,0.55);
+      background:rgba(249,115,22,0.06);
+    }
+
+    .footer{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-top:16px;
+      flex-wrap:wrap;
+    }
+
+    .btn{
+      border-radius:14px;
+      padding:10px 12px;
+      font-weight:900;
+      font-size:13px;
+      cursor:pointer;
+      border:1px solid rgba(0,0,0,0.14);
+      background:transparent;
+      color:var(--muted);
+      min-height:40px;
+    }
+
+    .btn-primary{
+      border:none;
+      background:linear-gradient(90deg, var(--accent), rgba(249,115,22,0.70));
+      color:#111827;
+      box-shadow:0 10px 22px rgba(249,115,22,0.18);
+    }
+
+    .btn:disabled{
+      opacity:0.6;
+      cursor:not-allowed;
+    }
+
+    .text-input{
+      margin-top:14px;
+      width:100%;
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px 12px;
+      font-size:16px;
+      font-weight:800;
+      outline:none;
+    }
+
+    .text-input:focus{
+      border-color:rgba(249,115,22,0.55);
+      box-shadow:0 0 0 4px rgba(249,115,22,0.12);
+    }
+
+    .status-full{
+      width:100%;
+      max-width:560px;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:24px;
+      box-shadow:var(--shadow);
+      text-align:center;
+    }
+
+    .status-title{
+      margin:0;
+      font-family:"DM Serif Display", serif;
+      font-size:26px;
+    }
+
+    .status-body{
+      margin:10px 0 0;
+      font-size:14px;
+      font-weight:700;
+      color:var(--muted);
+      line-height:1.55;
+    }
+
+    .thank-note{
+      margin-top:14px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+      background:rgba(0,0,0,0.03);
+      border:1px solid rgba(0,0,0,0.06);
+      border-radius:999px;
+      padding:10px 12px;
+      font-weight:900;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .lock{
+      width:18px;
+      height:18px;
+      display:inline-block;
+      flex-shrink:0;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:22px;
+      transform:translateX(-50%);
+      background:rgba(15,23,42,0.95);
+      color:#fff;
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:900;
+      font-size:12px;
+      border:1px solid rgba(255,255,255,0.12);
+      box-shadow:0 12px 40px rgba(0,0,0,0.18);
+      opacity:0;
+      pointer-events:none;
+      transition:opacity 200ms ease;
+      z-index:9999;
+      max-width:calc(100vw - 36px);
+      text-align:center;
+    }
+
+    .toast.on{ opacity:1; }
+
+    @media (max-width:480px){
+      body{ background:#fff; }
+
+      .page{ padding:0; align-items:stretch; }
+
+      .card{
+        max-width:none;
+        border:none;
+        border-radius:0;
+        box-shadow:none;
+        min-height:100vh;
+        display:flex;
+        flex-direction:column;
+      }
+
+      .card-inner{ padding:18px 16px 14px; }
+
+      .options{ grid-template-columns:1fr; }
+
+      .content{ flex:1; }
+
+      .slides-viewport{ height:100%; }
+
+      .slide{ padding-bottom:0; }
+
+      .footer{ margin-top:14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page" id="appRoot">
+    <div class="status-full" id="statusScreen" style="display:none">
+      <h1 class="status-title" id="statusTitle">Loading…</h1>
+      <p class="status-body" id="statusBody">Please wait.</p>
+    </div>
+
+    <div class="card" id="surveyCard" style="display:none">
+      <div class="card-inner">
+        <div class="header">
+          <div class="brand">
+            <h1 class="brand-title">Weekly check-in</h1>
+            <p class="brand-sub">Peoplera employee survey</p>
+          </div>
+          <div class="badge" title="Anonymous survey">
+            Anonymous
+          </div>
+        </div>
+
+        <div class="progress-wrap">
+          <div class="counter" id="counter">Question 1 of 5</div>
+          <div class="bar" aria-hidden="true"><div id="progress"></div></div>
+        </div>
+
+        <div class="content">
+          <div class="slides-viewport">
+            <div class="slides-track" id="slides"></div>
+          </div>
+
+          <div class="footer">
+            <button class="btn" id="btnBack" type="button">Back</button>
+            <button class="btn btn-primary" id="btnNext" type="button">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    (function(){
+      const qs = new URLSearchParams(window.location.search || '');
+      const token = (qs.get('token') || '').trim();
+
+      const elStatus = document.getElementById('statusScreen');
+      const elStatusTitle = document.getElementById('statusTitle');
+      const elStatusBody = document.getElementById('statusBody');
+      const elCard = document.getElementById('surveyCard');
+
+      const elSlides = document.getElementById('slides');
+      const elBack = document.getElementById('btnBack');
+      const elNext = document.getElementById('btnNext');
+      const elProgress = document.getElementById('progress');
+      const elCounter = document.getElementById('counter');
+
+      const elToast = document.getElementById('toast');
+
+      const state = {
+        token,
+        questions: [],
+        current: 0,
+        answers: ['', '', '', '', ''],
+        submitting: false
+      };
+
+      function showToast(msg){
+        elToast.textContent = String(msg || '');
+        elToast.classList.add('on');
+        window.clearTimeout(showToast._t);
+        showToast._t = window.setTimeout(()=> elToast.classList.remove('on'), 2200);
+      }
+
+      function showStatus(title, body){
+        elCard.style.display = 'none';
+        elStatus.style.display = 'block';
+        elStatusTitle.textContent = title;
+        elStatusBody.textContent = body || '';
+      }
+
+      function showSurvey(){
+        elStatus.style.display = 'none';
+        elCard.style.display = 'block';
+      }
+
+      function progressPct(idx){
+        const step = Math.max(0, Math.min(4, Number(idx || 0)));
+        return (step + 1) * 20;
+      }
+
+      function setProgress(){
+        elProgress.style.width = progressPct(state.current) + '%';
+        elCounter.textContent = `Question ${state.current + 1} of 5`;
+        elBack.style.visibility = state.current === 0 ? 'hidden' : 'visible';
+        elNext.textContent = state.current === 4 ? 'Submit' : 'Next';
+
+        elSlides.style.transform = `translateX(-${state.current * 100}%)`;
+
+        const canContinue = Boolean(String(state.answers[state.current] || '').trim());
+        elNext.disabled = state.submitting || !canContinue;
+      }
+
+      function buildSlides(){
+        elSlides.innerHTML = '';
+
+        for (let i = 0; i < 5; i++){
+          const q = state.questions[i] || {};
+          const title = String(q.title || q.question || `Question ${i+1}`);
+          const help = String(q.help || '');
+
+          const slide = document.createElement('div');
+          slide.className = 'slide';
+
+          const h = document.createElement('h2');
+          h.className = 'q-title';
+          h.textContent = title;
+
+          const p = document.createElement('p');
+          p.className = 'q-help';
+          p.textContent = help;
+          p.style.display = help ? 'block' : 'none';
+
+          slide.appendChild(h);
+          slide.appendChild(p);
+
+          const opts = Array.isArray(q.options) ? q.options : [];
+          const options = opts.length ? opts.slice(0,5) : ['Always','Often','Sometimes','Rarely','Never'];
+
+          const grid = document.createElement('div');
+          grid.className = 'options';
+
+          options.forEach((label)=>{
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'opt';
+            btn.textContent = String(label);
+            btn.setAttribute('aria-pressed', 'false');
+
+            btn.addEventListener('click', ()=>{
+              state.answers[i] = String(label);
+              Array.from(grid.querySelectorAll('.opt')).forEach(b => b.setAttribute('aria-pressed','false'));
+              btn.setAttribute('aria-pressed','true');
+              setProgress();
+            });
+
+            grid.appendChild(btn);
+          });
+
+          slide.appendChild(grid);
+
+          elSlides.appendChild(slide);
+        }
+
+        // restore selections
+        for (let i = 0; i < 5; i++){
+          const ans = String(state.answers[i] || '');
+          if (!ans) continue;
+          const slide = elSlides.children[i];
+          const btns = slide ? slide.querySelectorAll('.opt') : null;
+          if (!btns) continue;
+          btns.forEach(b => {
+            if (String(b.textContent) === ans) b.setAttribute('aria-pressed','true');
+          });
+        }
+      }
+
+      function normalizeQuestions(payload){
+        const list = Array.isArray(payload?.questions) ? payload.questions : (Array.isArray(payload) ? payload : []);
+        const out = list.slice(0,5).map((q)=>({
+          title: q?.title || q?.text || q?.question || '',
+          help: q?.help || q?.subtitle || '',
+          options: q?.options || q?.choices || null
+        }));
+
+        while(out.length < 5) out.push({ title: `Question ${out.length + 1}`, help: '', options: null });
+        return out;
+      }
+
+      async function apiGet(url){
+        const res = await fetch(url, { method:'GET', headers:{ 'Accept':'application/json' } });
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        const ct = String(res.headers.get('content-type') || '');
+        if (ct.includes('application/json')) return res.json();
+        return res.text();
+      }
+
+      async function apiPost(url, body){
+        const res = await fetch(url, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'Accept':'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          let msg = `Request failed (${res.status})`;
+          try{
+            const j = await res.json();
+            msg = j?.error || j?.message || msg;
+          }catch(e){ /* noop */ }
+          throw new Error(msg);
+        }
+        const ct = String(res.headers.get('content-type') || '');
+        if (ct.includes('application/json')) return res.json();
+        return res.text();
+      }
+
+      function renderThankYou(){
+        elCard.style.display = 'none';
+        elStatus.style.display = 'block';
+        elStatusTitle.textContent = 'Thank you.';
+        elStatusBody.textContent = "Your responses help your team stay healthy. That's all — see you next week.";
+
+        const note = document.createElement('div');
+        note.className = 'thank-note';
+        note.innerHTML = `
+          <svg class="lock" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M6.5 11h11A2.5 2.5 0 0 1 20 13.5v6A2.5 2.5 0 0 1 17.5 22h-11A2.5 2.5 0 0 1 4 19.5v-6A2.5 2.5 0 0 1 6.5 11Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          </svg>
+          <span>Your individual answers are never shared</span>
+        `;
+
+        // replace existing note if re-render
+        const existing = elStatus.querySelector('.thank-note');
+        if (existing) existing.remove();
+        elStatus.appendChild(note);
+      }
+
+      async function submit(){
+        if (state.submitting) return;
+        state.submitting = true;
+        setProgress();
+
+        try{
+          const answers = state.answers.map(a => String(a || '').trim());
+          if (answers.some(a => !a)) throw new Error('Please answer all questions');
+
+          // Q5 must be single "word" (no spaces) and max 40 chars
+          if (/\s/.test(answers[4])) throw new Error('Last answer must be a single word');
+          if (answers[4].length > 40) throw new Error('Last answer is too long');
+
+          await apiPost('/api/survey/submit', { token: state.token, answers });
+          renderThankYou();
+        }catch(err){
+          showToast(err?.message || 'Submit failed');
+        }finally{
+          state.submitting = false;
+          setProgress();
+        }
+      }
+
+      function goNext(){
+        if (state.current === 4) {
+          submit();
+          return;
+        }
+        state.current = Math.min(4, state.current + 1);
+        setProgress();
+      }
+
+      function goBack(){
+        state.current = Math.max(0, state.current - 1);
+        setProgress();
+      }
+
+      elBack.addEventListener('click', goBack);
+      elNext.addEventListener('click', goNext);
+
+      document.addEventListener('keydown', (e)=>{
+        if (elCard.style.display === 'none') return;
+        if (e.key === 'Enter') {
+          // allow enter in text input
+          const active = document.activeElement;
+          if (active && active.classList && active.classList.contains('text-input')) {
+            goNext();
+            return;
+          }
+          goNext();
+        }
+        if (e.key === 'ArrowLeft') goBack();
+        if (e.key === 'ArrowRight') goNext();
+      });
+
+      async function boot(){
+        if (!state.token) {
+          showStatus('This link has expired.', '');
+          return;
+        }
+
+        showStatus('Loading…', 'Validating your link.');
+
+        try{
+          const v = await apiGet(`/api/survey/validate?token=${encodeURIComponent(state.token)}`);
+          const ok = Boolean(v?.valid === true || v === true || v?.status === 'valid');
+          if (!ok) {
+            showStatus('This link has expired.', '');
+            return;
+          }
+
+          const q = await apiGet(`/api/survey/questions?token=${encodeURIComponent(state.token)}`);
+          state.questions = normalizeQuestions(q);
+
+          buildSlides();
+          state.current = 0;
+
+          showSurvey();
+          setProgress();
+        }catch(err){
+          showStatus('This link has expired.', '');
+        }
+      }
+
+      boot();
+    })();
+  </script>
+</body>
+</html>

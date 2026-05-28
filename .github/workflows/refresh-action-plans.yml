@@ -1,0 +1,24 @@
+name: Refresh Action Plans
+
+on:
+  schedule:
+    # Every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call refresh_weekly endpoint
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "Missing APP_URL secret"; exit 1;
+          fi
+          curl -sS -X POST "$APP_URL/api/pulse?action=refresh_weekly" \
+            -H "Content-Type: application/json" \
+            -H "X-Cron-Secret: $CRON_SECRET" \
+            --data '{}'
