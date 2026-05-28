@@ -108,8 +108,7 @@ function redesignOverviewHrSystemCard(){
     const badgeSpec = {
       Personio: { initial: 'PE', bg: '#EEF2FF', color: '#4F46E5' },
       AFAS: { initial: 'AF', bg: '#FFF7ED', color: '#EA580C' },
-      Nmbrs: { initial: 'NM', bg: '#F0FDF4', color: '#16A34A' },
-      Loket: { initial: 'LO', bg: '#FDF4FF', color: '#9333EA' }
+      Nmbrs: { initial: 'NM', bg: '#F0FDF4', color: '#16A34A' }
     };
 
     for (const [name, spec] of Object.entries(badgeSpec)) {
@@ -1933,7 +1932,7 @@ async function loadSettings(){
     if (settingsSection && !settingsSection.querySelector('#btnLogoutSettings')) {
       const wrap = document.createElement('div');
       wrap.style.cssText = 'margin-top:16px;display:flex;justify-content:flex-end;';
-      wrap.innerHTML = `<button id="btnLogoutSettings" type="button" style="background:rgba(255,107,74,0.10);border:1px solid rgba(255,107,74,0.28);border-radius:12px;padding:10px 14px;font-weight:900;color:#FF6B4A;cursor:pointer">Çıkış Yap</button>`;
+      wrap.innerHTML = `<button id="btnLogoutSettings" type="button" style="background:rgba(255,107,74,0.10);border:1px solid rgba(255,107,74,0.28);border-radius:12px;padding:10px 14px;font-weight:900;color:#FF6B4A;cursor:pointer">Sign Out</button>`;
       settingsSection.appendChild(wrap);
 
       const btn = wrap.querySelector('#btnLogoutSettings');
@@ -1986,12 +1985,6 @@ const INTEGRATION_PROVIDERS = {
     name: 'HiBob',
     desc: 'Sync employees and time signals from HiBob.',
     docsUrl: 'https://apidocs.hibob.com/'
-  },
-  loket: {
-    key: 'loket',
-    name: 'Loket',
-    desc: 'Sync employees and payroll signals from Loket.',
-    docsUrl: 'https://developers.loket.nl/'
   }
 };
 
