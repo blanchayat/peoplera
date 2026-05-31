@@ -1765,8 +1765,12 @@ async function loadOverviewWeeklyBurnoutSummary(sessionObj){
   if (empErr) throw empErr;
   const empIds = (empRows || []).map(r => r.id).filter(Boolean);
 
+  const chartEmpty = document.getElementById('overviewChartEmptyState');
+
   if (!empIds.length) {
-    out.innerHTML = '<div style="color:#94a3b8;font-weight:800;font-size:12px">No data yet</div>';
+    out.innerHTML = '';
+    out.style.display = 'none';
+    if (chartEmpty) chartEmpty.style.display = 'block';
     if (deltaEl) deltaEl.textContent = '—';
     return;
   }
@@ -1792,10 +1796,16 @@ async function loadOverviewWeeklyBurnoutSummary(sessionObj){
 
   const weeks = Object.keys(buckets).sort().slice(-5);
   if (!weeks.length) {
-    out.innerHTML = '<div style="color:#94a3b8;font-weight:800;font-size:12px">No data yet</div>';
+    out.innerHTML = '';
+    out.style.display = 'none';
+    if (chartEmpty) chartEmpty.style.display = 'block';
     if (deltaEl) deltaEl.textContent = '—';
     return;
   }
+
+  // Has data — show chart, hide empty state
+  out.style.display = 'flex';
+  if (chartEmpty) chartEmpty.style.display = 'none';
 
   const series = weeks.map(wk => {
     const scores = (buckets[wk] || []).map(m => computeBurnoutScoreFromSignals({
@@ -1868,7 +1878,7 @@ async function loadHistory(){
 async function clearPulse(){
   setPulseDemoActive(false);
   document.getElementById('pulseOut').innerHTML = '';
-  document.getElementById('statAtRisk').textContent = '0';
+  document.getElementById('statAtRisk').textContent = '\u2014';
   window.__lastDecisionEngine = null;
   window.__lastActionPlans = null;
   updateNavBurnoutBadge(null);
@@ -4790,9 +4800,12 @@ function renderEmployees() {
 
     const demoIds = getDemoEmployeeIdSet();
 
+    const belowTeamEmpty = document.getElementById('burnoutBelowTeamEmpty');
+
     if (employees.length === 0) {
       if (list) list.innerHTML = '';
       if (emptyState) emptyState.style.display = 'block';
+      if (belowTeamEmpty) belowTeamEmpty.style.display = 'block';
       try{
         const existing = document.getElementById('generate-report-container');
         if (existing) existing.remove();
@@ -4801,6 +4814,7 @@ function renderEmployees() {
     }
 
     if (emptyState) emptyState.style.display = 'none';
+    if (belowTeamEmpty) belowTeamEmpty.style.display = 'none';
 
     const monday = getCurrentMonday();
     const weekLabel = formatWeekRangeLabel(monday);
@@ -6162,7 +6176,8 @@ function renderStrategicActionPlansPage(){
       if (!blocks.length || !allPlans.length) {
         out.innerHTML = '<div style="text-align:center;padding:40px">'
           + '<div style="font-size:16px;font-weight:900;color:#64748b;margin-bottom:8px">No action plans yet.</div>'
-          + '<div style="font-size:13px;color:#94a3b8">Save weekly metrics and generate a report to see AI plans.</div>'
+          + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">Save weekly metrics and generate a report to see AI plans.</div>'
+          + '<button onclick="showSection(\'pulse\')" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:linear-gradient(135deg,rgba(255,107,107,0.08),rgba(255,107,107,0.02));border:1px solid rgba(255,107,107,0.2);border-radius:12px;cursor:pointer;font-weight:900;font-size:12px;color:#FF6B4A;transition:all 0.2s">Enter data \u2192</button>'
           + '</div>';
         return;
       }
@@ -7607,7 +7622,7 @@ function populateOverviewFromEmployees(empList){
 
   const el = (id) => document.getElementById(id);
   const empEl = el('statEmployees');
-  if (empEl) empEl.textContent = String(count);
+  if (empEl) empEl.textContent = count > 0 ? String(count) : '\u2014';
 
   if (!count) return;
 
@@ -7644,6 +7659,8 @@ function populateOverviewFromEmployees(empList){
   const sorted = [...list].sort((a,b) => Number(b.burnoutScore||b.burnout_score||0) - Number(a.burnoutScore||a.burnout_score||0));
   const top3 = sorted.filter(e => Number(e.burnoutScore||e.burnout_score||0) >= 50).slice(0, 3);
   const topRisksEl = el('overviewTopRisks');
+  const topRisksEmpty = el('overviewTopRisksEmpty');
+  const hotspotsLink = el('overviewHotspotsLink');
   if (topRisksEl && top3.length) {
     topRisksEl.innerHTML = top3.map(e => {
       const name = escapeHtml(String(e.full_name || e.name || 'Unknown'));
@@ -7662,7 +7679,17 @@ function populateOverviewFromEmployees(empList){
         </div>
       </div>`;
     }).join('');
+    if (hotspotsLink) hotspotsLink.style.display = 'inline-block';
+  } else {
+    if (topRisksEmpty) topRisksEmpty.style.display = 'block';
+    if (hotspotsLink) hotspotsLink.style.display = 'none';
   }
+
+  // Also show chart data, hide chart empty state
+  const chartEmpty = el('overviewChartEmptyState');
+  const miniChart = el('overviewMiniChart');
+  if (chartEmpty) chartEmpty.style.display = 'none';
+  if (miniChart) miniChart.style.display = 'flex';
 
   // Integration status - check if connected
   const intEl = el('overviewIntegrationsStatus');
@@ -7683,6 +7710,11 @@ function populateDemoOverviewChart(){
   const out = document.getElementById('overviewMiniChart');
   const deltaEl = document.getElementById('overviewBurnoutDelta');
   if (!out) return;
+
+  // Show chart, hide empty state
+  out.style.display = 'flex';
+  const chartEmpty = document.getElementById('overviewChartEmptyState');
+  if (chartEmpty) chartEmpty.style.display = 'none';
 
   const demoPoints = [
     { week: 'Week 1', avg: 48 },
@@ -7871,7 +7903,7 @@ function showSkeleton(containerId, count = 3){
 function showSkeletonStats(){
   ['statEmployees','statBurnoutScore','statAtRisk','statAvgHours'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.innerHTML = '<div class="skeleton" style="width:48px;height:28px;display:inline-block"></div>';
+    if (el) el.textContent = '\u2014';
   });
 }
 

@@ -248,7 +248,7 @@
               <div class="panel" style="padding:16px;border-left:4px solid #6366f1;cursor:pointer;transition:all 0.2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:#6366f1">TOTAL EMPLOYEES</div>
                 <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px">
-                  <div id="statEmployees" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#0f172a;line-height:1">0</div>
+                  <div id="statEmployees" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#0f172a;line-height:1">—</div>
                   <span id="statEmployeesTrend" style="font-size:11px;font-weight:900;color:#64748b"></span>
                 </div>
                 <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:700">Active team members</div>
@@ -264,7 +264,7 @@
               <div class="panel" style="padding:16px;border-left:4px solid #F97316;cursor:pointer;transition:all 0.2s" onclick="showSection('pulse-hotspots')" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                 <div style="font-size:11px;font-weight:900;letter-spacing:0.06em;color:#F97316">AT-RISK EMPLOYEES</div>
                 <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px">
-                  <div id="statAtRisk" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#F97316;line-height:1">0</div>
+                  <div id="statAtRisk" style="font-family:'Syne',system-ui;font-size:36px;font-weight:900;color:#F97316;line-height:1">—</div>
                   <span id="statAtRiskTrend" style="font-size:11px;font-weight:900;color:#64748b"></span>
                 </div>
                 <div style="font-size:11px;color:#94a3b8;margin-top:4px;font-weight:700">Need action this week</div>
@@ -289,6 +289,11 @@
                 <div id="overviewBurnoutDelta" style="font-size:12px;font-weight:900;color:#64748b">—</div>
               </div>
               <div id="overviewMiniChart" style="margin-top:16px;height:80px;display:flex;align-items:flex-end;gap:10px"></div>
+              <div id="overviewChartEmptyState" style="display:none;text-align:center;padding:16px 0">
+                <div style="font-weight:900;font-size:14px;color:#64748b;margin-bottom:6px">No burnout trend yet</div>
+                <div style="font-size:12px;color:#94a3b8;font-weight:700;margin-bottom:14px">Run Burnout Intelligence to generate your first weekly trend.</div>
+                <button onclick="showSection('pulse');setTimeout(()=>{try{document.getElementById('generate-report-btn')?.click()}catch(e){}},300)" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:linear-gradient(135deg,rgba(255,107,107,0.08),rgba(255,107,107,0.02));border:1px solid rgba(255,107,107,0.2);border-radius:12px;cursor:pointer;font-weight:900;font-size:12px;color:#FF6B4A;transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">Run Burnout Intelligence</button>
+              </div>
             </div>
 
             <!-- Two-column: Top risks + Quick actions -->
@@ -297,9 +302,13 @@
               <div class="panel" style="padding:18px">
                 <div style="font-weight:900;font-size:15px;color:#0f172a;margin-bottom:14px">Top risks this week</div>
                 <div id="overviewTopRisks" style="display:grid;gap:10px">
-                  <div style="color:#94a3b8;font-size:13px;font-weight:700;padding:20px 0;text-align:center">Run Burnout Intelligence to see at-risk employees</div>
+                  <div id="overviewTopRisksEmpty" style="text-align:center;padding:16px 0">
+                    <div style="font-weight:900;font-size:14px;color:#64748b;margin-bottom:6px">No risk data yet</div>
+                    <div style="font-size:12px;color:#94a3b8;font-weight:700;margin-bottom:14px">Run Burnout Intelligence to see at-risk employees.</div>
+                    <button onclick="showSection('pulse');setTimeout(()=>{try{document.getElementById('generate-report-btn')?.click()}catch(e){}},300)" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:linear-gradient(135deg,rgba(255,107,107,0.08),rgba(255,107,107,0.02));border:1px solid rgba(255,107,107,0.2);border-radius:12px;cursor:pointer;font-weight:900;font-size:12px;color:#FF6B4A;transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">Run Burnout Intelligence</button>
+                  </div>
                 </div>
-                <a href="#" onclick="showSection('pulse-hotspots');return false" style="display:inline-block;margin-top:12px;font-weight:900;font-size:12px;color:#FF6B4A;text-decoration:none">View all hotspots →</a>
+                <a id="overviewHotspotsLink" href="#" onclick="showSection('pulse-hotspots');return false" style="display:none;margin-top:12px;font-weight:900;font-size:12px;color:#FF6B4A;text-decoration:none">View all hotspots →</a>
               </div>
 
               <!-- Quick actions -->
@@ -468,6 +477,18 @@
                 </div>
 
                 <div id="generateReportHost"></div>
+              </div>
+
+              <!-- Empty state below Your Team when no data -->
+              <div id="burnoutBelowTeamEmpty" class="panel pad burnout-section" style="margin-top:24px;display:none">
+                <div style="text-align:center;padding:32px 16px">
+                  <div style="font-weight:900;font-size:16px;color:#64748b;margin-bottom:8px">No team data yet</div>
+                  <div style="font-size:13px;color:#94a3b8;font-weight:700;margin-bottom:16px">Add an employee and their weekly metrics to run burnout analysis — or connect your HR system.</div>
+                  <button onclick="showAddEmployeeForm()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:linear-gradient(135deg,rgba(255,107,107,0.08),rgba(255,107,107,0.02));border:1px solid rgba(255,107,107,0.2);border-radius:12px;cursor:pointer;font-weight:900;font-size:12px;color:#FF6B4A;transition:all 0.2s" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='translateY(0)'">+ Add employee</button>
+                </div>
+                <div style="margin-top:8px;border:1px dashed rgba(0,0,0,0.08);border-radius:12px;padding:24px;text-align:center">
+                  <div style="font-size:12px;color:#94a3b8;font-weight:700">Chart will appear once you add data</div>
+                </div>
               </div>
 
               <!-- Section C: Weekly Score & Trend -->
