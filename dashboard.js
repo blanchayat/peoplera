@@ -8114,45 +8114,112 @@ async function sendWeeklyEmailReport(){
   }
 }
 
-// ── Pulse Survey — Editable questions ──
-const DEFAULT_SURVEY_QUESTIONS = [
-  'How often do you feel tired?',
-  'How often are you physically exhausted?',
-  'How often are you emotionally exhausted?',
-  'How often do you think: "I can\'t take it anymore"?',
-  'How often do you feel worn out?'
+// ── Pulse Survey — CBI Question Bank & Picker ──
+const CBI_QUESTION_POOL = [
+  { id: 'pb1', text: 'How often do you feel tired?', subscale: 'Personal Burnout', scale: 'frequency' },
+  { id: 'pb2', text: 'How often are you physically exhausted?', subscale: 'Personal Burnout', scale: 'frequency' },
+  { id: 'pb3', text: 'How often are you emotionally exhausted?', subscale: 'Personal Burnout', scale: 'frequency' },
+  { id: 'pb4', text: 'How often do you think: "I can\'t take it anymore"?', subscale: 'Personal Burnout', scale: 'frequency' },
+  { id: 'pb5', text: 'How often do you feel worn out?', subscale: 'Personal Burnout', scale: 'frequency' },
+  { id: 'pb6', text: 'How often do you feel weak and susceptible to illness?', subscale: 'Personal Burnout', scale: 'frequency' },
+  { id: 'wb1', text: 'Is your work emotionally exhausting?', subscale: 'Work-Related Burnout', scale: 'degree' },
+  { id: 'wb2', text: 'Do you feel burnt out because of your work?', subscale: 'Work-Related Burnout', scale: 'degree' },
+  { id: 'wb3', text: 'Does your work frustrate you?', subscale: 'Work-Related Burnout', scale: 'degree' },
+  { id: 'wb4', text: 'Do you feel worn out at the end of the working day?', subscale: 'Work-Related Burnout', scale: 'frequency' },
+  { id: 'wb5', text: 'Are you exhausted in the morning at the thought of another day at work?', subscale: 'Work-Related Burnout', scale: 'frequency' },
+  { id: 'wb6', text: 'Do you feel that every working hour is tiring for you?', subscale: 'Work-Related Burnout', scale: 'frequency' },
+  { id: 'wb7', text: 'Do you have enough energy for family and friends during leisure time?', subscale: 'Work-Related Burnout', scale: 'frequency' },
+  { id: 'cb1', text: 'Do you find it hard to work with clients?', subscale: 'Client-Related Burnout', scale: 'degree' },
+  { id: 'cb2', text: 'Does it drain your energy to work with clients?', subscale: 'Client-Related Burnout', scale: 'degree' },
+  { id: 'cb3', text: 'Do you find it frustrating to work with clients?', subscale: 'Client-Related Burnout', scale: 'degree' },
+  { id: 'cb4', text: 'Do you feel that you give more than you get back when you work with clients?', subscale: 'Client-Related Burnout', scale: 'degree' },
+  { id: 'cb5', text: 'Are you tired of working with clients?', subscale: 'Client-Related Burnout', scale: 'frequency' },
+  { id: 'cb6', text: 'Do you sometimes wonder how long you will be able to continue working with clients?', subscale: 'Client-Related Burnout', scale: 'frequency' }
 ];
 
-function getSurveyQuestions(){
-  try{
-    const saved = localStorage.getItem('peoplera_survey_questions');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length) return parsed;
+const DEFAULT_SURVEY_QUESTIONS = CBI_QUESTION_POOL.filter(q => q.subscale === 'Personal Burnout').slice(0, 5);
+
+const FREQUENCY_ANSWERS = ['Always', 'Often', 'Sometimes', 'Rarely', 'Never'];
+const DEGREE_ANSWERS = ['To a very high degree', 'To a high degree', 'Somewhat', 'To a low degree', 'To a very low degree'];
+
+let __surveySelectedQuestions = [...DEFAULT_SURVEY_QUESTIONS];
+let __surveyEditingSelection = null; // temp copy during editing
+
+function getAnswerLabels(scale) {
+  return scale === 'degree' ? DEGREE_ANSWERS : FREQUENCY_ANSWERS;
+}
+
+async function getSurveyQuestions(){
+  try {
+    const s = (await supabase.auth.getSession()).data?.session;
+    if (!s) return [...DEFAULT_SURVEY_QUESTIONS];
+
+    const { data } = await supabase
+      .from('survey_config')
+      .select('questions')
+      .eq('user_id', s.user.id)
+      .maybeSingle();
+
+    if (data && Array.isArray(data.questions) && data.questions.length) {
+      __surveySelectedQuestions = data.questions;
+      return data.questions;
     }
-  }catch(e){ /* noop */ }
+
+    // MIGRATION: check localStorage for old format
+    const legacy = localStorage.getItem('peoplera_survey_questions');
+    if (legacy) {
+      try {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed) && parsed.length) {
+          const migrated = parsed.map(item => {
+            if (typeof item === 'string') {
+              const match = CBI_QUESTION_POOL.find(q => q.text === item);
+              return match || { id: 'custom_' + Math.random().toString(36).slice(2, 8), text: item, subscale: 'Personal Burnout', scale: 'frequency' };
+            }
+            return item;
+          });
+          await supabase.from('survey_config').upsert({
+            user_id: s.user.id,
+            questions: migrated,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+          localStorage.removeItem('peoplera_survey_questions');
+          __surveySelectedQuestions = migrated;
+          return migrated;
+        }
+      } catch(e) { /* noop */ }
+    }
+  } catch(e) {
+    console.warn('getSurveyQuestions:', e);
+  }
+  __surveySelectedQuestions = [...DEFAULT_SURVEY_QUESTIONS];
   return [...DEFAULT_SURVEY_QUESTIONS];
 }
 
-function renderSurveyQuestions(editable){
+function renderSurveyQuestions(){
   const container = document.getElementById('surveyQuestionsContainer');
   if (!container) return;
-  const questions = getSurveyQuestions();
-  const answers = ['Always', 'Often', 'Sometimes', 'Rarely', 'Never'];
+  const questions = __surveySelectedQuestions;
+
+  if (!questions.length) {
+    container.innerHTML = '<div style="color:#94a3b8;font-size:13px;font-weight:700;padding:16px;text-align:center">No questions selected. Click "Edit questions" to pick from the CBI question bank.</div>';
+    return;
+  }
 
   let html = '';
   for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    const text = typeof q === 'string' ? q : (q.text || '');
+    const scale = (typeof q === 'object' && q.scale) || 'frequency';
+    const answers = getAnswerLabels(scale);
+
     html += `<div style="background:rgba(255,107,107,0.04);border:1px solid rgba(255,107,107,0.12);border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px">`;
     html += `<div style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#FF6B6B,#FFD93D);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;color:#fff;flex-shrink:0">${i + 1}</div>`;
     html += '<div style="flex:1;min-width:0">';
-    if (editable) {
-      html += `<input type="text" class="survey-q-input" data-idx="${i}" value="${escapeHtml(questions[i])}" style="width:100%;font-weight:800;font-size:14px;color:#0f172a;border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:8px 10px;outline:none;background:#fff;font-family:inherit">`;
-    } else {
-      html += `<div style="font-weight:800;font-size:14px;color:#0f172a">${escapeHtml(questions[i])}</div>`;
-    }
+    html += `<div style="font-weight:800;font-size:14px;color:#0f172a">${escapeHtml(text)}</div>`;
     html += '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">';
     for (const a of answers) {
-      html += `<span style="padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(0,0,0,0.04);color:#64748b;border:1px solid rgba(0,0,0,0.06)">${a}</span>`;
+      html += `<span style="padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(0,0,0,0.04);color:#64748b;border:1px solid rgba(0,0,0,0.06)">${escapeHtml(a)}</span>`;
     }
     html += '</div>';
     html += '</div>';
@@ -8161,50 +8228,153 @@ function renderSurveyQuestions(editable){
   container.innerHTML = html;
 }
 
+function renderSurveyQuestionPicker(){
+  const picker = document.getElementById('surveyQuestionPicker');
+  if (!picker) return;
+
+  const selectedIds = new Set((__surveyEditingSelection || []).map(q => q.id));
+  const subscales = ['Personal Burnout', 'Work-Related Burnout', 'Client-Related Burnout'];
+
+  let html = '';
+  html += '<div style="font-weight:900;font-size:15px;color:#0f172a;margin-bottom:12px">Select questions from the CBI question bank</div>';
+
+  for (const subscale of subscales) {
+    const items = CBI_QUESTION_POOL.filter(q => q.subscale === subscale);
+    html += `<div style="margin-bottom:16px">`;
+    html += `<div style="font-weight:900;font-size:13px;color:#6366f1;letter-spacing:0.04em;margin-bottom:8px">${escapeHtml(subscale.toUpperCase())}</div>`;
+    if (subscale === 'Client-Related Burnout') {
+      html += `<div style="font-size:11px;color:#94a3b8;font-weight:700;margin-bottom:8px;font-style:italic">Only for teams that work directly with clients, customers, or patients.</div>`;
+    }
+    for (const q of items) {
+      const isSelected = selectedIds.has(q.id);
+      const bgColor = isSelected ? 'rgba(99,102,241,0.08)' : 'rgba(0,0,0,0.02)';
+      const borderColor = isSelected ? 'rgba(99,102,241,0.25)' : 'rgba(0,0,0,0.06)';
+      const btnLabel = isSelected ? 'Remove' : 'Add';
+      const btnStyle = isSelected
+        ? 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#ef4444'
+        : 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);color:#6366f1';
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${bgColor};border:1px solid ${borderColor};border-radius:10px;margin-bottom:6px;transition:all 0.15s">`;
+      html += `<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;color:#0f172a">${escapeHtml(q.text)}</div><div style="font-size:10px;color:#94a3b8;margin-top:2px;font-weight:700">Scale: ${q.scale === 'degree' ? 'Degree' : 'Frequency'}</div></div>`;
+      html += `<button type="button" onclick="toggleSurveyPoolQuestion('${q.id}')" style="${btnStyle};border-radius:8px;padding:5px 10px;font-size:11px;font-weight:900;cursor:pointer;flex-shrink:0;transition:all 0.15s">${btnLabel}</button>`;
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Selected preview
+  const sel = __surveyEditingSelection || [];
+  if (sel.length) {
+    html += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.06)">';
+    html += `<div style="font-weight:900;font-size:13px;color:#0f172a;margin-bottom:10px">Selected (${sel.length})</div>`;
+    html += '<div style="display:grid;gap:6px">';
+    for (let i = 0; i < sel.length; i++) {
+      const q = sel[i];
+      html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,107,107,0.04);border:1px solid rgba(255,107,107,0.12);border-radius:10px">`;
+      html += `<div style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#FF6B6B,#FFD93D);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:10px;color:#fff;flex-shrink:0">${i + 1}</div>`;
+      html += `<div style="flex:1;font-weight:700;font-size:12px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(q.text)}</div>`;
+      html += `<button type="button" onclick="toggleSurveyPoolQuestion('${q.id}')" style="background:none;border:none;font-size:14px;cursor:pointer;color:#94a3b8;padding:2px 6px" title="Remove">&times;</button>`;
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  picker.innerHTML = html;
+}
+
+function toggleSurveyPoolQuestion(qId){
+  if (!__surveyEditingSelection) __surveyEditingSelection = [];
+  const idx = __surveyEditingSelection.findIndex(q => q.id === qId);
+  if (idx >= 0) {
+    __surveyEditingSelection.splice(idx, 1);
+  } else {
+    const poolItem = CBI_QUESTION_POOL.find(q => q.id === qId);
+    if (poolItem) __surveyEditingSelection.push({ ...poolItem });
+  }
+  renderSurveyQuestionPicker();
+}
+
 function toggleSurveyQuestionsEdit(){
   const btnEdit = document.getElementById('btnEditSurveyQuestions');
   const btnSave = document.getElementById('btnSaveSurveyQuestions');
+  const btnCancel = document.getElementById('btnCancelSurveyEdit');
+  const picker = document.getElementById('surveyQuestionPicker');
+  const container = document.getElementById('surveyQuestionsContainer');
   if (!btnEdit || !btnSave) return;
 
-  const isEditing = btnSave.style.display !== 'none';
-  if (isEditing) {
-    // Cancel edit
-    btnSave.style.display = 'none';
-    btnEdit.textContent = 'Edit questions';
-    renderSurveyQuestions(false);
-  } else {
-    // Enter edit mode
-    btnSave.style.display = '';
-    btnEdit.textContent = 'Cancel';
-    renderSurveyQuestions(true);
-  }
+  // Enter edit mode
+  __surveyEditingSelection = __surveySelectedQuestions.map(q => ({ ...q }));
+  btnEdit.style.display = 'none';
+  btnSave.style.display = '';
+  if (btnCancel) btnCancel.style.display = '';
+  if (container) container.style.display = 'none';
+  if (picker) picker.style.display = 'block';
+  renderSurveyQuestionPicker();
 }
 
-function saveSurveyQuestions(){
-  const inputs = document.querySelectorAll('.survey-q-input');
-  const questions = [];
-  inputs.forEach(input => {
-    const val = String(input.value || '').trim();
-    if (val) questions.push(val);
-  });
-  if (!questions.length) {
-    questions.push(...DEFAULT_SURVEY_QUESTIONS);
+function cancelSurveyQuestionsEdit(){
+  const btnEdit = document.getElementById('btnEditSurveyQuestions');
+  const btnSave = document.getElementById('btnSaveSurveyQuestions');
+  const btnCancel = document.getElementById('btnCancelSurveyEdit');
+  const picker = document.getElementById('surveyQuestionPicker');
+  const container = document.getElementById('surveyQuestionsContainer');
+
+  __surveyEditingSelection = null;
+  if (btnEdit) btnEdit.style.display = '';
+  if (btnSave) btnSave.style.display = 'none';
+  if (btnCancel) btnCancel.style.display = 'none';
+  if (picker) picker.style.display = 'none';
+  if (container) container.style.display = 'grid';
+  renderSurveyQuestions();
+}
+
+async function saveSurveyQuestions(){
+  const questions = __surveyEditingSelection && __surveyEditingSelection.length
+    ? __surveyEditingSelection
+    : [...DEFAULT_SURVEY_QUESTIONS];
+
+  try {
+    const s = (await supabase.auth.getSession()).data?.session;
+    if (!s) throw new Error('Not authenticated');
+
+    const { error } = await supabase.from('survey_config').upsert({
+      user_id: s.user.id,
+      questions: questions,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+
+    if (error) throw error;
+  } catch(e) {
+    console.error('saveSurveyQuestions:', e);
+    showToast(e.message || 'Failed to save questions', 'error');
+    return;
   }
-  try{
-    localStorage.setItem('peoplera_survey_questions', JSON.stringify(questions));
-  }catch(e){ /* noop */ }
+
+  __surveySelectedQuestions = questions;
+  __surveyEditingSelection = null;
 
   const btnEdit = document.getElementById('btnEditSurveyQuestions');
   const btnSave = document.getElementById('btnSaveSurveyQuestions');
+  const btnCancel = document.getElementById('btnCancelSurveyEdit');
+  const picker = document.getElementById('surveyQuestionPicker');
+  const container = document.getElementById('surveyQuestionsContainer');
+
   if (btnSave) btnSave.style.display = 'none';
-  if (btnEdit) btnEdit.textContent = 'Edit questions';
-  renderSurveyQuestions(false);
+  if (btnCancel) btnCancel.style.display = 'none';
+  if (btnEdit) btnEdit.style.display = '';
+  if (picker) picker.style.display = 'none';
+  if (container) container.style.display = 'grid';
+  renderSurveyQuestions();
   showToast('Survey questions saved', 'success');
 }
 
-// Render questions on page load
+// Load survey config on page init
+async function initSurveyQuestions(){
+  await getSurveyQuestions();
+  renderSurveyQuestions();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => renderSurveyQuestions(false), 100);
+  setTimeout(() => initSurveyQuestions(), 100);
 });
 
 // ── Pulse Survey — Send survey emails ──
@@ -8231,13 +8401,13 @@ async function sendPulseSurvey(){
     }
 
     // Generate tokens and send
+    const customQuestions = __surveySelectedQuestions.length ? __surveySelectedQuestions : await getSurveyQuestions();
     let sentCount = 0;
     for (const emp of withEmail) {
       const surveyToken = crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2) + Date.now().toString(36));
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       // Store token with custom questions
-      const customQuestions = getSurveyQuestions();
       await supabase.from('survey_tokens').upsert({
         employee_id: emp.id,
         token: surveyToken,
@@ -8324,7 +8494,9 @@ window.sendPulseSurvey = sendPulseSurvey;
 window.loadSurveyResults = loadSurveyResults;
 window.generateAIInsights = generateAIInsights;
 window.toggleSurveyQuestionsEdit = toggleSurveyQuestionsEdit;
+window.cancelSurveyQuestionsEdit = cancelSurveyQuestionsEdit;
 window.saveSurveyQuestions = saveSurveyQuestions;
 window.renderSurveyQuestions = renderSurveyQuestions;
+window.toggleSurveyPoolQuestion = toggleSurveyPoolQuestion;
 
 boot();
