@@ -5149,8 +5149,8 @@ async function loadDemoData() {
 
       const { data: inserted, error: empErr } = await supabase
         .from('employees')
-        .upsert(toInsertEmployees, { onConflict: 'user_id, full_name' })
-        .select('id, full_name, job_title, start_date, birth_date, last_vacation, is_demo');
+        .insert(toInsertEmployees)
+        .select('id, full_name, job_title, start_date, birth_date, is_demo');
       if (empErr) throw empErr;
 
       try{
@@ -5242,7 +5242,7 @@ async function loadDemoData() {
       }
 
       if (metricsPayload.length) {
-        const { error: wkErr } = await supabase.from('weekly_metrics').upsert(metricsPayload);
+        const { error: wkErr } = await supabase.from('weekly_metrics').insert(metricsPayload);
         if (wkErr) throw wkErr;
       }
 
