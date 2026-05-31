@@ -5047,7 +5047,11 @@ function applyHardcodedDemoScores(list){
   return emps;
 }
 
+let __demoLoadInFlight = false;
 async function loadDemoData() {
+  if (__demoLoadInFlight) return;
+  __demoLoadInFlight = true;
+
   const btn = document.getElementById('btnTryDemoData');
   const errorEl = document.getElementById('demoError');
   const originalText = btn ? btn.textContent : '';
@@ -5105,39 +5109,34 @@ async function loadDemoData() {
 
     const s = (await supabase.auth.getSession()).data?.session;
     if (s?.user?.id) {
-      const { data: existingDemo } = await supabase
-        .from('employees')
-        .select('id')
-        .eq('user_id', s.user.id)
-        .eq('is_demo', true);
-
-      const existingIds = (existingDemo || []).map(r => r?.id).filter(Boolean);
-      if (existingIds.length) {
-        try{
-          await supabase.from('weekly_metrics').delete().in('employee_id', existingIds);
-        }catch(e){ /* noop */ }
-        await supabase.from('employees').delete().in('id', existingIds);
-      }
-
-      // Also remove any non-demo duplicates by name to prevent stale orphans
+      const uid = s.user.id;
       const demoNames = demoSeed.map(r => String(r.full_name || '').trim()).filter(Boolean);
-      if (demoNames.length) {
-        try{
-          const { data: dupes } = await supabase
-            .from('employees')
-            .select('id')
-            .eq('user_id', s.user.id)
-            .in('full_name', demoNames);
-          const dupeIds = (dupes || []).map(r => r?.id).filter(Boolean);
-          if (dupeIds.length) {
-            try{ await supabase.from('weekly_metrics').delete().in('employee_id', dupeIds); }catch(e){ /* noop */ }
-            await supabase.from('employees').delete().in('id', dupeIds);
-          }
-        }catch(e){ /* noop */ }
+
+      // Step 1: Find ALL rows to delete (by is_demo=true OR matching demo names)
+      const { data: byFlag } = await supabase
+        .from('employees').select('id').eq('user_id', uid).eq('is_demo', true);
+      const { data: byName } = await supabase
+        .from('employees').select('id').eq('user_id', uid).in('full_name', demoNames);
+
+      const allIds = [...new Set([
+        ...((byFlag || []).map(r => r?.id).filter(Boolean)),
+        ...((byName || []).map(r => r?.id).filter(Boolean))
+      ])];
+
+      // Step 2: Delete weekly_metrics for those employees, then the employees
+      if (allIds.length) {
+        const { error: wmDelErr } = await supabase
+          .from('weekly_metrics').delete().in('employee_id', allIds);
+        if (wmDelErr) throw new Error('Failed to clear demo metrics: ' + (wmDelErr.message || wmDelErr.code));
+
+        const { error: empDelErr } = await supabase
+          .from('employees').delete().in('id', allIds);
+        if (empDelErr) throw new Error('Failed to clear demo employees: ' + (empDelErr.message || empDelErr.code));
       }
 
+      // Step 3: Insert fresh demo employees
       const toInsertEmployees = demoSeed.map(r => ({
-        user_id: s.user.id,
+        user_id: uid,
         full_name: r.full_name,
         job_title: r.job_title || null,
         start_date: r.start_date || null,
@@ -5412,6 +5411,7 @@ async function loadDemoData() {
     // Show error banner for critical demo data save failures (employees/weekly_metrics)
     showToast('Error loading demo data', 'error');
   } finally {
+    __demoLoadInFlight = false;
     if (btn) {
       btn.textContent = originalText;
       btn.disabled = false;
@@ -8235,8 +8235,12 @@ function renderSurveyQuestionPicker(){
   const selectedIds = new Set((__surveyEditingSelection || []).map(q => q.id));
   const subscales = ['Personal Burnout', 'Work-Related Burnout', 'Client-Related Burnout'];
 
+  const MAX_SURVEY_QUESTIONS = 5;
+  const atLimit = selectedIds.size >= MAX_SURVEY_QUESTIONS;
+
   let html = '';
-  html += '<div style="font-weight:900;font-size:15px;color:#0f172a;margin-bottom:12px">Select questions from the CBI question bank</div>';
+  html += '<div style="font-weight:900;font-size:15px;color:#0f172a;margin-bottom:4px">Select questions from the CBI question bank</div>';
+  html += `<div style="font-size:12px;color:${atLimit ? '#ef4444' : '#94a3b8'};font-weight:700;margin-bottom:12px">${atLimit ? 'Maximum 5 questions \u2014 remove one to add another.' : selectedIds.size + ' of 5 selected'}</div>`;
 
   for (const subscale of subscales) {
     const items = CBI_QUESTION_POOL.filter(q => q.subscale === subscale);
@@ -8249,13 +8253,16 @@ function renderSurveyQuestionPicker(){
       const isSelected = selectedIds.has(q.id);
       const bgColor = isSelected ? 'rgba(99,102,241,0.08)' : 'rgba(0,0,0,0.02)';
       const borderColor = isSelected ? 'rgba(99,102,241,0.25)' : 'rgba(0,0,0,0.06)';
+      const addDisabled = !isSelected && atLimit;
       const btnLabel = isSelected ? 'Remove' : 'Add';
       const btnStyle = isSelected
         ? 'background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);color:#ef4444'
-        : 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);color:#6366f1';
+        : addDisabled
+          ? 'background:rgba(0,0,0,0.03);border:1px solid rgba(0,0,0,0.06);color:#cbd5e1;cursor:not-allowed'
+          : 'background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);color:#6366f1';
       html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${bgColor};border:1px solid ${borderColor};border-radius:10px;margin-bottom:6px;transition:all 0.15s">`;
       html += `<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;color:#0f172a">${escapeHtml(q.text)}</div><div style="font-size:10px;color:#94a3b8;margin-top:2px;font-weight:700">Scale: ${q.scale === 'degree' ? 'Degree' : 'Frequency'}</div></div>`;
-      html += `<button type="button" onclick="toggleSurveyPoolQuestion('${q.id}')" style="${btnStyle};border-radius:8px;padding:5px 10px;font-size:11px;font-weight:900;cursor:pointer;flex-shrink:0;transition:all 0.15s">${btnLabel}</button>`;
+      html += `<button type="button" ${addDisabled ? 'disabled' : ''} onclick="toggleSurveyPoolQuestion('${q.id}')" style="${btnStyle};border-radius:8px;padding:5px 10px;font-size:11px;font-weight:900;cursor:${addDisabled ? 'not-allowed' : 'pointer'};flex-shrink:0;transition:all 0.15s">${btnLabel}</button>`;
       html += '</div>';
     }
     html += '</div>';
@@ -8265,7 +8272,7 @@ function renderSurveyQuestionPicker(){
   const sel = __surveyEditingSelection || [];
   if (sel.length) {
     html += '<div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.06)">';
-    html += `<div style="font-weight:900;font-size:13px;color:#0f172a;margin-bottom:10px">Selected (${sel.length})</div>`;
+    html += `<div style="font-weight:900;font-size:13px;color:#0f172a;margin-bottom:10px">Selected (${sel.length} / ${MAX_SURVEY_QUESTIONS})</div>`;
     html += '<div style="display:grid;gap:6px">';
     for (let i = 0; i < sel.length; i++) {
       const q = sel[i];
@@ -8287,6 +8294,7 @@ function toggleSurveyPoolQuestion(qId){
   if (idx >= 0) {
     __surveyEditingSelection.splice(idx, 1);
   } else {
+    if (__surveyEditingSelection.length >= 5) return;
     const poolItem = CBI_QUESTION_POOL.find(q => q.id === qId);
     if (poolItem) __surveyEditingSelection.push({ ...poolItem });
   }
@@ -8331,6 +8339,11 @@ async function saveSurveyQuestions(){
   const questions = __surveyEditingSelection && __surveyEditingSelection.length
     ? __surveyEditingSelection
     : [...DEFAULT_SURVEY_QUESTIONS];
+
+  if (questions.length !== 5) {
+    showToast('Please select 5 questions', 'error');
+    return;
+  }
 
   try {
     const s = (await supabase.auth.getSession()).data?.session;
