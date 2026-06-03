@@ -5726,12 +5726,21 @@ function updateScoreCards(scores, weeklyData, allTrendData) {
 }
 
 function getRiskLevel(score) {
-  if (score >= 75) return 'Critical';
-  if (score >= 50) return 'High';
-  if (score >= 25) return 'Medium';
+  if (score >= 80) return 'Critical';
+  if (score >= 60) return 'High';
+  if (score >= 35) return 'Medium';
   return 'Low';
 }
 
+// ── Unified Burnout Scoring Model (must stay in sync with api/pulse.js) ──
+// Linear/proportional, 6 signals, 0-100. Evidence-based weights:
+//   weekly_hours:         max 35 pts — WHO/ILO 2021: ≥55h = serious health risk; EU WTD cap 48h; safe ≤40h
+//   after_hours_messages: max 20 pts — continuous connectivity / lack of psychological detachment
+//   weekend_hours:        max 15 pts — absence of weekend recovery
+//   overtime_hours:       max 10 pts — sustained excess work beyond contract
+//   sick_days:            max 10 pts — lagging health indicator
+//   vacation_gap:         max 10 pts — cumulative fatigue from no recovery break (saturates 26 wks)
+// Total possible: 100
 function computeBurnoutScoreFromSignals({ weeklyHours, weekendHours, afterHoursMessages, sickDays, overtimeHours, lastVacation } = {}){
   const wh = Math.max(0, Number(weeklyHours || 0));
   const we = Math.max(0, Number(weekendHours || 0));
@@ -5739,35 +5748,38 @@ function computeBurnoutScoreFromSignals({ weeklyHours, weekendHours, afterHoursM
   const sick = Math.max(0, Number(sickDays || 0));
   const ot = Math.max(0, Number(overtimeHours || 0));
 
-  let score = 0;
+  // weekly_hours: 0 pts at ≤40h, linear ramp to 35 pts at 55h, capped at 35
+  const hoursScore = wh <= 40 ? 0 : Math.min((wh - 40) / 15, 1) * 35;
+  // after_hours_messages: proportional, saturates at 50
+  const msgScore = Math.min(msg / 50, 1) * 20;
+  // weekend_hours: proportional, saturates at 16h
+  const weekendScore = Math.min(we / 16, 1) * 15;
+  // overtime_hours: proportional, saturates at 20h
+  const otScore = Math.min(ot / 20, 1) * 10;
+  // sick_days: proportional, saturates at 5
+  const sickScore = Math.min(sick / 5, 1) * 10;
 
-  if (wh >= 60) score += 40;
-  else if (wh >= 50) score += 25;
-
-  if (we >= 8) score += 20;
-  if (msg >= 20) score += 20;
-  if (sick >= 2) score += 15;
-  if (ot >= 20) score += 15;
-
-  // Vacation scoring: if last_vacation is in the future, treat as very recent (vacScore = 0)
+  // vacation_gap: weeks since last vacation, proportional, saturates at 26 weeks
+  let vacScore = 0;
   const vacStr = String(lastVacation || '').trim();
   if (vacStr && vacStr.toLowerCase() !== 'unknown') {
     const vacDate = Date.parse(vacStr);
     if (Number.isFinite(vacDate)) {
-      const now = Date.now();
-      const weeksSince = Math.max(0, Math.floor((now - vacDate) / (7 * 24 * 60 * 60 * 1000)));
-      if (weeksSince >= 16) score += 10;
+      const weeksSince = Math.max(0, (Date.now() - vacDate) / (7 * 24 * 60 * 60 * 1000));
+      vacScore = Math.min(weeksSince / 26, 1) * 10;
     }
   }
 
-  return Math.min(100, score);
+  return Math.min(100, Math.round(hoursScore + msgScore + weekendScore + otScore + sickScore + vacScore));
 }
 
+// Risk tiers (must stay in sync with api/pulse.js normalizeRiskLevelFromScore):
+// 0-34 LOW, 35-59 MEDIUM, 60-79 HIGH, 80-100 CRITICAL
 function classifyEmployeeRiskLevel(score){
   const s = Number(score) || 0;
-  if (s >= 75) return 'critical';
-  if (s >= 50) return 'high';
-  if (s >= 25) return 'medium';
+  if (s >= 80) return 'critical';
+  if (s >= 60) return 'high';
+  if (s >= 35) return 'medium';
   return 'low';
 }
 
@@ -6190,7 +6202,7 @@ function renderStrategicActionPlansPage(){
           },
           'alex kim': {
             employee: { id: 'demo-alex', name: 'Alex Kim', role: 'Senior Engineer' },
-            burnout_score: 88, risk_level: 'HIGH', week_start: getCurrentMonday(),
+            burnout_score: 88, risk_level: 'CRITICAL', week_start: getCurrentMonday(),
             priority_alert: 'Priority Action This Week: Alex Kim (Score: 88) \u2014 Reduce overtime immediately.',
             this_week: {
               plan_title: 'Overtime Reduction Plan',
@@ -6213,7 +6225,7 @@ function renderStrategicActionPlansPage(){
           },
           'maya chen': {
             employee: { id: 'demo-maya', name: 'Maya Chen', role: 'Product Designer' },
-            burnout_score: 84, risk_level: 'HIGH', week_start: getCurrentMonday(),
+            burnout_score: 84, risk_level: 'CRITICAL', week_start: getCurrentMonday(),
             priority_alert: 'Priority Action This Week: Maya Chen (Score: 84) \u2014 Reduce overload and restore recovery time.',
             this_week: {
               plan_title: 'Weekend Work Boundary Plan',
@@ -6316,15 +6328,15 @@ function renderActionPlansLayout({ out, blocks }){
   const norm = (t) => String(t || '').trim().toLowerCase();
 
   const riskColor = (score) => {
-    if (score >= 75) return '#EF4444';
-    if (score >= 50) return '#FFB347';
-    if (score >= 30) return '#FBBF24';
+    if (score >= 80) return '#EF4444';
+    if (score >= 60) return '#FFB347';
+    if (score >= 35) return '#FBBF24';
     return '#22C55E';
   };
   const riskLabel = (score) => {
-    if (score >= 75) return 'CRITICAL';
-    if (score >= 50) return 'HIGH';
-    if (score >= 30) return 'MEDIUM';
+    if (score >= 80) return 'CRITICAL';
+    if (score >= 60) return 'HIGH';
+    if (score >= 35) return 'MEDIUM';
     return 'LOW';
   };
 
@@ -6412,10 +6424,13 @@ function renderActionPlansLayout({ out, blocks }){
 
   let pageHtml = '';
 
-  // Priority banner — only for highest-risk employee
+  // Priority banner — always the single highest-risk employee (computed dynamically)
   const topBlock = blocks[0];
-  if (topBlock && topBlock.priority_alert) {
-    pageHtml += `<div style="margin-bottom:16px;background:linear-gradient(135deg,#EF4444,#FF6B4A);color:#fff;border-radius:14px;padding:14px 16px;font-weight:900;font-size:14px;line-height:1.5;box-shadow:0 4px 16px rgba(239,68,68,0.18)">${escapeHtml(topBlock.priority_alert)}</div>`;
+  if (topBlock) {
+    const topName = topBlock.employeeName || 'Employee';
+    const topScore = Number(topBlock.score || 0);
+    const topAlert = topBlock.priority_alert || ('Priority Action This Week: ' + topName + ' (Score: ' + topScore + ')');
+    pageHtml += `<div style="margin-bottom:16px;background:linear-gradient(135deg,#EF4444,#FF6B4A);color:#fff;border-radius:14px;padding:14px 16px;font-weight:900;font-size:14px;line-height:1.5;box-shadow:0 4px 16px rgba(239,68,68,0.18)">${escapeHtml(topAlert)}</div>`;
   }
 
   // Tab/pill navigation

@@ -194,23 +194,46 @@ function requireCronSecret(req){
   return got === required;
 }
 
-function computeBurnoutScoreFromSignalsServer({ weeklyHours, weekendHours, afterHoursMessages, sickDays } = {}){
+// ── Unified Burnout Scoring Model (must stay in sync with dashboard.js computeBurnoutScoreFromSignals) ──
+// Linear/proportional, 6 signals, 0-100. Evidence-based weights:
+//   weekly_hours:         max 35 pts — WHO/ILO 2021: ≥55h = serious health risk; EU WTD cap 48h; safe ≤40h
+//   after_hours_messages: max 20 pts — continuous connectivity / lack of psychological detachment
+//   weekend_hours:        max 15 pts — absence of weekend recovery
+//   overtime_hours:       max 10 pts — sustained excess work beyond contract
+//   sick_days:            max 10 pts — lagging health indicator
+//   vacation_gap:         max 10 pts — cumulative fatigue from no recovery break (saturates 26 wks)
+// Total possible: 100
+function computeBurnoutScoreFromSignalsServer({ weeklyHours, weekendHours, afterHoursMessages, sickDays, overtimeHours, vacationGapWeeks } = {}){
   const wh = Math.max(0, Number(weeklyHours || 0));
   const we = Math.max(0, Number(weekendHours || 0));
   const msg = Math.max(0, Number(afterHoursMessages || 0));
   const sick = Math.max(0, Number(sickDays || 0));
+  const ot = Math.max(0, Number(overtimeHours || 0));
+  const vacWeeks = Math.max(0, Number(vacationGapWeeks || 0));
 
-  const hoursScore = Math.min(wh / 60, 1) * 40;
-  const weekendScore = Math.min(we / 20, 1) * 20;
-  const messagesScore = Math.min(msg / 50, 1) * 20;
-  const sickScore = Math.min(sick / 5, 1) * 20;
-  return Math.min(100, Math.round(hoursScore + weekendScore + messagesScore + sickScore));
+  // weekly_hours: 0 pts at ≤40h, linear ramp to 35 pts at 55h, capped at 35
+  const hoursScore = wh <= 40 ? 0 : Math.min((wh - 40) / 15, 1) * 35;
+  // after_hours_messages: proportional, saturates at 50
+  const msgScore = Math.min(msg / 50, 1) * 20;
+  // weekend_hours: proportional, saturates at 16h
+  const weekendScore = Math.min(we / 16, 1) * 15;
+  // overtime_hours: proportional, saturates at 20h
+  const otScore = Math.min(ot / 20, 1) * 10;
+  // sick_days: proportional, saturates at 5
+  const sickScore = Math.min(sick / 5, 1) * 10;
+  // vacation_gap: proportional, saturates at 26 weeks
+  const vacScore = Math.min(vacWeeks / 26, 1) * 10;
+
+  return Math.min(100, Math.round(hoursScore + msgScore + weekendScore + otScore + sickScore + vacScore));
 }
 
+// Risk tiers (must stay in sync with dashboard.js classifyEmployeeRiskLevel):
+// 0-34 LOW, 35-59 MEDIUM, 60-79 HIGH, 80-100 CRITICAL
 function normalizeRiskLevelFromScore(score){
   const s = clampInt(score, 0, 100);
-  if (s >= 75) return 'HIGH';
-  if (s >= 50) return 'MEDIUM';
+  if (s >= 80) return 'CRITICAL';
+  if (s >= 60) return 'HIGH';
+  if (s >= 35) return 'MEDIUM';
   return 'LOW';
 }
 
@@ -229,7 +252,7 @@ async function computeProfileForEmployee(supabaseAdmin, employeeId){
 
   const { data: metrics, error: mErr } = await supabaseAdmin
     .from('weekly_metrics')
-    .select('week_start, weekly_hours, weekend_hours, after_hours_messages, sick_days')
+    .select('week_start, weekly_hours, weekend_hours, after_hours_messages, sick_days, overtime_hours')
     .eq('employee_id', employeeId)
     .order('week_start', { ascending: false })
     .limit(12);
@@ -268,7 +291,9 @@ async function computeProfileForEmployee(supabaseAdmin, employeeId){
     weeklyHours: Number(previousRow.weekly_hours || 0),
     weekendHours: Number(previousRow.weekend_hours || 0),
     afterHoursMessages: Number(previousRow.after_hours_messages || 0),
-    sickDays: Number(previousRow.sick_days || 0)
+    sickDays: Number(previousRow.sick_days || 0),
+    overtimeHours: Number(previousRow.overtime_hours || 0),
+    vacationGapWeeks: weeks_since_last_vacation || 0
   }) : null;
 
   const employee_type = deriveEmployeeType(profile, { weekendHoursThisWeek, previousBurnoutScore });
@@ -291,7 +316,9 @@ async function generatePlansForEmployee(supabaseAdmin, employeeId){
     weeklyHours: Number(latest.weekly_hours || 0),
     weekendHours: Number(latest.weekend_hours || 0),
     afterHoursMessages: Number(latest.after_hours_messages || 0),
-    sickDays: Number(latest.sick_days || 0)
+    sickDays: Number(latest.sick_days || 0),
+    overtimeHours: Number(latest.overtime_hours || 0),
+    vacationGapWeeks: profile.weeks_since_last_vacation || 0
   });
   const risk = normalizeRiskLevelFromScore(score);
 
