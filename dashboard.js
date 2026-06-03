@@ -6163,16 +6163,108 @@ function renderStrategicActionPlansPage(){
       let blocks = [];
 
       if (isDemoEmployeesActive()) {
-        const demoEmployees = Array.isArray(window.__demoEmployees) ? window.__demoEmployees : (Array.isArray(employees) ? employees : []);
-        const ids = demoEmployees.map(e => String(e?.id || '').trim()).filter(Boolean);
-        const tasks = ids.map(id => apiFetch('/api/pulse?action=generate_for_employee', {
-          method: 'POST',
-          accessToken: token,
-          body: { employee_id: id }
-        }).then(r => r?.latest_action_plans || null).catch(() => null));
-
-        const results = await Promise.all(tasks);
-        blocks = results.map(actionPlansFromLatestActionPlansJson).filter(Boolean);
+        const demoPlansData = {
+          'sara lee': {
+            employee: { id: 'demo-sara', name: 'Sara Lee', role: 'Operations Manager' },
+            burnout_score: 92, risk_level: 'CRITICAL', week_start: getCurrentMonday(),
+            priority_alert: 'Priority Action This Week: Sara Lee (Score: 92) \u2014 Reduce extreme workload and weekend work immediately.',
+            this_week: {
+              plan_title: 'Workload Emergency Rebalance',
+              plan_description: 'Rapidly reduce sustained overload by pausing non-critical work and adding coverage.',
+              projected_impact: 'Risk projected to decrease by ~22 points next week.',
+              actions: [
+                { text: 'Freeze non-critical operational projects and delegate urgent tasks to a backup owner.', impacted_employees: ['Sara Lee'] },
+                { text: 'Remove weekend coverage for the next 2 weeks; rotate coverage across the team.', impacted_employees: ['Sara Lee'] },
+                { text: 'Schedule a recovery block and agree on a hard cap for weekly hours until stabilized.', impacted_employees: ['Sara Lee'] }
+              ]
+            },
+            next_2_weeks: {
+              plan_title: 'After-hours & Recovery Plan',
+              plan_description: 'Reduce after-hours communication and restore recovery time with clear boundaries.',
+              projected_impact: 'Risk projected to decrease by ~18 points over 2 weeks.',
+              actions: [
+                { text: 'Set quiet hours and route after-hours requests through a single escalation channel.', impacted_employees: ['Sara Lee'] },
+                { text: 'Plan time off and lock it in calendar to ensure actual recovery.', impacted_employees: ['Sara Lee'] }
+              ]
+            }
+          },
+          'alex kim': {
+            employee: { id: 'demo-alex', name: 'Alex Kim', role: 'Senior Engineer' },
+            burnout_score: 88, risk_level: 'HIGH', week_start: getCurrentMonday(),
+            priority_alert: 'Priority Action This Week: Alex Kim (Score: 88) \u2014 Reduce overtime immediately.',
+            this_week: {
+              plan_title: 'Overtime Reduction Plan',
+              plan_description: 'Cut overtime by removing low-priority work and redistributing load.',
+              projected_impact: 'Risk projected to decrease by ~19 points next week.',
+              actions: [
+                { text: 'Pause non-critical work and cap weekly hours for the next 2 weeks.', impacted_employees: ['Alex Kim'] },
+                { text: 'Reassign 10\u201320% of tasks to lower-risk capacity and add backup coverage owners.', impacted_employees: ['Alex Kim'] }
+              ]
+            },
+            next_2_weeks: {
+              plan_title: 'After-hours Boundary Plan',
+              plan_description: 'Reduce after-hours communication and improve recovery time by setting team norms.',
+              projected_impact: 'Risk projected to decrease by ~19 points over 2 weeks.',
+              actions: [
+                { text: 'Define quiet hours and discourage non-urgent messaging outside work hours.', impacted_employees: ['Alex Kim'] },
+                { text: 'Batch notifications and introduce async status updates to avoid constant pings.', impacted_employees: ['Alex Kim'] }
+              ]
+            }
+          },
+          'maya chen': {
+            employee: { id: 'demo-maya', name: 'Maya Chen', role: 'Product Designer' },
+            burnout_score: 84, risk_level: 'HIGH', week_start: getCurrentMonday(),
+            priority_alert: 'Priority Action This Week: Maya Chen (Score: 84) \u2014 Reduce overload and restore recovery time.',
+            this_week: {
+              plan_title: 'Weekend Work Boundary Plan',
+              plan_description: 'Protect weekends and remove recurring weekend obligations.',
+              projected_impact: 'Risk projected to decrease by ~16 points next week.',
+              actions: [
+                { text: 'Block weekends in calendar and communicate a no-response policy to stakeholders.', impacted_employees: ['Maya Chen'] },
+                { text: 'Audit recurring weekend tasks and shift them into weekday scheduling.', impacted_employees: ['Maya Chen'] }
+              ]
+            },
+            next_2_weeks: {
+              plan_title: 'After-hours Communication Reduction',
+              plan_description: 'Reduce after-hours pings with async norms and clear escalation paths.',
+              projected_impact: 'Risk projected to decrease by ~14 points over 2 weeks.',
+              actions: [
+                { text: 'Set quiet hours and an escalation channel for urgent requests.', impacted_employees: ['Maya Chen'] },
+                { text: 'Introduce async-first norms and batch status updates for the team.', impacted_employees: ['Maya Chen'] }
+              ]
+            }
+          },
+          'omar hassan': {
+            employee: { id: 'demo-omar', name: 'Omar Hassan', role: 'Marketing Lead' },
+            burnout_score: 77, risk_level: 'HIGH', week_start: getCurrentMonday(),
+            priority_alert: 'Priority Action This Week: Omar Hassan (Score: 77) \u2014 Reduce workload and protect focus time.',
+            this_week: {
+              plan_title: 'Workload Rebalance Plan',
+              plan_description: 'De-scope low-priority work and protect focus blocks.',
+              projected_impact: 'Risk projected to decrease by ~12 points next week.',
+              actions: [
+                { text: 'De-scope non-critical requests and move lower-priority work out of this sprint.', impacted_employees: ['Omar Hassan'] },
+                { text: 'Add protected focus blocks and route urgent requests through a single triage channel.', impacted_employees: ['Omar Hassan'] }
+              ]
+            },
+            next_2_weeks: {
+              plan_title: 'Recovery & Boundary Plan',
+              plan_description: 'Reduce after-hours messaging and plan recovery time.',
+              projected_impact: 'Risk projected to decrease by ~10 points over 2 weeks.',
+              actions: [
+                { text: 'Set response-time expectations and quiet hours to reduce after-hours messaging.', impacted_employees: ['Omar Hassan'] },
+                { text: 'Encourage a short recovery break and schedule next vacation.', impacted_employees: ['Omar Hassan'] }
+              ]
+            }
+          }
+        };
+        const demoEmps = Array.isArray(window.__demoEmployees) ? window.__demoEmployees : (Array.isArray(employees) ? employees : []);
+        for (const emp of demoEmps) {
+          const key = String(emp?.full_name || emp?.name || '').toLowerCase();
+          const plan = demoPlansData[key];
+          if (plan) blocks.push(actionPlansFromLatestActionPlansJson(plan));
+        }
+        blocks = blocks.filter(Boolean);
       } else {
         const res = await fetch('/api/action-plans', {
           method: 'GET',
