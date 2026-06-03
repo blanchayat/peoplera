@@ -297,7 +297,7 @@ body {
   line-height:1;
 }
 
-.nav-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+.nav-left{ display:flex; align-items:center; gap:10px; min-width:0; overflow:hidden; }
 
 .nav-chevron{
   color:#c0c5cc;
@@ -305,6 +305,7 @@ body {
   font-size:14px;
   line-height:1;
   margin-left:auto;
+  flex-shrink:0;
   transition:transform .15s ease, color .15s ease;
 }
 .nav-parent.active .nav-chevron,

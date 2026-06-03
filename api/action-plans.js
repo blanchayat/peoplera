@@ -55,6 +55,7 @@ module.exports = async (req, res) => {
       .from('employees')
       .select('id, full_name, job_title, latest_action_plans, is_demo')
       .eq('user_id', user.id)
+      .neq('is_demo', true)
       .order('created_at', { ascending: false });
 
     if (empErr) {

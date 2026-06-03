@@ -1437,9 +1437,16 @@ async function clearDemoData(){
     window.__demoEmployees = [];
     employees = [];
     weeklyData = {};
+    window.__lastPulseEmployees = [];
+    window.__lastActionPlans = [];
+    window.__lastDecisionEngine = null;
     setDemoActivatedThisSession(false);
     try{ writeJsonLocalStorage('peoplera_active_employees_count', 0); }catch(e){ /* noop */ }
     try{ writeJsonLocalStorage('peoplera_demo_employee_ids', []); }catch(e){ /* noop */ }
+    try{ localStorage.removeItem('peoplera_team_hotspots'); }catch(e){ /* noop */ }
+    try{ localStorage.removeItem('peoplera_action_plans'); }catch(e){ /* noop */ }
+    try{ localStorage.removeItem('peoplera_ai_insights_cache'); }catch(e){ /* noop */ }
+    try{ localStorage.removeItem('peoplera_ai_insights'); }catch(e){ /* noop */ }
 
     try{ renderEmployees(); }catch(e){ /* noop */ }
     try{ updateSectionsVisibility(); }catch(e){ /* noop */ }
@@ -2827,6 +2834,17 @@ async function initSupabase(){
 
     if (_event === 'SIGNED_OUT') {
       window.__subChecked = false;
+      // Clear all demo artifacts on sign-out
+      try{ localStorage.removeItem('peoplera_team_hotspots'); }catch(e){}
+      try{ localStorage.removeItem('peoplera_action_plans'); }catch(e){}
+      try{ localStorage.removeItem('peoplera_ai_insights_cache'); }catch(e){}
+      try{ localStorage.removeItem('peoplera_ai_insights'); }catch(e){}
+      try{ localStorage.removeItem('peoplera_demo_employee_ids'); }catch(e){}
+      try{ setDemoActivatedThisSession(false); }catch(e){}
+      window.__demoEmployees = [];
+      window.__lastPulseEmployees = [];
+      window.__lastActionPlans = [];
+      window.__lastDecisionEngine = null;
       const gate = document.getElementById('gate');
       const app = document.getElementById('app');
       if (gate) gate.hidden = false;
@@ -2934,6 +2952,14 @@ async function renderAuthState(){
       try{ populateOverviewFromEmployees(window.__demoEmployees || employees || []); }catch(e){}
     } else {
       hideDemoBanner();
+      // Fresh session without demo active — purge any leftover demo localStorage artifacts
+      if (!hasDemoActivatedThisSession()) {
+        try{ localStorage.removeItem('peoplera_team_hotspots'); }catch(e){}
+        try{ localStorage.removeItem('peoplera_action_plans'); }catch(e){}
+        try{ localStorage.removeItem('peoplera_ai_insights_cache'); }catch(e){}
+        try{ localStorage.removeItem('peoplera_ai_insights'); }catch(e){}
+        try{ localStorage.removeItem('peoplera_demo_employee_ids'); }catch(e){}
+      }
       maybeShowOnboarding(empCount);
     }
   }catch(e){}
@@ -4671,10 +4697,9 @@ async function loadPulseData() {
     });
 
     try{
-      const { demoCount, realCount } = countDemoAndRealEmployees(employees);
-      const allDemo = demoCount > 0 && realCount === 0;
-      if (allDemo && !hasDemoActivatedThisSession()) {
-        employees = [];
+      if (!hasDemoActivatedThisSession()) {
+        // Not in a demo session — strip all is_demo rows so demo never leaks
+        employees = employees.filter(e => e?.is_demo !== true);
       }
     }catch(e){ /* noop */ }
 
@@ -7609,7 +7634,14 @@ async function resetDemoAndReload(){
     }
   }catch(e){ console.warn('resetDemo:', e); }
   window.__demoEmployees = [];
+  window.__lastPulseEmployees = [];
+  window.__lastActionPlans = [];
+  window.__lastDecisionEngine = null;
   try{ localStorage.removeItem('peoplera_demo_employee_ids'); }catch(e){}
+  try{ localStorage.removeItem('peoplera_team_hotspots'); }catch(e){}
+  try{ localStorage.removeItem('peoplera_action_plans'); }catch(e){}
+  try{ localStorage.removeItem('peoplera_ai_insights_cache'); }catch(e){}
+  try{ localStorage.removeItem('peoplera_ai_insights'); }catch(e){}
   try{ setDemoActivatedThisSession(false); }catch(e){}
   hideDemoBanner();
   window.location.reload();
