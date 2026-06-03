@@ -431,6 +431,38 @@ body.home .btn-primary:hover{box-shadow:0 22px 58px rgba(255,107,107,0.22), 0 18
 body.home .btn-outline{background:transparent;border-color:rgba(15,23,42,0.18);color:rgba(15,23,42,0.86)}
 body.home .btn-outline:hover{background:rgba(15,23,42,0.03)}
 
+/* Google sign-in wrapper + hint */
+body.home .google-signin-wrap{position:relative;display:flex;flex-direction:column;align-items:center}
+body.home .btn-google{gap:8px}
+body.home .signin-hint{
+  position:relative;
+  margin-top:6px;
+  padding:5px 10px;
+  background:rgba(255,255,255,0.92);
+  border:1px solid rgba(15,23,42,0.08);
+  border-radius:8px;
+  font-size:11px;
+  font-weight:600;
+  color:rgba(15,23,42,0.56);
+  white-space:nowrap;
+  box-shadow:0 4px 14px rgba(15,23,42,0.06);
+  pointer-events:none;
+}
+body.home .signin-hint::before{
+  content:"";
+  position:absolute;
+  top:-4px;
+  left:50%;
+  transform:translateX(-50%) rotate(45deg);
+  width:7px;height:7px;
+  background:rgba(255,255,255,0.92);
+  border-top:1px solid rgba(15,23,42,0.08);
+  border-left:1px solid rgba(15,23,42,0.08);
+}
+@media(max-width:640px){
+  body.home .signin-hint{display:none}
+}
+
 body.home .hero{padding:72px 0 28px;position:relative}
 body.home .hero::before{
   content:"";
