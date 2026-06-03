@@ -886,3 +886,96 @@ body.home.hiw-page .cta-grid{display:flex;align-items:center;justify-content:spa
   .hiw-sources{grid-template-columns:1fr}
   .hiw-privacy-grid{grid-template-columns:1fr}
 }
+
+/* ── Demo Request Modal ── */
+.demo-modal-card{
+  position:relative;
+  width:100%;
+  max-width:460px;
+  margin:24px;
+  background:#ffffff;
+  border:1px solid rgba(15,23,42,0.10);
+  border-radius:20px;
+  box-shadow:0 32px 80px rgba(15,23,42,0.22), 0 0 0 1px rgba(255,107,107,0.06);
+  padding:28px 28px 24px;
+  font-family:"DM Sans",system-ui,sans-serif;
+  animation:demoModalIn .22s ease;
+}
+@keyframes demoModalIn{
+  from{opacity:0;transform:translateY(16px) scale(0.97)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+.demo-modal-close{
+  position:absolute;
+  top:14px;right:14px;
+  width:32px;height:32px;
+  border:none;
+  background:rgba(15,23,42,0.06);
+  border-radius:10px;
+  font-size:20px;
+  line-height:1;
+  color:#64748b;
+  cursor:pointer;
+  display:grid;place-items:center;
+  transition:background .15s ease, color .15s ease;
+}
+.demo-modal-close:hover{background:rgba(255,107,107,0.12);color:#FF6B6B}
+.demo-modal-header{margin-bottom:20px}
+.demo-field{margin-bottom:14px}
+.demo-label{
+  display:block;
+  font-size:12px;
+  font-weight:800;
+  color:#0f172a;
+  margin-bottom:5px;
+  letter-spacing:0.01em;
+}
+.demo-input{
+  display:block;
+  width:100%;
+  padding:10px 14px;
+  border:1.5px solid rgba(15,23,42,0.14);
+  border-radius:12px;
+  background:#fafafa;
+  font-family:"DM Sans",system-ui,sans-serif;
+  font-size:14px;
+  font-weight:500;
+  color:#0f172a;
+  outline:none;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.demo-input::placeholder{color:#94a3b8}
+.demo-input:focus{
+  border-color:rgba(255,107,107,0.5);
+  box-shadow:0 0 0 3px rgba(255,107,107,0.10);
+  background:#fff;
+}
+.demo-textarea{resize:vertical;min-height:60px}
+select.demo-input{
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5l3 3 3-3'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  padding-right:34px;
+}
+.demo-submit{
+  width:100%;
+  margin-top:6px;
+  padding:13px 18px;
+  font-size:15px;
+  font-weight:900;
+  border:none;
+  border-radius:14px;
+  background:linear-gradient(90deg,#FF6B6B,#FFD93D);
+  color:#0b1220;
+  cursor:pointer;
+  box-shadow:0 12px 32px rgba(255,107,107,0.18);
+  transition:transform .15s ease, box-shadow .15s ease;
+}
+.demo-submit:hover{transform:translateY(-1px);box-shadow:0 16px 44px rgba(255,107,107,0.22)}
+.demo-submit:active{transform:translateY(0) scale(0.98)}
+.demo-submit:disabled{opacity:0.65;cursor:not-allowed;transform:none}
+@media (max-width:520px){
+  .demo-modal-card{margin:12px;padding:22px 18px 18px}
+}

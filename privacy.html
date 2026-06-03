@@ -28,7 +28,7 @@
       </nav>
 
       <div class="nav-actions">
-        <a class="btn btn-outline" href="/#cta">Request demo</a>
+        <button class="btn btn-outline" onclick="openDemoModal()">Request demo</button>
         <a class="btn btn-primary" href="/dashboard.html" id="ctaTop">Start free trial</a>
       </div>
     </div>
@@ -134,5 +134,56 @@
       <div> Peoplera</div>
     </div>
   </footer>
+
+  <!-- Demo request modal -->
+  <div id="demoModal" style="display:none;position:fixed;inset:0;z-index:10000;align-items:center;justify-content:center;background:rgba(15,23,42,0.55);backdrop-filter:blur(6px)" onclick="if(event.target===this)closeDemoModal()">
+    <div class="demo-modal-card">
+      <button class="demo-modal-close" onclick="closeDemoModal()" aria-label="Close">&times;</button>
+      <div class="demo-modal-header">
+        <div style="font-family:'Syne',system-ui;font-weight:900;font-size:22px;color:#0f172a">Book a free demo</div>
+        <div style="font-size:13px;color:#64748b;font-weight:600;margin-top:4px">We'll walk you through Peoplera with your own data. No commitment.</div>
+      </div>
+      <div id="demoModalBody">
+        <div class="demo-field"><label class="demo-label">Full name</label><input id="demoName" class="demo-input" type="text" placeholder="Jane Smith" autocomplete="name"></div>
+        <div class="demo-field"><label class="demo-label">Work email <span style="color:#FF6B6B">*</span></label><input id="demoEmail" class="demo-input" type="email" placeholder="jane@company.com" autocomplete="email" required></div>
+        <div class="demo-field"><label class="demo-label">Company</label><input id="demoCompany" class="demo-input" type="text" placeholder="Acme Inc." autocomplete="organization"></div>
+        <div class="demo-field"><label class="demo-label">Team size</label><select id="demoTeamSize" class="demo-input"><option value="">Select…</option><option value="1-10">1–10</option><option value="11-50">11–50</option><option value="51-200">51–200</option><option value="201-500">201–500</option><option value="500+">500+</option></select></div>
+        <div class="demo-field"><label class="demo-label">Message <span style="color:#94a3b8;font-weight:500">(optional)</span></label><textarea id="demoMessage" class="demo-input demo-textarea" placeholder="Anything specific you'd like to see?" rows="3"></textarea></div>
+        <div id="demoError" style="display:none;font-size:12px;font-weight:700;color:#ef4444;margin-bottom:8px"></div>
+        <button id="demoSubmitBtn" class="btn btn-primary demo-submit" onclick="submitDemoRequest()">Send request</button>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  (function(){
+    var _sb=null;
+    function escapeHtml(s){var d=document.createElement('div');d.appendChild(document.createTextNode(s));return d.innerHTML;}
+    function getSb(){
+      if(_sb)return Promise.resolve(_sb);
+      return fetch('/api/utils?action=public-config').then(function(r){return r.json();}).then(function(d){
+        if(!d.supabaseUrl||!d.supabaseAnonKey)throw new Error('Config missing');
+        _sb=window.supabase.createClient(d.supabaseUrl,d.supabaseAnonKey);return _sb;
+      });
+    }
+    window.openDemoModal=function(){var m=document.getElementById('demoModal');if(m){m.style.display='flex';document.body.style.overflow='hidden';}};
+    window.closeDemoModal=function(){var m=document.getElementById('demoModal');if(m){m.style.display='none';document.body.style.overflow='';}};
+    window.submitDemoRequest=function(){
+      var name=(document.getElementById('demoName').value||'').trim();
+      var email=(document.getElementById('demoEmail').value||'').trim();
+      var company=(document.getElementById('demoCompany').value||'').trim();
+      var teamSize=(document.getElementById('demoTeamSize').value||'').trim();
+      var message=(document.getElementById('demoMessage').value||'').trim();
+      var errEl=document.getElementById('demoError');var btn=document.getElementById('demoSubmitBtn');
+      errEl.style.display='none';
+      if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){errEl.textContent='Please enter a valid work email.';errEl.style.display='block';return;}
+      btn.disabled=true;btn.textContent='Sending\u2026';
+      getSb().then(function(sb){return sb.from('demo_requests').insert({full_name:name||null,email:email,company:company||null,team_size:teamSize||null,message:message||null,source:'demo_request'});}).then(function(res){
+        if(res.error)throw res.error;
+        document.getElementById('demoModalBody').innerHTML='<div style="text-align:center;padding:32px 0"><div style="font-size:40px;margin-bottom:12px">&#x1F389;</div><div style="font-family:\'Syne\',system-ui;font-weight:900;font-size:20px;color:#0f172a;margin-bottom:6px">Thanks! We\'ll be in touch shortly.</div><div style="font-size:13px;color:#64748b;font-weight:600">Check '+escapeHtml(email)+' for a confirmation.</div><button class="btn btn-primary demo-submit" style="margin-top:20px" onclick="closeDemoModal()">Close</button></div>';
+      }).catch(function(err){errEl.textContent=(err&&err.message)?err.message:'Something went wrong. Please try again.';errEl.style.display='block';}).finally(function(){btn.disabled=false;btn.textContent='Send request';});
+    };
+  })();
+  </script>
 </body>
 </html>
