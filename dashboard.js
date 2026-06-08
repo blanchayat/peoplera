@@ -5350,21 +5350,71 @@ async function loadDemoData() {
 
       try{ writeJsonLocalStorage('peoplera_demo_employee_ids', (inserted || []).map(e => e?.id).filter(Boolean)); }catch(e){ /* noop */ }
 
-      await loadPulseData();
+      // Merge Supabase-inserted employees with in-memory demo signals so all pages work
+      window.__demoEmployees = (inserted || []).map(emp => {
+        const seed = demoSeed.find(d => d.full_name === emp.full_name);
+        return { ...emp, __demoWeekly: seed?.__demoWeekly || {}, last_vacation: seed?.last_vacation || '' };
+      });
+      employees = window.__demoEmployees;
+      weeklyData = {};
+      try{
+        const monday = getCurrentMonday();
+        for (const emp of employees) {
+          const m = emp.__demoWeekly || {};
+          if (!emp?.id) continue;
+          weeklyData[emp.id] = {
+            employee_id: emp.id,
+            week_start: monday,
+            weekly_hours: Number(m.weekly_hours || 0),
+            weekend_hours: Number(m.weekend_hours || 0),
+            after_hours_messages: Number(m.after_hours_messages || 0),
+            sick_days: Number(m.sick_days || 0),
+            overtime_hours: Number(m.overtime_hours || 0)
+          };
+        }
+      }catch(e){ /* noop */ }
+      try{ writeJsonLocalStorage('peoplera_active_employees_count', employees.length); }catch(e){ /* noop */ }
+      try{ await loadAndCalculateScores(); }catch(e){ /* noop */ }
+
+      renderEmployees();
+      updateSectionsVisibility();
+      try{ applyPulseActionButtonsUi({ connected: false }); }catch(e){ /* noop */ }
 
       // Demo flow: show banner, populate overview, navigate to Overview
       try{ showDemoBanner(); }catch(e){}
       try{ populateOverviewFromEmployees(employees); }catch(e){}
       try{ populateDemoOverviewChart(); }catch(e){}
+
+      // Pre-render all Burnout Intelligence sub-pages so they're ready immediately
+      try{ renderStrategicActionPlansPage(); }catch(e){ /* noop */ }
+      try{ renderTeamHotspotsPage(); }catch(e){ /* noop */ }
+      try{ renderAIInsightsPage(); }catch(e){ /* noop */ }
+
       try{ switchTab('overview'); }catch(e){}
       return;
     }
 
     window.__demoEmployees = demoSeed;
-    applyHardcodedDemoScores(window.__demoEmployees);
     employees = window.__demoEmployees;
     weeklyData = {};
+    try{
+      const monday = getCurrentMonday();
+      for (const emp of employees) {
+        const m = emp.__demoWeekly || {};
+        if (!emp?.id) continue;
+        weeklyData[emp.id] = {
+          employee_id: emp.id,
+          week_start: monday,
+          weekly_hours: Number(m.weekly_hours || 0),
+          weekend_hours: Number(m.weekend_hours || 0),
+          after_hours_messages: Number(m.after_hours_messages || 0),
+          sick_days: Number(m.sick_days || 0),
+          overtime_hours: Number(m.overtime_hours || 0)
+        };
+      }
+    }catch(e){ /* noop */ }
     try{ writeJsonLocalStorage('peoplera_active_employees_count', employees.length); }catch(e){ /* noop */ }
+    try{ await loadAndCalculateScores(); }catch(e){ /* noop */ }
 
     renderEmployees();
     updateSectionsVisibility();
@@ -5375,6 +5425,12 @@ async function loadDemoData() {
     try{ showDemoBanner(); }catch(e){}
     try{ populateOverviewFromEmployees(employees); }catch(e){}
     try{ populateDemoOverviewChart(); }catch(e){}
+
+    // Pre-render all Burnout Intelligence sub-pages so they're ready immediately
+    try{ renderStrategicActionPlansPage(); }catch(e){ /* noop */ }
+    try{ renderTeamHotspotsPage(); }catch(e){ /* noop */ }
+    try{ renderAIInsightsPage(); }catch(e){ /* noop */ }
+
     try{ switchTab('overview'); }catch(e){}
   } catch (error) {
     console.error('[loadDemoData] failed:', error);
@@ -6142,9 +6198,9 @@ function renderStrategicActionPlansPage(){
   (async ()=>{
     try{
       const s = (await supabase.auth.getSession()).data?.session;
-      if (!s) throw new Error('Not signed in');
+      if (!s && !isDemoEmployeesActive()) throw new Error('Not signed in');
 
-      const token = s.access_token;
+      const token = s ? s.access_token : '';
       let blocks = [];
 
       if (isDemoEmployeesActive()) {
