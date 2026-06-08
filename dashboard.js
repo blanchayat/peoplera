@@ -609,7 +609,7 @@ function applyPulseActionButtonsUi({ connected, providerName, lastSyncedTs } = {
 
   if (!isConnected) {
     if (btnTry) btnTry.style.display = (activeEmployeesCount === 0 && !demoActive) ? '' : 'none';
-    if (btnClear) btnClear.style.display = (demoActive && activeEmployeesCount > 0) ? '' : 'none';
+    if (btnClear) btnClear.style.display = 'none';
     if (btnConnect) btnConnect.style.display = '';
     if (btnAdd) btnAdd.style.display = '';
     if (badge) badge.style.display = 'none';
@@ -621,7 +621,7 @@ function applyPulseActionButtonsUi({ connected, providerName, lastSyncedTs } = {
 
   // Connected state.
   if (btnTry) btnTry.style.display = (activeEmployeesCount === 0 && !demoActive) ? '' : 'none';
-  if (btnClear) btnClear.style.display = (demoActive && activeEmployeesCount > 0) ? '' : 'none';
+  if (btnClear) btnClear.style.display = 'none';
   if (btnAdd) btnAdd.style.display = 'none';
   if (btnConnect) btnConnect.style.display = 'none';
 
@@ -1469,10 +1469,6 @@ async function clearDemoData(){
 function applyDemoRealDataUi(){
   const btnTry = document.getElementById('btnTryDemoData');
   const btnClear = document.getElementById('btnClearDemoData');
-  if (btnClear && !btnClear.getAttribute('data-bound')) {
-    btnClear.setAttribute('data-bound', '1');
-    btnClear.addEventListener('click', (e)=>{ e.preventDefault(); clearDemoData(); });
-  }
 
   if (btnTry && !btnTry.getAttribute('data-bound')) {
     btnTry.setAttribute('data-bound', '1');
@@ -1481,8 +1477,10 @@ function applyDemoRealDataUi(){
 
   const demoActive = isDemoEmployeesActive();
   const count = Number(employees?.length || 0);
+  // Show "Try demo" only when no employees and demo is not active
   if (btnTry) btnTry.style.display = (count === 0 && !demoActive) ? '' : 'none';
-  if (btnClear) btnClear.style.display = demoActive ? '' : 'none';
+  // Always hide Clear button in toolbar — clearing is only via banner "Reset demo"
+  if (btnClear) btnClear.style.display = 'none';
 }
 
 function ensureTryDemoButton(){
@@ -1507,15 +1505,7 @@ function ensureTryDemoButton(){
     btnTry.style.cssText = 'background:#6366f1;color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;box-shadow:0 10px 26px rgba(99,102,241,0.22);';
     btnTry.addEventListener('click', (e)=>{ e.preventDefault(); loadDemoData(); });
 
-    const btnClear = document.createElement('button');
-    btnClear.id = 'btnClearDemoData';
-    btnClear.type = 'button';
-    btnClear.textContent = 'Clear demo data';
-    btnClear.style.cssText = 'background:transparent;color:#64748b;border:1px solid rgba(100,116,139,0.35);border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;display:none;';
-    btnClear.addEventListener('click', (e)=>{ e.preventDefault(); clearDemoData(); });
-
     wrap.appendChild(btnTry);
-    wrap.appendChild(btnClear);
 
     if (host && host !== document.body) {
       host.appendChild(wrap);
@@ -7919,22 +7909,34 @@ async function resetDemoAndReload(){
       const ids = (existingDemo || []).map(r => r?.id).filter(Boolean);
       if (ids.length) {
         try{ await supabase.from('weekly_metrics').delete().in('employee_id', ids); }catch(e){}
+        try{ await supabase.from('pulse_results').delete().eq('user_id', s.user.id); }catch(e){}
         await supabase.from('employees').delete().in('id', ids);
       }
     }
   }catch(e){ console.warn('resetDemo:', e); }
+
   window.__demoEmployees = [];
+  employees = [];
+  weeklyData = {};
   window.__lastPulseEmployees = [];
   window.__lastActionPlans = [];
   window.__lastDecisionEngine = null;
-  try{ localStorage.removeItem('peoplera_demo_employee_ids'); }catch(e){}
+  window.__plansEmployeesList = [];
+  setDemoActivatedThisSession(false);
+  try{ writeJsonLocalStorage('peoplera_active_employees_count', 0); }catch(e){}
+  try{ writeJsonLocalStorage('peoplera_demo_employee_ids', []); }catch(e){}
   try{ localStorage.removeItem('peoplera_team_hotspots'); }catch(e){}
   try{ localStorage.removeItem('peoplera_action_plans'); }catch(e){}
   try{ localStorage.removeItem('peoplera_ai_insights_cache'); }catch(e){}
   try{ localStorage.removeItem('peoplera_ai_insights'); }catch(e){}
-  try{ setDemoActivatedThisSession(false); }catch(e){}
-  hideDemoBanner();
-  window.location.reload();
+
+  try{ hideDemoBanner(); }catch(e){}
+  try{ updateSidebarStatusCard(); }catch(e){}
+  try{ renderEmployees(); }catch(e){}
+  try{ updateSectionsVisibility(); }catch(e){}
+  try{ populateOverviewFromEmployees([]); }catch(e){}
+  try{ applyDemoRealDataUi(); }catch(e){}
+  try{ applyPulseActionButtonsUi({ connected: false }); }catch(e){}
 }
 
 // ── Overview Stats Population ──
