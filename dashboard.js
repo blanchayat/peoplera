@@ -5382,6 +5382,7 @@ async function loadDemoData() {
 
       // Demo flow: show banner, populate overview, navigate to Overview
       try{ showDemoBanner(); }catch(e){}
+      try{ updateSidebarStatusCard(); }catch(e){}
       try{ populateOverviewFromEmployees(employees); }catch(e){}
       try{ populateDemoOverviewChart(); }catch(e){}
 
@@ -5423,6 +5424,7 @@ async function loadDemoData() {
 
     // Demo flow: show banner, populate overview, navigate to Overview
     try{ showDemoBanner(); }catch(e){}
+    try{ updateSidebarStatusCard(); }catch(e){}
     try{ populateOverviewFromEmployees(employees); }catch(e){}
     try{ populateDemoOverviewChart(); }catch(e){}
 
@@ -6585,6 +6587,7 @@ document.addEventListener('click', function(e) {
         await ensureSettingsIntegrationsUiLoaded();
         await updateBurnoutIntegrationIndicator();
         await renderOverviewIntegrationOnboarding();
+        try{ updateSidebarStatusCard(); }catch(e){}
       }catch(err){
         showToast(err?.message || 'Disconnect failed', 'error');
       }
@@ -6613,6 +6616,7 @@ document.addEventListener('click', function(e) {
         if (pk === 'hibob') {
           await syncHiBob();
         }
+        try{ updateSidebarStatusCard(); }catch(e){}
       }catch(err){
         const errEl = modal.querySelector('#integrationModalError');
         if (errEl) {
@@ -7729,7 +7733,8 @@ function updateUserProfile() {
   const email = user.email || '';
 
   const name = String(rawName || '').trim() || getEmailUsername(email) || '';
-  const avatar = document.getElementById('userAvatar');
+  const avatarInitials = document.getElementById('userAvatar');
+  const avatarImg = document.getElementById('userAvatarImg');
   const nameEl = document.getElementById('userFullName');
   const emailEl = document.getElementById('userEmail');
   const profileEl = document.getElementById('userProfile');
@@ -7739,7 +7744,22 @@ function updateUserProfile() {
     ? String((parts[0][0] || '') + (parts[parts.length - 1][0] || '')).toUpperCase()
     : String((parts[0]?.[0] || email[0] || '?')).toUpperCase();
 
-  if (avatar) avatar.textContent = initials.slice(0, 2);
+  // Google profile photo
+  const avatarUrl = String(user.user_metadata?.avatar_url || user.user_metadata?.picture || '').trim();
+  if (avatarUrl && avatarImg) {
+    avatarImg.src = avatarUrl;
+    avatarImg.alt = escapeHtml(name || 'User');
+    avatarImg.style.display = '';
+    if (avatarInitials) avatarInitials.style.display = 'none';
+    avatarImg.onerror = () => {
+      avatarImg.style.display = 'none';
+      if (avatarInitials) { avatarInitials.style.display = ''; avatarInitials.textContent = initials.slice(0, 2); }
+    };
+  } else {
+    if (avatarImg) avatarImg.style.display = 'none';
+    if (avatarInitials) { avatarInitials.style.display = ''; avatarInitials.textContent = initials.slice(0, 2); }
+  }
+
   if (nameEl) nameEl.textContent = name || 'Signed in';
   if (emailEl) emailEl.textContent = email || '—';
 
@@ -7749,6 +7769,53 @@ function updateUserProfile() {
       try{ switchTab('settings'); }catch(e){ /* noop */ }
     });
   }
+
+  updateSidebarStatusCard();
+}
+
+// Sidebar data-status card
+function updateSidebarStatusCard(){
+  const card = document.getElementById('sidebarStatusCard');
+  if (!card) return;
+
+  if (isDemoEmployeesActive()) {
+    card.style.display = '';
+    card.innerHTML = '<div style="display:flex;align-items:center;gap:7px">'
+      + '<span class="sidebar-status-dot" style="background:#FFB347"></span>'
+      + '<span class="sidebar-status-label">Viewing demo data</span>'
+      + '</div>'
+      + '<a class="sidebar-status-link" href="#" onclick="event.preventDefault();try{window.__settingsInitialSubtab=\'integrations\';switchTab(\'settings\')}catch(e){}">Connect your data \u2192</a>';
+    return;
+  }
+
+  (async ()=>{
+    try{
+      const s = (await supabase.auth.getSession()).data?.session;
+      if (!s) { card.style.display = 'none'; return; }
+      const connected = await getConnectedIntegration(s);
+      if (connected) {
+        const pk = String(connected.provider || connected.integration_name || '').toLowerCase();
+        const providerName = INTEGRATION_PROVIDERS[pk]?.name || pk;
+        const empCount = Array.isArray(employees) ? employees.filter(e => !e?.is_demo).length : 0;
+        const countLabel = empCount > 0 ? (escapeHtml(String(empCount)) + ' employee' + (empCount !== 1 ? 's' : '') + ' synced') : '';
+        card.style.display = '';
+        card.innerHTML = '<div style="display:flex;align-items:center;gap:7px">'
+          + '<span class="sidebar-status-dot" style="background:#22C55E"></span>'
+          + '<span class="sidebar-status-label" style="color:#16a34a">Connected \u00b7 ' + escapeHtml(providerName) + '</span>'
+          + '</div>'
+          + (countLabel ? '<div class="sidebar-status-label" style="margin-top:3px;margin-left:14px">' + countLabel + '</div>' : '');
+      } else {
+        card.style.display = '';
+        card.innerHTML = '<div style="display:flex;align-items:center;gap:7px">'
+          + '<span class="sidebar-status-dot" style="background:#c0c5cc"></span>'
+          + '<span class="sidebar-status-label">No HR system connected</span>'
+          + '</div>'
+          + '<a class="sidebar-status-link" href="#" onclick="event.preventDefault();try{window.__settingsInitialSubtab=\'integrations\';switchTab(\'settings\')}catch(e){}">Connect \u2192</a>';
+      }
+    }catch(e){
+      card.style.display = 'none';
+    }
+  })();
 }
 
 // ── Onboarding Wizard ──
