@@ -2661,17 +2661,17 @@ function switchTab(tab){
 
   if (tab === 'pulse-plans') {
     updateNavBurnoutBadge(window.__lastDecisionEngine);
-    renderStrategicActionPlansPage();
+    ensureDemoDataLoaded().then(() => renderStrategicActionPlansPage());
   }
 
   if (tab === 'pulse-hotspots') {
     updateNavBurnoutBadge(window.__lastDecisionEngine);
-    renderTeamHotspotsPage();
+    ensureDemoDataLoaded().then(() => renderTeamHotspotsPage());
   }
 
   if (tab === 'pulse-insights') {
     updateNavBurnoutBadge(window.__lastDecisionEngine);
-    renderAIInsightsPage();
+    ensureDemoDataLoaded().then(() => renderAIInsightsPage());
   }
 
   if (tab === 'pulse-survey') {
@@ -4623,6 +4623,37 @@ window.showEmployeeCard = showEmployeeCard;
 let employees = [];
 let weeklyData = {};
 
+async function ensureDemoDataLoaded(){
+  // After reload, demo employees from Supabase lack __demoWeekly.
+  // If weeklyData is already populated for at least one employee, skip.
+  if (!hasDemoActivatedThisSession()) return;
+  const hasWeekly = employees.length > 0 && employees.some(e => e?.id && weeklyData[e.id]);
+  if (hasWeekly) return;
+  // Need to load demo employees + weekly_metrics from Supabase
+  try{
+    const s = (await supabase.auth.getSession()).data?.session;
+    if (!s?.user?.id) return;
+    const { data: empData } = await supabase
+      .from('employees').select('*').eq('user_id', s.user.id).order('created_at', { ascending: false });
+    if (!Array.isArray(empData) || !empData.length) return;
+    const demoRows = empData.filter(e => e?.is_demo === true);
+    if (!demoRows.length) return;
+    employees = demoRows;
+    if (!Array.isArray(window.__demoEmployees) || !window.__demoEmployees.length) {
+      window.__demoEmployees = demoRows;
+    }
+    const ids = demoRows.map(e => e.id).filter(Boolean);
+    const { data: metricsData } = await supabase
+      .from('weekly_metrics').select('*').in('employee_id', ids).order('week_start', { ascending: false });
+    weeklyData = {};
+    for (const m of (metricsData || [])) {
+      if (!m?.employee_id || weeklyData[m.employee_id]) continue;
+      weeklyData[m.employee_id] = m;
+    }
+    try{ await loadAndCalculateScores(); }catch(e){ /* noop */ }
+  }catch(e){ /* noop */ }
+}
+
 async function loadPulseData() {
   try {
     try{
@@ -4634,8 +4665,10 @@ async function loadPulseData() {
     // Show skeleton while loading
     try{ showSkeleton('employeesList', 3); }catch(e){ /* noop */ }
 
-    if (isDemoEmployeesActive()) {
-      employees = Array.isArray(window.__demoEmployees) ? window.__demoEmployees : [];
+    if (Array.isArray(window.__demoEmployees) && window.__demoEmployees.length
+        && window.__demoEmployees.some(e => e?.__demoWeekly)) {
+      // In-memory demo shortcut (no reload) — __demoWeekly is present
+      employees = window.__demoEmployees;
       weeklyData = {};
 
       try{
@@ -4706,6 +4739,14 @@ async function loadPulseData() {
       }
     }catch(e){ /* noop */ }
 
+    // After reload: restore window.__demoEmployees from Supabase-loaded rows
+    try{
+      if (hasDemoActivatedThisSession() && employees.some(e => e?.is_demo === true)
+          && (!Array.isArray(window.__demoEmployees) || !window.__demoEmployees.length)) {
+        window.__demoEmployees = employees.filter(e => e?.is_demo === true);
+      }
+    }catch(e){ /* noop */ }
+
     try{ writeJsonLocalStorage('peoplera_active_employees_count', employees.length); }catch(e){ /* noop */ }
 
     // Load weekly metrics (latest row per employee)
@@ -4719,7 +4760,9 @@ async function loadPulseData() {
       };
       const isDemoId = (v) => String(v || '').trim().toLowerCase().startsWith('demo-');
 
-      if (isDemoEmployeesActive() || employees.some(e => isDemoId(e?.id))) {
+      if ((isDemoEmployeesActive() || employees.some(e => isDemoId(e?.id)))
+          && employees.some(e => e?.__demoWeekly)) {
+        // In-memory demo path: __demoWeekly is present (no reload)
         weeklyData = {};
         try{
           const rows = [];
@@ -6907,10 +6950,11 @@ function renderTeamHotspotsPage(){
   let hotspots;
   if (isDemoEmployeesActive()) {
     // Score demo employees through the real model
-    const demoEmps = Array.isArray(window.__demoEmployees) ? window.__demoEmployees : employees;
+    const demoEmps = Array.isArray(window.__demoEmployees) && window.__demoEmployees.length
+      ? window.__demoEmployees : (Array.isArray(employees) ? employees : []);
     for (const e of demoEmps) {
       if (!e) continue;
-      const m = e.__demoWeekly || {};
+      const m = e.__demoWeekly || weeklyData[e.id] || {};
       const score = computeBurnoutScoreFromSignals({
         weeklyHours: Number(m.weekly_hours || 0),
         weekendHours: Number(m.weekend_hours || 0),
@@ -6925,7 +6969,7 @@ function renderTeamHotspotsPage(){
       e.risk_level = e.riskLevel.toUpperCase();
     }
     hotspots = demoEmps.map(e => {
-      const m = e.__demoWeekly || {};
+      const m = e.__demoWeekly || weeklyData[e.id] || {};
       const proxy = {
         weeklyHours: Number(m.weekly_hours || 0),
         afterHoursMessages: Number(m.after_hours_messages || 0),
@@ -7039,8 +7083,8 @@ function renderTeamHotspotsPage(){
 
   for (const h of hotspots) {
     const score = Math.max(0, Math.min(100, Number(h?.burnoutScore) || 0));
-    if (score >= 75) critical.push(h);
-    else if (score >= 50) high.push(h);
+    if (score >= 80) critical.push(h);
+    else if (score >= 60) high.push(h);
     else mediumLow.push(h);
   }
 
