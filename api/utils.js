@@ -66,6 +66,26 @@ async function handleEmail(req, res){
     return;
   }
 
+  // Require a valid Supabase auth token to prevent open-relay abuse
+  const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authentication required.' });
+    return;
+  }
+  try {
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authErr } = await supabaseAdmin.auth.getUser(token);
+    if (authErr || !user) {
+      res.status(401).json({ error: 'Invalid or expired token.' });
+      return;
+    }
+  } catch (authE) {
+    res.status(401).json({ error: 'Authentication failed.' });
+    return;
+  }
+
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   if (!RESEND_API_KEY) {
     res.status(500).json({ error: 'Missing RESEND_API_KEY' });

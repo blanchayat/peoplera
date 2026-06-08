@@ -1017,10 +1017,10 @@ function deletePlanAction(planKey, actionText){
 
 function buildPulseDemoEmployees(){
   return [
-    { name: 'Sara Lee', weeklyHours: 74, weekendHours: 16, afterHoursMessages: 40, sickDays: 6, lastVacation: 'unknown' },
-    { name: 'Alex Kim', weeklyHours: 72, weekendHours: 14, afterHoursMessages: 35, sickDays: 3, lastVacation: '2024-08-01' },
-    { name: 'Maya Chen', weeklyHours: 68, weekendHours: 10, afterHoursMessages: 28, sickDays: 5, lastVacation: '2024-06-15' },
-    { name: 'Omar Hassan', weeklyHours: 61, weekendHours: 8, afterHoursMessages: 22, sickDays: 4, lastVacation: '2024-11-01' }
+    { name: 'Sara Lee', weeklyHours: 74, weekendHours: 16, afterHoursMessages: 42, sickDays: 6, lastVacation: '2026-03-01' },
+    { name: 'Alex Kim', weeklyHours: 54, weekendHours: 8, afterHoursMessages: 24, sickDays: 3, lastVacation: '2026-01-06' },
+    { name: 'Maya Chen', weeklyHours: 51, weekendHours: 5, afterHoursMessages: 16, sickDays: 2, lastVacation: '2026-02-10' },
+    { name: 'Omar Hassan', weeklyHours: 45, weekendHours: 3, afterHoursMessages: 10, sickDays: 1, lastVacation: '2026-03-11' }
   ];
 }
 
@@ -3323,6 +3323,8 @@ function renderWorkforceInsights(){
 
 async function sendWeeklyReport(userEmail, pulseEmployees, atRiskCount){
   if (!userEmail || !pulseEmployees) return;
+  const s = (await supabase.auth.getSession()).data?.session;
+  if (!s) return;
   const criticalList = pulseEmployees
     .filter(e => ['high','critical'].includes(String(e.riskLevel||'').toLowerCase()))
     .map(e => `<li><strong>${escapeHtml(e.name)}</strong> — Score: ${escapeHtml(e.burnoutScore)}/100 (${escapeHtml(e.riskLevel)})</li>`)
@@ -3348,7 +3350,7 @@ async function sendWeeklyReport(userEmail, pulseEmployees, atRiskCount){
   try {
     await fetch('/api/utils?action=email', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + s.access_token },
       body: JSON.stringify({ to: userEmail, subject: `Peoplera Weekly Report — ${atRiskCount} at-risk employee${atRiskCount !== 1 ? 's' : ''}`, html })
     });
   } catch(e) { console.warn('Email send failed', e); }
@@ -4407,11 +4409,11 @@ async function runPulse(){
 
     try{
       const activeEmployees = Number(readJsonLocalStorage('peoplera_active_employees_count', mergedEmployees.length)) || mergedEmployees.length;
-      const atRiskEmployees = mergedEmployees.filter(e => Number(e?.burnoutScore || e?.burnout_score || 0) > 50).length;
+      const atRiskEmployees = mergedEmployees.filter(e => Number(e?.burnoutScore || e?.burnout_score || 0) >= 60).length;
       const atRiskPreview = mergedEmployees
         .slice()
         .sort((a,b)=>(Number(b?.burnoutScore||b?.burnout_score||0) - Number(a?.burnoutScore||a?.burnout_score||0)))
-        .filter(e => Number(e?.burnoutScore || e?.burnout_score || 0) > 50)
+        .filter(e => Number(e?.burnoutScore || e?.burnout_score || 0) >= 60)
         .slice(0, 3)
         .map(e => ({
           name: e?.name || '',
@@ -4648,7 +4650,8 @@ async function loadPulseData() {
             weekly_hours: Number(metrics.weekly_hours || 0),
             weekend_hours: Number(metrics.weekend_hours || 0),
             after_hours_messages: Number(metrics.after_hours_messages || 0),
-            sick_days: Number(metrics.sick_days || 0)
+            sick_days: Number(metrics.sick_days || 0),
+            overtime_hours: Number(metrics.overtime_hours || 0)
           };
           weeklyData[emp.id] = row;
           rows.push(row);
@@ -4729,7 +4732,8 @@ async function loadPulseData() {
               weekly_hours: Number(metrics.weekly_hours || 0),
               weekend_hours: Number(metrics.weekend_hours || 0),
               after_hours_messages: Number(metrics.after_hours_messages || 0),
-              sick_days: Number(metrics.sick_days || 0)
+              sick_days: Number(metrics.sick_days || 0),
+              overtime_hours: Number(metrics.overtime_hours || 0)
             };
             weeklyData[emp.id] = row;
             rows.push(row);
@@ -5014,63 +5018,9 @@ function formatWeekRangeLabel(mondayIso){
   return `Week of ${fmt(monday)} – ${fmt(sunday)}`;
 }
 
-function applyHardcodedDemoScores(list){
-  const emps = Array.isArray(list) ? list : [];
-
-  const set = (pred, patch) => {
-    for (const e of emps) {
-      if (!e) continue;
-      if (!pred(e)) continue;
-      Object.assign(e, patch);
-      e.burnoutScore = Number(patch.burnout_score || patch.burnoutScore || e.burnoutScore || 0);
-      e.riskLevel = String(patch.risk_level || patch.riskLevel || e.riskLevel || '').toLowerCase();
-      e.topDriver = String(patch.top_driver || patch.topDriver || e.topDriver || '');
-      e.signals = Array.isArray(patch.signals) ? patch.signals : (Array.isArray(e.signals) ? e.signals : []);
-    }
-  };
-
-  set(
-    (e) => String(e.id || '').startsWith('demo-sara') || String(e.full_name || e.name || '').toLowerCase() === 'sara lee',
-    {
-      burnout_score: 92,
-      risk_level: 'HIGH',
-      top_driver: 'Extreme sustained workload (74h/week) with heavy weekend work and very high after-hours load; elevated sick days',
-      signals: ['74h weekly hours', '16h weekend work', '40 after-hours messages', '6 sick days']
-    }
-  );
-
-  set(
-    (e) => String(e.id || '').startsWith('demo-alex') || String(e.full_name || e.name || '').toLowerCase() === 'alex kim',
-    {
-      burnout_score: 88,
-      risk_level: 'HIGH',
-      top_driver: 'Extreme sustained workload (72h/week) with heavy weekend work and high after-hours load; last vacation 9+ months ago',
-      signals: ['72h weekly hours', '14h weekend work', '35 after-hours messages', '3 sick days', 'No vacation in 9+ months']
-    }
-  );
-
-  set(
-    (e) => String(e.id || '').startsWith('demo-maya') || String(e.full_name || e.name || '').toLowerCase() === 'maya chen',
-    {
-      burnout_score: 84,
-      risk_level: 'HIGH',
-      top_driver: 'Sustained overload (68h/week) with frequent weekend work and after-hours messages; last vacation 11+ months ago',
-      signals: ['68h weekly hours', '10h weekend work', '28 after-hours messages', '5 sick days', 'No vacation in 11+ months']
-    }
-  );
-
-  set(
-    (e) => String(e.id || '').startsWith('demo-omar') || String(e.full_name || e.name || '').toLowerCase() === 'omar hassan',
-    {
-      burnout_score: 77,
-      risk_level: 'HIGH',
-      top_driver: 'High load (61h/week) with persistent weekend work and after-hours messaging; limited recovery time',
-      signals: ['61h weekly hours', '8h weekend work', '22 after-hours messages', '4 sick days']
-    }
-  );
-
-  return emps;
-}
+// No-op: demo scores now derive from the real model via computeBurnoutScoreFromSignals.
+// Kept as stub so any remaining callers do not throw.
+function applyHardcodedDemoScores(list){ return Array.isArray(list) ? list : []; }
 
 let __demoLoadInFlight = false;
 async function loadDemoData() {
@@ -5098,7 +5048,7 @@ async function loadDemoData() {
         birth_date: '1992-08-30',
         last_vacation: '2026-03-01',
         is_demo: true,
-        __demoWeekly: { weekly_hours: 74, weekend_hours: 16, after_hours_messages: 40, sick_days: 6 }
+        __demoWeekly: { weekly_hours: 74, weekend_hours: 16, after_hours_messages: 42, sick_days: 6, overtime_hours: 34 }
       },
       {
         id: 'demo-alex',
@@ -5106,9 +5056,9 @@ async function loadDemoData() {
         job_title: 'Senior Engineer',
         start_date: '2022-03-15',
         birth_date: '1990-06-12',
-        last_vacation: '2025-08-01',
+        last_vacation: '2026-01-06',
         is_demo: true,
-        __demoWeekly: { weekly_hours: 72, weekend_hours: 14, after_hours_messages: 35, sick_days: 3 }
+        __demoWeekly: { weekly_hours: 54, weekend_hours: 8, after_hours_messages: 24, sick_days: 3, overtime_hours: 14 }
       },
       {
         id: 'demo-maya',
@@ -5116,9 +5066,9 @@ async function loadDemoData() {
         job_title: 'Product Designer',
         start_date: '2021-07-01',
         birth_date: '1988-11-24',
-        last_vacation: '2025-11-01',
+        last_vacation: '2026-02-10',
         is_demo: true,
-        __demoWeekly: { weekly_hours: 68, weekend_hours: 10, after_hours_messages: 28, sick_days: 5 }
+        __demoWeekly: { weekly_hours: 51, weekend_hours: 5, after_hours_messages: 16, sick_days: 2, overtime_hours: 10 }
       },
       {
         id: 'demo-omar',
@@ -5126,9 +5076,9 @@ async function loadDemoData() {
         job_title: 'Marketing Lead',
         start_date: '2023-01-10',
         birth_date: '1995-03-08',
-        last_vacation: '2026-01-01',
+        last_vacation: '2026-03-11',
         is_demo: true,
-        __demoWeekly: { weekly_hours: 61, weekend_hours: 8, after_hours_messages: 22, sick_days: 4 }
+        __demoWeekly: { weekly_hours: 45, weekend_hours: 3, after_hours_messages: 10, sick_days: 1, overtime_hours: 5 }
       }
     ];
 
@@ -5189,40 +5139,40 @@ async function loadDemoData() {
 
       const demoMetrics = [
         {
+          employee_id: inserted.find(e => e.full_name === 'Sara Lee').id,
+          week_start: weekStart,
+          weekly_hours: 74,
+          weekend_hours: 16,
+          after_hours_messages: 42,
+          sick_days: 6,
+          overtime_hours: 34
+        },
+        {
           employee_id: inserted.find(e => e.full_name === 'Alex Kim').id,
           week_start: weekStart,
-          weekly_hours: 68,
-          weekend_hours: 10,
-          after_hours_messages: 28,
+          weekly_hours: 54,
+          weekend_hours: 8,
+          after_hours_messages: 24,
           sick_days: 3,
-          overtime_hours: 28
+          overtime_hours: 14
         },
         {
           employee_id: inserted.find(e => e.full_name === 'Maya Chen').id,
           week_start: weekStart,
-          weekly_hours: 62,
-          weekend_hours: 8,
-          after_hours_messages: 20,
-          sick_days: 1,
-          overtime_hours: 22
+          weekly_hours: 51,
+          weekend_hours: 5,
+          after_hours_messages: 16,
+          sick_days: 2,
+          overtime_hours: 10
         },
         {
           employee_id: inserted.find(e => e.full_name === 'Omar Hassan').id,
           week_start: weekStart,
-          weekly_hours: 54,
-          weekend_hours: 4,
-          after_hours_messages: 12,
-          sick_days: 0,
-          overtime_hours: 14
-        },
-        {
-          employee_id: inserted.find(e => e.full_name === 'Sara Lee').id,
-          week_start: weekStart,
-          weekly_hours: 42,
-          weekend_hours: 0,
-          after_hours_messages: 3,
-          sick_days: 0,
-          overtime_hours: 2
+          weekly_hours: 45,
+          weekend_hours: 3,
+          after_hours_messages: 10,
+          sick_days: 1,
+          overtime_hours: 5
         }
       ];
 
@@ -5276,8 +5226,8 @@ async function loadDemoData() {
         const planPayloadByName = {
           'sara lee': {
             score: 92,
-            risk: 'HIGH',
-            priority_alert: 'Priority Action This Week: Sara Lee — reduce extreme workload and weekend work immediately.',
+            risk: 'CRITICAL',
+            priority_alert: '',
             this_week: {
               plan_title: 'Workload Emergency Rebalance',
               plan_description: 'Rapidly reduce sustained overload by pausing non-critical work and adding coverage.',
@@ -5285,7 +5235,7 @@ async function loadDemoData() {
               actions: [
                 { text: 'Freeze non-critical operational projects and delegate urgent tasks to a backup owner.', impacted_employees: ['Sara Lee'] },
                 { text: 'Remove weekend coverage for the next 2 weeks; rotate coverage across the team.', impacted_employees: ['Sara Lee'] },
-                { text: 'Set a hard cap for weekly hours until stabilized and re-evaluate weekly.', impacted_employees: ['Sara Lee'] }
+                { text: 'Schedule a recovery block and agree on a hard cap for weekly hours until stabilized.', impacted_employees: ['Sara Lee'] }
               ]
             },
             next_2_weeks: {
@@ -5293,77 +5243,77 @@ async function loadDemoData() {
               plan_description: 'Reduce after-hours communication and restore recovery time with clear boundaries.',
               projected_impact: 'Risk projected to decrease by ~18 points over 2 weeks.',
               actions: [
-                { text: 'Define quiet hours and route after-hours requests through a single escalation channel.', impacted_employees: ['Sara Lee'] },
-                { text: 'Schedule time off and lock it in calendar to ensure actual recovery.', impacted_employees: ['Sara Lee'] }
+                { text: 'Set quiet hours and route after-hours requests through a single escalation channel.', impacted_employees: ['Sara Lee'] },
+                { text: 'Plan time off and lock it in calendar to ensure actual recovery.', impacted_employees: ['Sara Lee'] }
               ]
             }
           },
           'alex kim': {
-            score: 88,
+            score: 71,
             risk: 'HIGH',
-            priority_alert: 'Priority Action This Week: Alex Kim — reduce overtime immediately.',
+            priority_alert: '',
             this_week: {
-              plan_title: 'Overtime Reduction Plan',
-              plan_description: 'Cut overtime for hotspots by removing low-priority work and redistributing load.',
-              projected_impact: 'Risk projected to decrease by ~19 points next week.',
+              plan_title: 'Act Now to Prevent Escalation',
+              plan_description: 'Overtime is trending up and recovery time is limited. Intervene before risk moves to critical.',
+              projected_impact: 'Risk projected to decrease by ~12 points next week.',
               actions: [
-                { text: 'Pause non-critical work and cap weekly hours for the next 2 weeks.', impacted_employees: ['Alex Kim'] },
-                { text: 'Reassign 10–20% of tasks to lower-risk capacity and add backup coverage owners.', impacted_employees: ['Alex Kim'] }
+                { text: 'Cap weekly hours at 48h and reassign overflow tasks to available team members.', impacted_employees: ['Alex Kim'] },
+                { text: 'Schedule a 1:1 this week to discuss workload sustainability and prioritize ruthlessly.', impacted_employees: ['Alex Kim'] }
               ]
             },
             next_2_weeks: {
               plan_title: 'After-hours Boundary Plan',
-              plan_description: 'Reduce after-hours communication and improve recovery time by setting team norms.',
-              projected_impact: 'Risk projected to decrease by ~19 points next week.',
+              plan_description: 'Reduce after-hours communication and schedule a recovery break to prevent escalation.',
+              projected_impact: 'Risk projected to decrease by ~10 points over 2 weeks.',
               actions: [
                 { text: 'Define quiet hours and discourage non-urgent messaging outside work hours.', impacted_employees: ['Alex Kim'] },
-                { text: 'Batch notifications and introduce async status updates to avoid constant pings.', impacted_employees: ['Alex Kim'] }
+                { text: 'Plan a vacation or long weekend within the next 3 weeks to break the accumulation cycle.', impacted_employees: ['Alex Kim'] }
               ]
             }
           },
           'maya chen': {
-            score: 84,
-            risk: 'HIGH',
-            priority_alert: 'Priority Action This Week: Maya Chen — reduce overload and restore recovery time.',
+            score: 52,
+            risk: 'MEDIUM',
+            priority_alert: '',
             this_week: {
-              plan_title: 'Weekend Work Boundary Plan',
-              plan_description: 'Protect weekends and remove recurring weekend obligations.',
-              projected_impact: 'Risk projected to decrease by ~16 points next week.',
+              plan_title: 'Early Warning: Monitor & Prevent',
+              plan_description: 'Workload is elevated but manageable. Take preventive action now to keep risk from climbing.',
+              projected_impact: 'Maintain current tier or reduce by ~6 points.',
               actions: [
-                { text: 'Block weekends in calendar and communicate a no-response policy to stakeholders.', impacted_employees: ['Maya Chen'] },
-                { text: 'Audit recurring weekend tasks and shift them into weekday scheduling.', impacted_employees: ['Maya Chen'] }
+                { text: 'Review current sprint load and defer any non-essential deliverables to next cycle.', impacted_employees: ['Maya Chen'] },
+                { text: 'Confirm upcoming time off is scheduled and protected in the calendar.', impacted_employees: ['Maya Chen'] }
               ]
             },
             next_2_weeks: {
-              plan_title: 'After-hours Communication Reduction',
-              plan_description: 'Reduce after-hours pings with async norms and clear escalation paths.',
-              projected_impact: 'Risk projected to decrease by ~14 points over 2 weeks.',
+              plan_title: 'Preventive Recovery Plan',
+              plan_description: 'Ensure sustainable pace by monitoring hours and planning deliberate recovery time.',
+              projected_impact: 'Risk projected to stay stable or decrease by ~5 points.',
               actions: [
-                { text: 'Set quiet hours and an escalation channel for urgent requests.', impacted_employees: ['Maya Chen'] },
-                { text: 'Introduce async-first norms and batch status updates for the team.', impacted_employees: ['Maya Chen'] }
+                { text: 'Set a soft weekly hours target (under 48h) and check in mid-week.', impacted_employees: ['Maya Chen'] },
+                { text: 'Encourage a 3-day weekend or personal day within the next 2 weeks.', impacted_employees: ['Maya Chen'] }
               ]
             }
           },
           'omar hassan': {
-            score: 77,
-            risk: 'HIGH',
-            priority_alert: 'Priority Action This Week: Omar Hassan — reduce workload and protect focus time.',
+            score: 28,
+            risk: 'LOW',
+            priority_alert: '',
             this_week: {
-              plan_title: 'Workload Rebalance Plan',
-              plan_description: 'De-scope low-priority work and protect focus blocks.',
-              projected_impact: 'Risk projected to decrease by ~12 points next week.',
+              plan_title: 'Balanced Workload \u2014 Maintain',
+              plan_description: 'Workload is healthy and sustainable. No intervention required \u2014 keep current habits.',
+              projected_impact: 'Risk expected to remain low.',
               actions: [
-                { text: 'De-scope non-critical requests and move lower-priority work out of this sprint.', impacted_employees: ['Omar Hassan'] },
-                { text: 'Add protected focus blocks and route urgent requests through a single triage channel.', impacted_employees: ['Omar Hassan'] }
+                { text: 'No action needed. Continue current work rhythm and regular check-ins.', impacted_employees: ['Omar Hassan'] },
+                { text: 'Optional: light 1:1 to acknowledge good balance and discuss career goals.', impacted_employees: ['Omar Hassan'] }
               ]
             },
             next_2_weeks: {
-              plan_title: 'Recovery & Boundary Plan',
-              plan_description: 'Reduce after-hours messaging and plan recovery time.',
-              projected_impact: 'Risk projected to decrease by ~10 points over 2 weeks.',
+              plan_title: 'Sustain & Grow',
+              plan_description: 'Use this low-risk window for development opportunities and knowledge sharing.',
+              projected_impact: 'No change expected \u2014 stable low risk.',
               actions: [
-                { text: 'Set response-time expectations and quiet hours to reduce after-hours messaging.', impacted_employees: ['Omar Hassan'] },
-                { text: 'Encourage a short recovery break and schedule next vacation.', impacted_employees: ['Omar Hassan'] }
+                { text: 'Consider pairing with higher-risk colleagues to share load where possible.', impacted_employees: ['Omar Hassan'] },
+                { text: 'Use available bandwidth for learning, mentoring, or process improvements.', impacted_employees: ['Omar Hassan'] }
               ]
             }
           }
@@ -5378,10 +5328,10 @@ async function loadDemoData() {
             generated_at: new Date().toISOString(),
             week_start: monday2,
             burnout_score: Number(p.score || 0),
-            risk_level: String(p.risk || 'HIGH'),
+            risk_level: String(p.risk || 'LOW'),
             employee: { id: emp.id, name: emp.full_name, role: emp.job_title || '' },
             behavior_profile: null,
-            employee_type: 'demo_high_risk',
+            employee_type: 'demo',
             priority_alert: p.priority_alert,
             this_week: p.this_week,
             next_2_weeks: p.next_2_weeks
@@ -5594,14 +5544,36 @@ async function loadAndCalculateScores() {
     }
 
     if (isDemoEmployeesActive()) {
-      applyHardcodedDemoScores(employees);
+      // Score demo employees through the REAL model (no hardcoded scores)
       const scores = {};
+      const rows = [];
       for (const e of employees) {
-        const id = e?.id;
-        if (!id) continue;
-        scores[id] = Number(e?.burnout_score || e?.burnoutScore || 0);
+        if (!e?.id) continue;
+        const m = e.__demoWeekly || weeklyData[e.id] || {};
+        const row = {
+          employee_id: e.id,
+          weekly_hours: Number(m.weekly_hours || 0),
+          weekend_hours: Number(m.weekend_hours || 0),
+          after_hours_messages: Number(m.after_hours_messages || 0),
+          sick_days: Number(m.sick_days || 0),
+          overtime_hours: Number(m.overtime_hours || 0)
+        };
+        rows.push(row);
+        const score = computeBurnoutScoreFromSignals({
+          weeklyHours: row.weekly_hours,
+          weekendHours: row.weekend_hours,
+          afterHoursMessages: row.after_hours_messages,
+          sickDays: row.sick_days,
+          overtimeHours: row.overtime_hours,
+          lastVacation: String(e.last_vacation || 'unknown')
+        });
+        scores[e.id] = score;
+        e.burnoutScore = score;
+        e.burnout_score = score;
+        e.riskLevel = classifyEmployeeRiskLevel(score);
+        e.risk_level = e.riskLevel.toUpperCase();
       }
-      updateScoreCards(scores, []);
+      updateScoreCards(scores, rows);
       renderTrendChart([]);
       return;
     }
@@ -5652,7 +5624,8 @@ function calculateBurnoutScores(weeklyData) {
       weekendHours: Number(metrics?.weekend_hours || 0),
       afterHoursMessages: Number(metrics?.after_hours_messages || metrics?.after_hours_message || 0),
       sickDays: Number(metrics?.sick_days || 0),
-      overtimeHours: Number(metrics?.overtime_hours || 0)
+      overtimeHours: Number(metrics?.overtime_hours || 0),
+      lastVacation: String(employee?.last_vacation || 'unknown')
     });
   });
 
@@ -5662,7 +5635,7 @@ function calculateBurnoutScores(weeklyData) {
 function updateScoreCards(scores, weeklyData, allTrendData) {
   const scoreValues = Object.values(scores);
   const companyScore = scoreValues.length > 0 ? Math.round(scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length) : 0;
-  const atRiskCount = scoreValues.filter(s => s > 50).length;
+  const atRiskCount = scoreValues.filter(s => s >= 60).length;
   const atRiskPercent = scoreValues.length > 0 ? Math.round((atRiskCount / scoreValues.length) * 100) : 0;
 
   // Find top risk driver
@@ -6179,7 +6152,7 @@ function renderStrategicActionPlansPage(){
           'sara lee': {
             employee: { id: 'demo-sara', name: 'Sara Lee', role: 'Operations Manager' },
             burnout_score: 92, risk_level: 'CRITICAL', week_start: getCurrentMonday(),
-            priority_alert: 'Priority Action This Week: Sara Lee (Score: 92) \u2014 Reduce extreme workload and weekend work immediately.',
+            priority_alert: '',
             this_week: {
               plan_title: 'Workload Emergency Rebalance',
               plan_description: 'Rapidly reduce sustained overload by pausing non-critical work and adding coverage.',
@@ -6202,70 +6175,70 @@ function renderStrategicActionPlansPage(){
           },
           'alex kim': {
             employee: { id: 'demo-alex', name: 'Alex Kim', role: 'Senior Engineer' },
-            burnout_score: 88, risk_level: 'CRITICAL', week_start: getCurrentMonday(),
-            priority_alert: 'Priority Action This Week: Alex Kim (Score: 88) \u2014 Reduce overtime immediately.',
+            burnout_score: 71, risk_level: 'HIGH', week_start: getCurrentMonday(),
+            priority_alert: '',
             this_week: {
-              plan_title: 'Overtime Reduction Plan',
-              plan_description: 'Cut overtime by removing low-priority work and redistributing load.',
-              projected_impact: 'Risk projected to decrease by ~19 points next week.',
+              plan_title: 'Act Now to Prevent Escalation',
+              plan_description: 'Overtime is trending up and recovery time is limited. Intervene before risk moves to critical.',
+              projected_impact: 'Risk projected to decrease by ~12 points next week.',
               actions: [
-                { text: 'Pause non-critical work and cap weekly hours for the next 2 weeks.', impacted_employees: ['Alex Kim'] },
-                { text: 'Reassign 10\u201320% of tasks to lower-risk capacity and add backup coverage owners.', impacted_employees: ['Alex Kim'] }
+                { text: 'Cap weekly hours at 48h and reassign overflow tasks to available team members.', impacted_employees: ['Alex Kim'] },
+                { text: 'Schedule a 1:1 this week to discuss workload sustainability and prioritize ruthlessly.', impacted_employees: ['Alex Kim'] }
               ]
             },
             next_2_weeks: {
               plan_title: 'After-hours Boundary Plan',
-              plan_description: 'Reduce after-hours communication and improve recovery time by setting team norms.',
-              projected_impact: 'Risk projected to decrease by ~19 points over 2 weeks.',
+              plan_description: 'Reduce after-hours communication and schedule a recovery break to prevent escalation.',
+              projected_impact: 'Risk projected to decrease by ~10 points over 2 weeks.',
               actions: [
                 { text: 'Define quiet hours and discourage non-urgent messaging outside work hours.', impacted_employees: ['Alex Kim'] },
-                { text: 'Batch notifications and introduce async status updates to avoid constant pings.', impacted_employees: ['Alex Kim'] }
+                { text: 'Plan a vacation or long weekend within the next 3 weeks to break the accumulation cycle.', impacted_employees: ['Alex Kim'] }
               ]
             }
           },
           'maya chen': {
             employee: { id: 'demo-maya', name: 'Maya Chen', role: 'Product Designer' },
-            burnout_score: 84, risk_level: 'CRITICAL', week_start: getCurrentMonday(),
-            priority_alert: 'Priority Action This Week: Maya Chen (Score: 84) \u2014 Reduce overload and restore recovery time.',
+            burnout_score: 52, risk_level: 'MEDIUM', week_start: getCurrentMonday(),
+            priority_alert: '',
             this_week: {
-              plan_title: 'Weekend Work Boundary Plan',
-              plan_description: 'Protect weekends and remove recurring weekend obligations.',
-              projected_impact: 'Risk projected to decrease by ~16 points next week.',
+              plan_title: 'Early Warning: Monitor & Prevent',
+              plan_description: 'Workload is elevated but manageable. Take preventive action now to keep risk from climbing.',
+              projected_impact: 'Maintain current tier or reduce by ~6 points.',
               actions: [
-                { text: 'Block weekends in calendar and communicate a no-response policy to stakeholders.', impacted_employees: ['Maya Chen'] },
-                { text: 'Audit recurring weekend tasks and shift them into weekday scheduling.', impacted_employees: ['Maya Chen'] }
+                { text: 'Review current sprint load and defer any non-essential deliverables to next cycle.', impacted_employees: ['Maya Chen'] },
+                { text: 'Confirm upcoming time off is scheduled and protected in the calendar.', impacted_employees: ['Maya Chen'] }
               ]
             },
             next_2_weeks: {
-              plan_title: 'After-hours Communication Reduction',
-              plan_description: 'Reduce after-hours pings with async norms and clear escalation paths.',
-              projected_impact: 'Risk projected to decrease by ~14 points over 2 weeks.',
+              plan_title: 'Preventive Recovery Plan',
+              plan_description: 'Ensure sustainable pace by monitoring hours and planning deliberate recovery time.',
+              projected_impact: 'Risk projected to stay stable or decrease by ~5 points.',
               actions: [
-                { text: 'Set quiet hours and an escalation channel for urgent requests.', impacted_employees: ['Maya Chen'] },
-                { text: 'Introduce async-first norms and batch status updates for the team.', impacted_employees: ['Maya Chen'] }
+                { text: 'Set a soft weekly hours target (under 48h) and check in mid-week.', impacted_employees: ['Maya Chen'] },
+                { text: 'Encourage a 3-day weekend or personal day within the next 2 weeks.', impacted_employees: ['Maya Chen'] }
               ]
             }
           },
           'omar hassan': {
             employee: { id: 'demo-omar', name: 'Omar Hassan', role: 'Marketing Lead' },
-            burnout_score: 77, risk_level: 'HIGH', week_start: getCurrentMonday(),
-            priority_alert: 'Priority Action This Week: Omar Hassan (Score: 77) \u2014 Reduce workload and protect focus time.',
+            burnout_score: 28, risk_level: 'LOW', week_start: getCurrentMonday(),
+            priority_alert: '',
             this_week: {
-              plan_title: 'Workload Rebalance Plan',
-              plan_description: 'De-scope low-priority work and protect focus blocks.',
-              projected_impact: 'Risk projected to decrease by ~12 points next week.',
+              plan_title: 'Balanced Workload \u2014 Maintain',
+              plan_description: 'Workload is healthy and sustainable. No intervention required \u2014 keep current habits.',
+              projected_impact: 'Risk expected to remain low.',
               actions: [
-                { text: 'De-scope non-critical requests and move lower-priority work out of this sprint.', impacted_employees: ['Omar Hassan'] },
-                { text: 'Add protected focus blocks and route urgent requests through a single triage channel.', impacted_employees: ['Omar Hassan'] }
+                { text: 'No action needed. Continue current work rhythm and regular check-ins.', impacted_employees: ['Omar Hassan'] },
+                { text: 'Optional: light 1:1 to acknowledge good balance and discuss career goals.', impacted_employees: ['Omar Hassan'] }
               ]
             },
             next_2_weeks: {
-              plan_title: 'Recovery & Boundary Plan',
-              plan_description: 'Reduce after-hours messaging and plan recovery time.',
-              projected_impact: 'Risk projected to decrease by ~10 points over 2 weeks.',
+              plan_title: 'Sustain & Grow',
+              plan_description: 'Use this low-risk window for development opportunities and knowledge sharing.',
+              projected_impact: 'No change expected \u2014 stable low risk.',
               actions: [
-                { text: 'Set response-time expectations and quiet hours to reduce after-hours messaging.', impacted_employees: ['Omar Hassan'] },
-                { text: 'Encourage a short recovery break and schedule next vacation.', impacted_employees: ['Omar Hassan'] }
+                { text: 'Consider pairing with higher-risk colleagues to share load where possible.', impacted_employees: ['Omar Hassan'] },
+                { text: 'Use available bandwidth for learning, mentoring, or process improvements.', impacted_employees: ['Omar Hassan'] }
               ]
             }
           }
@@ -6873,20 +6846,46 @@ function renderTeamHotspotsPage(){
 
   let hotspots;
   if (isDemoEmployeesActive()) {
-    // Use hardcoded demo scores — always HIGH/CRITICAL
+    // Score demo employees through the real model
     const demoEmps = Array.isArray(window.__demoEmployees) ? window.__demoEmployees : employees;
-    applyHardcodedDemoScores(demoEmps);
-    hotspots = demoEmps.map(e => ({
-      name: String(e.full_name || e.name || '').trim() || 'Employee',
-      burnoutScore: Number(e.burnoutScore || e.burnout_score || 0),
-      riskLevel: normalizeRiskLevel(e.riskLevel || e.risk_level || 'high'),
-      drivers: Array.isArray(e.signals) && e.signals.length ? e.signals.slice(0, 3) : computeHeuristicDrivers(e),
-      recommendedAction: computeRecommendedAction(normalizeRiskLevel(e.riskLevel || e.risk_level || 'high'), Array.isArray(e.signals) ? e.signals.slice(0, 3) : []),
-      weeklyHours: Number(e.weeklyHours || e.weekly_hours || 0),
-      weekendHours: Number(e.weekendHours || e.weekend_hours || 0),
-      afterHoursMessages: Number(e.afterHoursMessages || e.after_hours_messages || 0),
-      sickDays: Number(e.sickDays || e.sick_days || 0)
-    }));
+    for (const e of demoEmps) {
+      if (!e) continue;
+      const m = e.__demoWeekly || {};
+      const score = computeBurnoutScoreFromSignals({
+        weeklyHours: Number(m.weekly_hours || 0),
+        weekendHours: Number(m.weekend_hours || 0),
+        afterHoursMessages: Number(m.after_hours_messages || 0),
+        sickDays: Number(m.sick_days || 0),
+        overtimeHours: Number(m.overtime_hours || 0),
+        lastVacation: String(e.last_vacation || 'unknown')
+      });
+      e.burnoutScore = score;
+      e.burnout_score = score;
+      e.riskLevel = classifyEmployeeRiskLevel(score);
+      e.risk_level = e.riskLevel.toUpperCase();
+    }
+    hotspots = demoEmps.map(e => {
+      const m = e.__demoWeekly || {};
+      const proxy = {
+        weeklyHours: Number(m.weekly_hours || 0),
+        afterHoursMessages: Number(m.after_hours_messages || 0),
+        sickDays: Number(m.sick_days || 0),
+        lastVacation: String(e.last_vacation || 'unknown')
+      };
+      const drivers = computeHeuristicDrivers(proxy);
+      const level = normalizeRiskLevel(e.riskLevel || e.risk_level || 'low');
+      return {
+        name: String(e.full_name || e.name || '').trim() || 'Employee',
+        burnoutScore: Number(e.burnoutScore || e.burnout_score || 0),
+        riskLevel: level,
+        drivers,
+        recommendedAction: computeRecommendedAction(level, drivers),
+        weeklyHours: proxy.weeklyHours,
+        weekendHours: Number(m.weekend_hours || 0),
+        afterHoursMessages: proxy.afterHoursMessages,
+        sickDays: proxy.sickDays
+      };
+    });
   } else {
     const data = readJsonLocalStorage('peoplera_team_hotspots', []);
     hotspots = Array.isArray(data) ? data : [];
@@ -6915,8 +6914,7 @@ function renderTeamHotspotsPage(){
     const drivers = Array.isArray(h?.drivers) ? h.drivers.map(d => String(d || '').trim()).filter(Boolean) : [];
     const top = String(drivers[0] || '').toLowerCase();
 
-    if (name === 'Alex Kim' && score === 73) return 'Schedule 1:1 this week';
-    if (name === 'Maya Chen' && score === 60) return 'Review workload distribution and set after-hours boundaries';
+    // No hardcoded name/score overrides — derive from drivers dynamically
 
     if (top.includes('after-hours') || top.includes('after hours') || top.includes('messages')) {
       return 'Set after-hours boundaries and reduce non-urgent messaging outside work hours';
@@ -7271,7 +7269,7 @@ function renderAIInsightsPage(){
     // No cache, show generate prompt
     out.innerHTML = '<div style="text-align:center;padding:40px">'
       + '<div style="font-size:16px;font-weight:900;color:#64748b;margin-bottom:8px">Generate AI-powered insights from your team data</div>'
-      + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">Claude will analyze your employee metrics and provide specific, actionable insights.</div>'
+      + '<div style="font-size:13px;color:#94a3b8;margin-bottom:16px">AI will analyze your employee metrics and provide specific, actionable insights.</div>'
       + '<button type="button" id="btnGenerateAIInsights" onclick="generateAIInsights()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;padding:12px 24px;font-weight:900;font-size:14px;color:#fff;cursor:pointer;box-shadow:0 4px 16px rgba(99,102,241,0.25)">Generate AI Insights</button>'
       + '</div>';
   }
@@ -7287,18 +7285,18 @@ function renderAIInsightsCards(out, cached){
     payload = {
       updatedAt: new Date().toISOString(),
       insights: [
-        { type: 'CRITICAL', color: '#EF4444', icon: '!', title: `Company burnout score: 85/100 (High risk)`, detail: `2 of ${teamSize} employees at critical risk: Sara Lee (score: 92), Omar Hassan (score: 77). Immediate intervention recommended \u2014 redistribute workload and block recovery time this week.` },
-        { type: 'WARNING', color: '#FFB347', icon: '!', title: 'Extreme overtime across entire team', detail: 'Sara Lee (74h), Alex Kim (72h), Maya Chen (68h), Omar Hassan (61h) \u2014 all 4 employees exceed 50h/week. After-hours messaging is critically high for Sara Lee (40 msgs) and Alex Kim (35 msgs). Weekend work compounds the issue.' },
-        { type: 'WARNING', color: '#FFB347', icon: '!', title: 'Sick leave pattern indicates physical burnout', detail: 'Sara Lee (6 days) and Maya Chen (5 days) have elevated sick days this period. Combined with high overtime, this signals physical exhaustion rather than illness.' },
-        { type: 'TREND', color: '#94a3b8', icon: '\u2192', title: 'Insufficient trend data (1 week only)', detail: 'Add a second week of metrics to enable trend analysis. Current data shows a single snapshot \u2014 week-over-week comparison will unlock trend insights.' },
-        { type: 'POSITIVE', color: '#22C55E', icon: '\u2713', title: 'Team composition allows load rebalancing', detail: 'With 4 team members, workload redistribution is feasible. Moving 10-15h from Sara Lee and Alex Kim to Omar Hassan (lowest load at 61h) could reduce peak burnout scores by 15-20 points within 2 weeks.' }
+        { type: 'CRITICAL', color: '#EF4444', icon: '!', title: `1 employee at critical burnout risk`, detail: `Sara Lee (score: 92, CRITICAL) requires immediate workload intervention. She is working 74h/week with 16h weekend work and 42 after-hours messages. Redistribute tasks and enforce recovery time this week.` },
+        { type: 'WARNING', color: '#FFB347', icon: '!', title: 'Alex Kim trending toward critical', detail: 'Alex Kim (score: 71, HIGH) is working 54h/week with limited vacation recovery (last break 5+ months ago). Act now to prevent escalation \u2014 cap hours and plan time off.' },
+        { type: 'WARNING', color: '#FFB347', icon: '!', title: 'Maya Chen in early warning zone', detail: 'Maya Chen (score: 52, MEDIUM) has moderate overtime (51h/week) and 16 after-hours messages. Workload is manageable but trending up \u2014 monitor and encourage recovery time.' },
+        { type: 'POSITIVE', color: '#22C55E', icon: '\u2713', title: 'Omar Hassan is well-balanced', detail: 'Omar Hassan (score: 28, LOW) has sustainable workload at 45h/week with minimal after-hours activity. Good example of healthy work habits for the team.' },
+        { type: 'TREND', color: '#94a3b8', icon: '\u2192', title: 'Clear risk differentiation across the team', detail: `The team shows a full risk spectrum: 1 CRITICAL, 1 HIGH, 1 MEDIUM, 1 LOW. This allows targeted intervention \u2014 focus resources on Sara Lee and Alex Kim while maintaining Omar's balance.` }
       ],
       recommendations: [
-        'Immediately cap Sara Lee and Alex Kim at 50h this week \u2014 reassign 2 deliverables to Omar Hassan',
-        'Block 2 mandatory no-meeting recovery afternoons for the entire team',
-        'Schedule 1:1 check-ins with Sara Lee (highest risk) and Maya Chen (sick day pattern) this week',
-        'Set after-hours messaging boundaries: no Slack after 7pm, use scheduled sends',
-        'Plan mandatory vacation for Sara Lee and Maya Chen within the next 3 weeks'
+        'Immediately cap Sara Lee at 50h this week \u2014 freeze non-critical projects and delegate',
+        'Schedule a 1:1 with Alex Kim to discuss workload sustainability and plan vacation',
+        'Set a soft hours target for Maya Chen (under 48h) and confirm upcoming time off',
+        'Acknowledge Omar Hassan\u2019s balance \u2014 consider him for load-sharing from Sara Lee',
+        'Set team-wide after-hours boundaries: no Slack after 7pm, use scheduled sends'
       ]
     };
   } else {
@@ -7455,16 +7453,31 @@ async function generateFullReport() {
       return;
     }
 
-    // DEMO MODE: use hardcoded scores, never call Claude API
+    // DEMO MODE: score via real model, never call Claude API
     if (isDemoEmployeesActive()) {
       const demoEmps = Array.isArray(window.__demoEmployees) ? window.__demoEmployees : employees;
-      applyHardcodedDemoScores(demoEmps);
+      for (const e of demoEmps) {
+        if (!e) continue;
+        const m = e.__demoWeekly || {};
+        const score = computeBurnoutScoreFromSignals({
+          weeklyHours: Number(m.weekly_hours || 0),
+          weekendHours: Number(m.weekend_hours || 0),
+          afterHoursMessages: Number(m.after_hours_messages || 0),
+          sickDays: Number(m.sick_days || 0),
+          overtimeHours: Number(m.overtime_hours || 0),
+          lastVacation: String(e.last_vacation || 'unknown')
+        });
+        e.burnoutScore = score;
+        e.burnout_score = score;
+        e.riskLevel = classifyEmployeeRiskLevel(score);
+        e.risk_level = e.riskLevel.toUpperCase();
+      }
 
       const mergedEmployeesScored = demoEmps.map(e => ({
         ...e,
         name: e.full_name || e.name || '',
         burnoutScore: Number(e.burnoutScore || e.burnout_score || 0),
-        riskLevel: String(e.riskLevel || e.risk_level || 'high').toLowerCase()
+        riskLevel: String(e.riskLevel || e.risk_level || 'low').toLowerCase()
       }));
 
       window.__lastPulseEmployees = mergedEmployeesScored;
@@ -8071,7 +8084,7 @@ function exportPdfReport(){
 
   const scores = empList.map(e => Number(e.burnoutScore || e.burnout_score || 0)).filter(n => n > 0);
   const companyScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0) / scores.length) : 0;
-  const atRisk = empList.filter(e => Number(e.burnoutScore || e.burnout_score || 0) >= 50);
+  const atRisk = empList.filter(e => Number(e.burnoutScore || e.burnout_score || 0) >= 60);
   const sorted = [...empList].sort((a,b) => Number(b.burnoutScore||b.burnout_score||0) - Number(a.burnoutScore||a.burnout_score||0));
 
   const hours = empList.map(e => Number(e.weeklyHours || e.weekly_hours || e.__demoWeekly?.weekly_hours || 0)).filter(n => n > 0);
@@ -8166,9 +8179,9 @@ async function sendWeeklyEmailReport(){
     const empList = Array.isArray(window.__lastPulseEmployees) ? window.__lastPulseEmployees : employees;
     const scores = empList.map(e => Number(e.burnoutScore || e.burnout_score || 0)).filter(n => n > 0);
     const companyScore = scores.length ? Math.round(scores.reduce((a,b)=>a+b,0) / scores.length) : 0;
-    const atRisk = empList.filter(e => Number(e.burnoutScore || e.burnout_score || 0) >= 50);
+    const atRisk = empList.filter(e => Number(e.burnoutScore || e.burnout_score || 0) >= 60);
     const sorted = [...empList].sort((a,b) => Number(b.burnoutScore||b.burnout_score||0) - Number(a.burnoutScore||a.burnout_score||0));
-    const top3 = sorted.filter(e => Number(e.burnoutScore||e.burnout_score||0) >= 50).slice(0, 3);
+    const top3 = sorted.filter(e => Number(e.burnoutScore||e.burnout_score||0) >= 60).slice(0, 3);
 
     const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
     const top3Html = top3.map(e => {
