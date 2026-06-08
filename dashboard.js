@@ -1426,9 +1426,8 @@ async function clearDemoData(){
 
         const ids = (demoRows || []).map(r => r?.id).filter(Boolean);
         if (ids.length) {
-          try{
-            await supabase.from('weekly_metrics').delete().in('employee_id', ids);
-          }catch(e){ /* noop */ }
+          try{ await supabase.from('weekly_metrics').delete().in('employee_id', ids); }catch(e){ /* noop */ }
+          try{ await supabase.from('pulse_results').delete().eq('user_id', s.user.id); }catch(e){ /* noop */ }
           await supabase.from('employees').delete().in('id', ids);
         }
       }
@@ -1440,6 +1439,7 @@ async function clearDemoData(){
     window.__lastPulseEmployees = [];
     window.__lastActionPlans = [];
     window.__lastDecisionEngine = null;
+    window.__plansEmployeesList = [];
     setDemoActivatedThisSession(false);
     try{ writeJsonLocalStorage('peoplera_active_employees_count', 0); }catch(e){ /* noop */ }
     try{ writeJsonLocalStorage('peoplera_demo_employee_ids', []); }catch(e){ /* noop */ }
@@ -1448,8 +1448,11 @@ async function clearDemoData(){
     try{ localStorage.removeItem('peoplera_ai_insights_cache'); }catch(e){ /* noop */ }
     try{ localStorage.removeItem('peoplera_ai_insights'); }catch(e){ /* noop */ }
 
+    try{ hideDemoBanner(); }catch(e){ /* noop */ }
+    try{ updateSidebarStatusCard(); }catch(e){ /* noop */ }
     try{ renderEmployees(); }catch(e){ /* noop */ }
     try{ updateSectionsVisibility(); }catch(e){ /* noop */ }
+    try{ populateOverviewFromEmployees([]); }catch(e){ /* noop */ }
     try{ applyDemoRealDataUi(); }catch(e){ /* noop */ }
     try{ applyPulseActionButtonsUi({ connected: false }); }catch(e){ /* noop */ }
   }catch(e){
@@ -1829,7 +1832,7 @@ async function loadOverviewWeeklyBurnoutSummary(sessionObj){
   const maxVal = Math.max(60, ...series.map(s=>Number(s.avg)||0));
   out.innerHTML = series.map((p, idx) => {
     const h = Math.max(6, Math.round((Number(p.avg || 0) / maxVal) * 64));
-    const color = (p.avg >= 75) ? '#FF6B4A' : (p.avg >= 50) ? '#FFB347' : '#00b894';
+    const color = (p.avg >= 80) ? '#FF6B4A' : (p.avg >= 60) ? '#F97316' : (p.avg >= 35) ? '#FFB347' : '#00b894';
     const labelDt = new Date(String(p.week) + 'T00:00:00');
     const label = Number.isNaN(labelDt.getTime())
       ? String(p.week)
@@ -7236,8 +7239,8 @@ async function loadDynamicInsightsFromSupabase(){
   }));
   empScored.sort((a,b) => b.score - a.score);
 
-  const criticalEmps = empScored.filter(e => e.score >= 75);
-  const highRiskEmps = empScored.filter(e => e.score >= 50);
+  const criticalEmps = empScored.filter(e => e.score >= 80);
+  const highRiskEmps = empScored.filter(e => e.score >= 60);
 
   // Driver buckets with named employees
   const overHoursEmps = empScored.filter(e => e.hours > 50);
@@ -7286,7 +7289,7 @@ async function loadDynamicInsightsFromSupabase(){
     const topDriver = driverInsights[0];
     const detail = topDriver
       ? `${topDriver.text}. Review drivers and create an action plan to prevent escalation.`
-      : `${highRiskEmps.length} of ${teamSize} employees are high risk (score >= 50): ${nameList(highRiskEmps, 3)}.`;
+      : `${highRiskEmps.length} of ${teamSize} employees are high risk (score >= 60): ${nameList(highRiskEmps, 3)}.`;
     insights.push({
       type: 'WARNING',
       color: '#FFB347',
@@ -7968,9 +7971,9 @@ function populateOverviewFromEmployees(empList){
   // Burnout score trend text
   const trendEl = el('statBurnoutScoreTrend');
   if (trendEl) {
-    if (avgScore >= 75) trendEl.innerHTML = '<span style="color:#FF6B4A;font-weight:900">Critical risk</span>';
-    else if (avgScore >= 50) trendEl.innerHTML = '<span style="color:#F97316;font-weight:900">High risk</span>';
-    else if (avgScore >= 25) trendEl.innerHTML = '<span style="color:#FFB347;font-weight:900">Medium risk</span>';
+    if (avgScore >= 80) trendEl.innerHTML = '<span style="color:#FF6B4A;font-weight:900">Critical risk</span>';
+    else if (avgScore >= 60) trendEl.innerHTML = '<span style="color:#F97316;font-weight:900">High risk</span>';
+    else if (avgScore >= 35) trendEl.innerHTML = '<span style="color:#FFB347;font-weight:900">Medium risk</span>';
     else trendEl.textContent = 'Company average';
   }
 
@@ -7984,8 +7987,8 @@ function populateOverviewFromEmployees(empList){
     topRisksEl.innerHTML = top3.map(e => {
       const name = escapeHtml(String(e.full_name || e.name || 'Unknown'));
       const sc = Number(e.burnoutScore || e.burnout_score || 0);
-      const color = sc >= 75 ? '#FF6B4A' : sc >= 50 ? '#F97316' : '#FFB347';
-      const lvl = sc >= 75 ? 'CRITICAL' : sc >= 50 ? 'HIGH' : 'MEDIUM';
+      const color = sc >= 80 ? '#FF6B4A' : sc >= 60 ? '#F97316' : sc >= 35 ? '#FFB347' : '#00e5a0';
+      const lvl = sc >= 80 ? 'CRITICAL' : sc >= 60 ? 'HIGH' : sc >= 35 ? 'MEDIUM' : 'LOW';
       const driver = escapeHtml(String(e.topDriver || e.top_driver || 'High workload signals').slice(0, 80));
       return `<div style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:rgba(0,0,0,0.02);border:1px solid rgba(0,0,0,0.06);border-radius:12px;border-left:3px solid ${color}">
         <div style="flex:1;min-width:0">
@@ -8046,7 +8049,7 @@ function populateDemoOverviewChart(){
   const maxVal = 100;
   out.innerHTML = demoPoints.map((p) => {
     const h = Math.max(8, Math.round((p.avg / maxVal) * 72));
-    const color = p.avg >= 75 ? '#FF6B4A' : p.avg >= 50 ? '#FFB347' : '#00b894';
+    const color = p.avg >= 80 ? '#FF6B4A' : p.avg >= 60 ? '#F97316' : p.avg >= 35 ? '#FFB347' : '#00b894';
     return `<div style="flex:1;min-width:0;text-align:center">
       <div style="font-size:11px;font-weight:900;color:${color};margin-bottom:4px">${p.avg}</div>
       <div title="${p.week} · ${p.avg}/100" style="height:${h}px;background:${color};border-radius:10px 10px 6px 6px;border:1px solid rgba(0,0,0,0.06)"></div>
@@ -8292,11 +8295,12 @@ function exportPdfReport(){
         </tr></thead>
         <tbody>${sorted.filter(e => Number(e.burnoutScore||e.burnout_score||0) >= 50).map(e => {
           const sc = Number(e.burnoutScore||e.burnout_score||0);
-          const color = sc >= 75 ? '#FF6B4A' : '#F97316';
+          const color = sc >= 80 ? '#FF6B4A' : sc >= 60 ? '#F97316' : '#FFB347';
+          const tier = sc >= 80 ? 'CRITICAL' : sc >= 60 ? 'HIGH' : 'MEDIUM';
           return `<tr style="border-bottom:1px solid #f1f5f9">
             <td style="padding:8px 12px;font-weight:700">${escapeHtml(String(e.full_name||e.name||''))}</td>
             <td style="padding:8px 12px;text-align:center;font-weight:900;color:${color}">${sc}</td>
-            <td style="padding:8px 12px;text-align:center"><span style="background:${color};color:#fff;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:900">${sc >= 75 ? 'CRITICAL' : 'HIGH'}</span></td>
+            <td style="padding:8px 12px;text-align:center"><span style="background:${color};color:#fff;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:900">${tier}</span></td>
             <td style="padding:8px 12px;color:#64748b;font-size:12px">${escapeHtml(String(e.topDriver||e.top_driver||'High workload').slice(0,60))}</td>
           </tr>`;
         }).join('')}</tbody>
