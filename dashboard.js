@@ -6893,7 +6893,7 @@ document.addEventListener('click', function(e) {
     if (!btn || !card) return;
 
     const applyState = (isTaken) => {
-      btn.textContent = isTaken ? '✓ Action taken' : 'Mark as done';
+      btn.textContent = isTaken ? '✓ Marked as done' : 'Mark as done';
       btn.style.background = '#FFFFFF';
       btn.style.border = `1px solid ${isTaken ? '#BBF7D0' : '#E7E5E4'}`;
       btn.style.borderRadius = '8px';
@@ -6901,24 +6901,32 @@ document.addEventListener('click', function(e) {
       btn.style.fontSize = '12px';
       btn.style.fontWeight = '900';
       btn.style.color = isTaken ? '#16A34A' : '#64748b';
-      btn.style.cursor = 'pointer';
-      btn.disabled = false;
-      card.style.opacity = isTaken ? '0.7' : '1';
+      btn.style.cursor = isTaken ? 'default' : 'pointer';
+      btn.disabled = isTaken;
+      card.style.opacity = isTaken ? '0.6' : '1';
+      card.style.transition = 'opacity 0.3s ease';
     };
 
+    // Determine current state from button text
+    const wasTaken = btn.textContent.trim().startsWith('✓');
+    const next = !wasTaken;
+
+    // Try to persist to localStorage (works for real mode)
     try{
       const hotspots = readJsonLocalStorage('peoplera_team_hotspots', []);
       const arr = Array.isArray(hotspots) ? hotspots : [];
       const name = card.querySelector('.employee-name')?.textContent || '';
-      let next = false;
-      const updated = arr.map(h => {
-        if (String(h.name||'') !== String(name||'')) return h;
-        next = !Boolean(h.actionTaken);
-        return { ...h, actionTaken: next };
-      });
-      writeJsonLocalStorage('peoplera_team_hotspots', updated);
-      applyState(next);
+      if (arr.length && name) {
+        const updated = arr.map(h => {
+          if (String(h.name||'') !== String(name||'')) return h;
+          return { ...h, actionTaken: next };
+        });
+        writeJsonLocalStorage('peoplera_team_hotspots', updated);
+      }
     }catch(err){ /* noop */ }
+
+    // Always apply visual state (works in demo + real mode)
+    applyState(next);
     return;
   }
 });
@@ -7065,7 +7073,7 @@ function renderTeamHotspotsPage(){
     html += `<div style="font-size:10px;font-weight:900;color:${color};letter-spacing:0.08em;margin-bottom:6px">RECOMMENDED ACTION</div>`;
     html += `<div style="font-size:12px;font-weight:800;color:#0f172a">${escapeHtml(recommendedActionText || h.recommendedAction || '')}</div>`;
     html += '</div>';
-    html += `<button type="button" class="mark-action-btn" style="margin-top:10px;background:#FFFFFF;border:1px solid ${actionTaken ? '#BBF7D0' : '#E7E5E4'};border-radius:8px;padding:10px 12px;font-size:12px;font-weight:900;color:${actionTaken ? '#16A34A' : '#64748b'};cursor:pointer;width:100%">${actionTaken ? '✓ Action taken' : 'Mark as done'}</button>`;
+    html += `<button type="button" class="mark-action-btn" style="margin-top:10px;background:#FFFFFF;border:1px solid ${actionTaken ? '#BBF7D0' : '#E7E5E4'};border-radius:8px;padding:10px 12px;font-size:12px;font-weight:900;color:${actionTaken ? '#16A34A' : '#64748b'};cursor:${actionTaken ? 'default' : 'pointer'};width:100%"${actionTaken ? ' disabled' : ''}>${actionTaken ? '✓ Marked as done' : 'Mark as done'}</button>`;
     html += '</div>';
     return html;
   };

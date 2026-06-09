@@ -381,11 +381,11 @@ body {
   transition:margin-left .25s ease;
 }
 
-/* Toggle button */
+/* Toggle button — positioned outside sidebar to avoid overflow clipping */
 #sidebarToggle{
-  position:absolute;
-  right:-12px;
-  top:18px;
+  position:fixed;
+  left:calc(var(--side) - 12px);
+  top:24px;
   width:24px;
   height:24px;
   background:#fff;
@@ -398,9 +398,9 @@ body {
   color:#94a3b8;
   font-weight:900;
   font-size:13px;
-  transition:transform .25s ease, border-color .15s ease, color .15s ease;
+  transition:left .25s ease, transform .25s ease, border-color .15s ease, color .15s ease;
   box-shadow:0 1px 3px rgba(0,0,0,0.05);
-  z-index:2;
+  z-index:1001;
 }
 #sidebarToggle:hover{
   border-color:rgba(255,107,107,0.35);
@@ -417,6 +417,7 @@ body {
   margin-left:var(--side-collapsed);
 }
 .dash.sidebar-collapsed #sidebarToggle{
+  left:calc(var(--side-collapsed) - 12px);
   transform:rotate(180deg);
 }
 
@@ -513,6 +514,7 @@ body {
 
 @media (max-width:768px){
   .main-content{ margin-left:0 !important; }
+  #sidebarToggle{ display:none !important; }
   .sidebar{
     width:0; max-width:0;
     overflow:hidden;
