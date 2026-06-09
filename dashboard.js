@@ -6901,8 +6901,8 @@ document.addEventListener('click', function(e) {
       btn.style.fontSize = '12px';
       btn.style.fontWeight = '900';
       btn.style.color = isTaken ? '#16A34A' : '#64748b';
-      btn.style.cursor = isTaken ? 'default' : 'pointer';
-      btn.disabled = isTaken;
+      btn.style.cursor = 'pointer';
+      btn.disabled = false;
       card.style.opacity = isTaken ? '0.6' : '1';
       card.style.transition = 'opacity 0.3s ease';
     };
@@ -7073,7 +7073,7 @@ function renderTeamHotspotsPage(){
     html += `<div style="font-size:10px;font-weight:900;color:${color};letter-spacing:0.08em;margin-bottom:6px">RECOMMENDED ACTION</div>`;
     html += `<div style="font-size:12px;font-weight:800;color:#0f172a">${escapeHtml(recommendedActionText || h.recommendedAction || '')}</div>`;
     html += '</div>';
-    html += `<button type="button" class="mark-action-btn" style="margin-top:10px;background:#FFFFFF;border:1px solid ${actionTaken ? '#BBF7D0' : '#E7E5E4'};border-radius:8px;padding:10px 12px;font-size:12px;font-weight:900;color:${actionTaken ? '#16A34A' : '#64748b'};cursor:${actionTaken ? 'default' : 'pointer'};width:100%"${actionTaken ? ' disabled' : ''}>${actionTaken ? '✓ Marked as done' : 'Mark as done'}</button>`;
+    html += `<button type="button" class="mark-action-btn" style="margin-top:10px;background:#FFFFFF;border:1px solid ${actionTaken ? '#BBF7D0' : '#E7E5E4'};border-radius:8px;padding:10px 12px;font-size:12px;font-weight:900;color:${actionTaken ? '#16A34A' : '#64748b'};cursor:pointer;width:100%">${actionTaken ? '✓ Marked as done' : 'Mark as done'}</button>`;
     html += '</div>';
     return html;
   };
